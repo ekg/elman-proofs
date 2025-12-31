@@ -8,6 +8,7 @@ import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Analysis.Normed.Group.Basic
 import Mathlib.Analysis.Normed.Field.Basic
 import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Topology.Separation.Hausdorff
 import ElmanProofs.Dynamics.Lyapunov
 
 /-!
@@ -77,7 +78,15 @@ theorem basin_nonempty (sys : DiscreteSystem X) (x₀ : X)
 theorem basins_disjoint (sys : DiscreteSystem X) (x₁ x₂ : X)
     (h1 : IsAttractor sys x₁) (h2 : IsAttractor sys x₂) (hne : x₁ ≠ x₂) :
     Disjoint (BasinOfAttraction sys x₁) (BasinOfAttraction sys x₂) := by
-  sorry -- Limits are unique in Hausdorff spaces
+  -- Show disjointness: the intersection is empty
+  rw [Set.disjoint_left]
+  intro x hx1 hx2
+  -- x is in both basins, so it converges to both x₁ and x₂
+  simp only [BasinOfAttraction, Set.mem_setOf_eq] at hx1 hx2
+  -- By uniqueness of limits in metric spaces (which are T2), x₁ = x₂
+  have : x₁ = x₂ := tendsto_nhds_unique hx1 hx2
+  -- This contradicts hne
+  exact absurd this hne
 
 /-- Memory capacity: maximum number of simultaneously stable attractors.
     Formalized as the supremum over finite sets of attractors. -/
@@ -103,6 +112,20 @@ theorem deltaGate_contraction {Y : Type*} [NormedAddCommGroup Y] [NormedSpace �
     ∀ h₁ h₂ : Y, ‖deltaGate δ h₁ candidate - deltaGate δ h₂ candidate‖ ≤ (1 - δ) * ‖h₁ - h₂‖ := by
   intro h₁ h₂
   simp only [deltaGate]
-  sorry
+  -- Expand: ((1 - δ) • h₁ + δ • candidate) - ((1 - δ) • h₂ + δ • candidate)
+  -- Simplify by canceling the δ • candidate terms
+  have h_eq : (1 - δ) • h₁ + δ • candidate - ((1 - δ) • h₂ + δ • candidate) =
+              (1 - δ) • h₁ - (1 - δ) • h₂ := by abel
+  rw [h_eq]
+  -- Now: ‖(1 - δ) • h₁ - (1 - δ) • h₂‖
+  rw [← smul_sub]
+  -- ‖(1 - δ) • (h₁ - h₂)‖
+  rw [norm_smul]
+  -- ‖1 - δ‖ * ‖h₁ - h₂‖
+  have h_pos : 0 < 1 - δ := by linarith
+  have h_norm : ‖(1 - δ : ℝ)‖ = 1 - δ := by
+    simp only [Real.norm_eq_abs]
+    exact abs_of_pos h_pos
+  rw [h_norm]
 
 end Memory
