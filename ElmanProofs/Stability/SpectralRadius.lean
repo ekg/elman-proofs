@@ -7,6 +7,8 @@ Authors: Elman Ablation Ladder Team
 import Mathlib.LinearAlgebra.Eigenspace.Basic
 import Mathlib.LinearAlgebra.Matrix.ToLin
 import Mathlib.Data.Complex.Basic
+import Mathlib.Analysis.Normed.Algebra.Spectrum
+import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
 /-!
 # Spectral Radius and RNN Stability
@@ -15,7 +17,7 @@ This file develops the theory connecting spectral radius to RNN stability.
 
 ## Main Definitions
 
-* `spectralRadius`: The largest absolute value of eigenvalues
+* `spectralRadius`: The largest absolute value of eigenvalues (via Gelfand's formula)
 * `isSpectrallyStable`: Spectral radius < 1
 
 ## Main Theorems
@@ -30,6 +32,12 @@ For the recurrence h_{t+1} = R_h · h_t + input:
 - The system has a unique stable fixed point
 - Memory of initial conditions fades geometrically
 
+## Implementation Notes
+
+The spectral radius is defined using Gelfand's formula: ρ(A) = lim_{k→∞} ‖A^k‖^(1/k).
+This avoids dealing with complex eigenvalues directly while being mathematically equivalent
+to the maximum absolute eigenvalue definition.
+
 -/
 
 namespace SpectralRadius
@@ -39,10 +47,16 @@ open scoped Matrix
 
 variable {n : ℕ} [NeZero n]
 
-/-- Placeholder for spectral radius.
-    The actual definition requires more sophisticated machinery. -/
+/-- Spectral radius via Gelfand's formula: ρ(A) = inf_k ‖A^k‖^(1/k).
+    This equals lim_{k→∞} ‖A^k‖^(1/k) = sup{|λ| : λ is an eigenvalue of A}.
+
+    For practical computation, we use the infimum characterization.
+    The actual limit exists and equals this infimum by subadditivity. -/
 noncomputable def spectralRadius (A : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
-  sorry -- Defined as sup of |λ| for eigenvalues λ
+  -- Use Frobenius norm as a simple matrix norm
+  let frobNorm := fun M : Matrix (Fin n) (Fin n) ℝ =>
+    Real.sqrt (∑ i, ∑ j, (M i j)^2)
+  ⨅ k : ℕ, (frobNorm (A^(k+1)))^(1 / (k+1 : ℝ))
 
 /-- A matrix is spectrally stable if its spectral radius is less than 1. -/
 def IsSpectrallyStable (A : Matrix (Fin n) (Fin n) ℝ) : Prop :=

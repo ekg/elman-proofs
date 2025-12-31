@@ -148,9 +148,118 @@ theorem log_space_relative_error (x y : ℝ) (hx : 0 < x) (hy : 0 < y)
   rw [exp_neg] at xy_lower
 
   -- Step 3: From (exp ε)⁻¹ ≤ x/y ≤ exp ε, derive |x/y - 1| ≤ exp ε - 1
+  -- Case analysis on whether x/y ≥ 1 or x/y < 1
+  have h_exp_pos : 0 < exp ε := exp_pos ε
+  have h_xy_pos : 0 < x / y := div_pos hx hy
+
   -- Step 4: |x - y| / max(x,y) ≤ |x/y - 1|
-  -- These steps require careful case analysis - defer to sorry for now
-  -- The mathematical argument is sound: relative error ≤ exp(ε) - 1
-  sorry
+  -- |x - y| / max(x,y) = |x/y - 1| when dividing by max
+  by_cases hxy : x ≤ y
+  · -- Case x ≤ y: max x y = y, so |x - y| / y = |x/y - 1|
+    rw [max_eq_right hxy]
+    have hxy_le_one : x / y ≤ 1 := (div_le_one hy).mpr hxy
+    -- |x - y| / y = (y - x) / y = 1 - x/y
+    have h1 : |x - y| / y = 1 - x / y := by
+      rw [abs_sub_comm, abs_of_nonneg (by linarith : 0 ≤ y - x)]
+      rw [sub_div, div_self hy.ne']
+    rw [h1]
+    -- Need: 1 - x/y ≤ exp ε - 1, i.e., 2 - exp ε ≤ x/y
+    -- From xy_lower: (exp ε)⁻¹ ≤ x/y
+    -- Actually: 1 - x/y ≤ 1 - (exp ε)⁻¹ = 1 - 1/exp ε = (exp ε - 1)/exp ε ≤ exp ε - 1
+    have h2 : 1 - x / y ≤ 1 - (exp ε)⁻¹ := by linarith [xy_lower]
+    have h3 : 1 - (exp ε)⁻¹ = (exp ε - 1) / exp ε := by
+      rw [sub_div, div_self h_exp_pos.ne', one_div]
+    rw [h3] at h2
+    -- (exp ε - 1) / exp ε ≤ exp ε - 1 because exp ε ≥ 1 when ε ≥ 0, or both sides negative when ε < 0
+    have h4 : (exp ε - 1) / exp ε ≤ exp ε - 1 := by
+      by_cases hε_nonneg : 0 ≤ ε
+      · -- When ε ≥ 0: exp ε ≥ 1, so exp ε - 1 ≥ 0
+        have hexp_ge : 1 ≤ exp ε := one_le_exp hε_nonneg
+        have h_numer_nonneg : 0 ≤ exp ε - 1 := by linarith
+        -- (exp ε - 1) / exp ε ≤ exp ε - 1 iff (exp ε - 1) ≤ (exp ε - 1) * exp ε
+        -- Since exp ε - 1 ≥ 0 and exp ε ≥ 1, this holds
+        calc (exp ε - 1) / exp ε = (exp ε - 1) * (exp ε)⁻¹ := div_eq_mul_inv _ _
+          _ ≤ (exp ε - 1) * 1 := by {
+              apply mul_le_mul_of_nonneg_left
+              · exact inv_le_one_of_one_le₀ hexp_ge
+              · exact h_numer_nonneg
+            }
+          _ = exp ε - 1 := mul_one _
+      · -- When ε < 0: exp ε < 1, so exp ε - 1 < 0
+        push_neg at hε_nonneg
+        have hexp_lt : exp ε < 1 := Real.exp_lt_one_iff.mpr hε_nonneg
+        have h_numer_neg : exp ε - 1 < 0 := by linarith
+        -- (exp ε - 1) / exp ε < 0 and exp ε - 1 < 0
+        -- But (exp ε - 1) / exp ε = (something negative) / (something positive) < 0
+        -- And since |exp ε - 1| / exp ε ≤ |exp ε - 1| (as exp ε > 0), we get
+        -- (exp ε - 1) / exp ε ≥ exp ε - 1 but we need ≤
+        -- Actually: (exp ε - 1) / exp ε > exp ε - 1 when ε < 0
+        -- Wait, let's be more careful. When exp ε < 1:
+        -- (exp ε - 1) / exp ε = exp ε - 1 iff exp ε = 1 or exp ε - 1 = 0
+        -- (exp ε - 1) / exp ε < exp ε - 1 iff (exp ε - 1) < (exp ε - 1) * exp ε (dividing by positive exp ε)
+        -- Since exp ε - 1 < 0 and exp ε < 1, (exp ε - 1) * exp ε > exp ε - 1
+        -- So (exp ε - 1) / exp ε < exp ε - 1 when ε < 0
+        have h_mult : (exp ε - 1) * exp ε > exp ε - 1 := by nlinarith [h_exp_pos, hexp_lt]
+        have h_ineq : (exp ε - 1) / exp ε < exp ε - 1 := by
+          have : (exp ε - 1) / exp ε < exp ε - 1 ↔ (exp ε - 1) < (exp ε - 1) * exp ε := by
+            constructor
+            · intro h; calc (exp ε - 1) = (exp ε - 1) / exp ε * exp ε := by field_simp
+                _ < (exp ε - 1) * exp ε := by nlinarith [h_exp_pos]
+            · intro h; calc (exp ε - 1) / exp ε = (exp ε - 1) / exp ε := rfl
+                _ < (exp ε - 1) * exp ε / exp ε := by { rw [mul_div_assoc]; nlinarith [h_exp_pos] }
+                _ = exp ε - 1 := by field_simp
+          rw [this]
+          exact h_mult
+        linarith
+    linarith
+  · -- Case x > y: max x y = x, so |x - y| / x = 1 - y/x
+    push_neg at hxy
+    rw [max_eq_left (le_of_lt hxy)]
+    have h_yx_pos : 0 < y / x := div_pos hy hx
+    have hyx_le_one : y / x ≤ 1 := (div_le_one hx).mpr (le_of_lt hxy)
+    -- |x - y| / x = (x - y) / x = 1 - y/x
+    have h1 : |x - y| / x = 1 - y / x := by
+      rw [abs_of_nonneg (by linarith : 0 ≤ x - y)]
+      rw [sub_div, div_self hx.ne']
+    rw [h1]
+    -- From xy_upper: x/y ≤ exp ε, so y/x ≥ (exp ε)⁻¹
+    have hyx_lower : (exp ε)⁻¹ ≤ y / x := by
+      -- x/y ≤ exp ε implies y/x ≥ 1/exp ε = (exp ε)⁻¹
+      -- (x/y)⁻¹ = y/x, and a ≤ b implies b⁻¹ ≤ a⁻¹ for positive a, b
+      have h_inv_xy : (x / y)⁻¹ = y / x := by field_simp
+      rw [← h_inv_xy]
+      exact inv_anti₀ h_xy_pos xy_upper
+    -- 1 - y/x ≤ 1 - (exp ε)⁻¹ ≤ exp ε - 1
+    have h2 : 1 - y / x ≤ 1 - (exp ε)⁻¹ := by linarith [hyx_lower]
+    have h3 : 1 - (exp ε)⁻¹ = (exp ε - 1) / exp ε := by
+      rw [sub_div, div_self h_exp_pos.ne', one_div]
+    rw [h3] at h2
+    -- Same reasoning as first case for h4
+    have h4 : (exp ε - 1) / exp ε ≤ exp ε - 1 := by
+      by_cases hε_nonneg : 0 ≤ ε
+      · have hexp_ge : 1 ≤ exp ε := one_le_exp hε_nonneg
+        have h_numer_nonneg : 0 ≤ exp ε - 1 := by linarith
+        calc (exp ε - 1) / exp ε = (exp ε - 1) * (exp ε)⁻¹ := div_eq_mul_inv _ _
+          _ ≤ (exp ε - 1) * 1 := by {
+              apply mul_le_mul_of_nonneg_left
+              · exact inv_le_one_of_one_le₀ hexp_ge
+              · exact h_numer_nonneg
+            }
+          _ = exp ε - 1 := mul_one _
+      · push_neg at hε_nonneg
+        have hexp_lt : exp ε < 1 := Real.exp_lt_one_iff.mpr hε_nonneg
+        have h_mult : (exp ε - 1) * exp ε > exp ε - 1 := by nlinarith [h_exp_pos, hexp_lt]
+        have h_ineq : (exp ε - 1) / exp ε < exp ε - 1 := by
+          have : (exp ε - 1) / exp ε < exp ε - 1 ↔ (exp ε - 1) < (exp ε - 1) * exp ε := by
+            constructor
+            · intro h; calc (exp ε - 1) = (exp ε - 1) / exp ε * exp ε := by field_simp
+                _ < (exp ε - 1) * exp ε := by nlinarith [h_exp_pos]
+            · intro h; calc (exp ε - 1) / exp ε = (exp ε - 1) / exp ε := rfl
+                _ < (exp ε - 1) * exp ε / exp ε := by { rw [mul_div_assoc]; nlinarith [h_exp_pos] }
+                _ = exp ε - 1 := by field_simp
+          rw [this]
+          exact h_mult
+        linarith
+    linarith
 
 end LogSpace

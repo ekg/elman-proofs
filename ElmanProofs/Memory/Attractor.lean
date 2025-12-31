@@ -89,9 +89,10 @@ theorem basins_disjoint (sys : DiscreteSystem X) (x₁ x₂ : X)
   exact absurd this hne
 
 /-- Memory capacity: maximum number of simultaneously stable attractors.
-    Formalized as the supremum over finite sets of attractors. -/
+    Formalized as the supremum over finite sets of attractors.
+    Returns 0 if there are no attractors, or the maximum finite set size otherwise. -/
 noncomputable def MemoryCapacity (sys : DiscreteSystem X) : ℕ :=
-  sorry -- sup over {S : Finset X | ∀ x ∈ S, IsAttractor sys x}.card
+  sSup {n : ℕ | ∃ S : Finset X, S.card = n ∧ ∀ x ∈ S, IsAttractor sys x}
 
 /-- A gated system with input-dependent dynamics. -/
 structure GatedSystem (X I : Type*) where
