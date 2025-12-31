@@ -5,8 +5,11 @@ Authors: Elman Ablation Ladder Team
 -/
 
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.Inv
+import Mathlib.Analysis.Calculus.MeanValue
 
 /-!
 # Lipschitz Properties of Activation Functions
@@ -47,7 +50,6 @@ theorem tanh_bounded (x : ℝ) : |Real.tanh x| < 1 := by
   have h := Real.cosh_sq_sub_sinh_sq x
   have hsinh_sq : Real.sinh x ^ 2 < Real.cosh x ^ 2 := by linarith [sq_nonneg (Real.cosh x)]
   -- |sinh x| < cosh x follows from sinh² < cosh²
-  -- Need to show |sinh x| < cosh x given sinh² < cosh² and cosh > 0
   rw [abs_lt]
   constructor
   · -- -cosh x < sinh x
@@ -55,30 +57,55 @@ theorem tanh_bounded (x : ℝ) : |Real.tanh x| < 1 := by
   · -- sinh x < cosh x
     nlinarith [sq_abs (Real.sinh x), sq_abs (Real.cosh x)]
 
-/-- tanh is 1-Lipschitz: |tanh(x) - tanh(y)| ≤ |x - y|.
-    Proof: tanh' = sech² = 1 - tanh² ∈ (0, 1], so by MVT |tanh x - tanh y| ≤ |x - y|.
+/-- tanh is differentiable everywhere (composition of exp functions). -/
+theorem differentiable_tanh : Differentiable ℝ Real.tanh := by
+  have h_eq : Real.tanh = Real.sinh / Real.cosh := by
+    ext y
+    exact Real.tanh_eq_sinh_div_cosh y
+  rw [h_eq]
+  exact Real.differentiable_sinh.div Real.differentiable_cosh (fun x => (Real.cosh_pos x).ne')
 
-    Mathematical argument:
-    1. tanh is differentiable everywhere (composition of exp functions)
-    2. deriv tanh x = 1 - (tanh x)² = sech²(x)
-    3. Since |tanh x| < 1, we have 0 < 1 - tanh²(x) ≤ 1
-    4. By MVT, |tanh x - tanh y| ≤ sup|tanh'| · |x - y| ≤ |x - y| -/
-theorem tanh_lipschitz : LipschitzWith 1 Real.tanh := by
-  apply LipschitzWith.of_dist_le_mul
-  intro x y
-  simp only [NNReal.coe_one, one_mul]
-  -- The proof uses MVT with the bound |tanh'| ≤ 1
-  -- This follows from tanh' = sech² = 1 - tanh² and |tanh| < 1
-  sorry
+/-- The derivative of tanh is 1 - tanh².
+    Proof: tanh = sinh/cosh, so by quotient rule:
+    tanh' = (sinh' · cosh - sinh · cosh') / cosh²
+          = (cosh · cosh - sinh · sinh) / cosh²
+          = (cosh² - sinh²) / cosh²
+          = 1 / cosh² = sech² = 1 - tanh² -/
+theorem deriv_tanh (x : ℝ) : deriv Real.tanh x = 1 - (Real.tanh x)^2 := by
+  have h_eq : Real.tanh = Real.sinh / Real.cosh := by
+    ext y
+    exact Real.tanh_eq_sinh_div_cosh y
+  conv_lhs => rw [h_eq]
+  conv_rhs => rw [Real.tanh_eq_sinh_div_cosh]
+  have hcosh_pos : Real.cosh x ≠ 0 := (Real.cosh_pos x).ne'
+  simp only [deriv_div Real.differentiable_sinh.differentiableAt
+      Real.differentiable_cosh.differentiableAt hcosh_pos]
+  rw [Real.deriv_sinh, Real.deriv_cosh]
+  -- (cosh * cosh - sinh * sinh) / cosh² = 1 - sinh²/cosh²
+  have h := Real.cosh_sq_sub_sinh_sq x
+  field_simp [h]
 
 /-- The derivative of tanh is bounded by 1.
-    Proof: tanh'(x) = sech²(x) = 1 - tanh²(x) ∈ (0, 1].
-    Since |tanh x| < 1, we have tanh²(x) < 1, so 0 < 1 - tanh²(x) ≤ 1. -/
+    Proof: tanh'(x) = 1 - tanh²(x) ∈ (0, 1] since |tanh x| < 1. -/
 theorem tanh_deriv_bound (x : ℝ) : |deriv Real.tanh x| ≤ 1 := by
-  -- deriv tanh x = 1 - (tanh x)²
-  -- Since |tanh x| < 1 (tanh is bounded), tanh²(x) < 1
-  -- So 0 < 1 - tanh²(x) ≤ 1, hence |1 - tanh²(x)| ≤ 1
-  sorry
+  rw [deriv_tanh]
+  have h := tanh_bounded x
+  -- |tanh x| < 1 implies tanh² < 1
+  have h_sq : (Real.tanh x)^2 < 1 := by
+    rw [sq_lt_one_iff_abs_lt_one]
+    exact h
+  have h_nonneg : 0 ≤ 1 - (Real.tanh x)^2 := by linarith
+  rw [abs_of_nonneg h_nonneg]
+  have h_sq_nonneg : 0 ≤ (Real.tanh x)^2 := sq_nonneg _
+  linarith
+
+/-- tanh is 1-Lipschitz: |tanh(x) - tanh(y)| ≤ |x - y|.
+    Proof: tanh' = 1 - tanh² ∈ (0, 1], so by MVT |tanh x - tanh y| ≤ |x - y|. -/
+theorem tanh_lipschitz : LipschitzWith 1 Real.tanh := by
+  apply lipschitzWith_of_nnnorm_deriv_le differentiable_tanh
+  intro x
+  rw [← NNReal.coe_le_coe, NNReal.coe_one, coe_nnnorm]
+  exact tanh_deriv_bound x
 
 /-- sigmoid(x) = 1 / (1 + exp(-x)). -/
 noncomputable def sigmoid (x : ℝ) : ℝ := 1 / (1 + exp (-x))
@@ -99,13 +126,51 @@ theorem continuous_sigmoid : Continuous sigmoid := by
   exact continuous_one.div (continuous_one.add (continuous_exp.comp continuous_neg))
     fun x => by linarith [exp_pos (-x)]
 
+/-- Helper: exp ∘ (-id) is differentiable. -/
+theorem differentiableAt_exp_neg (x : ℝ) : DifferentiableAt ℝ (fun y => exp (-y)) x := by
+  exact Real.differentiable_exp.differentiableAt.comp x differentiable_neg.differentiableAt
+
 /-- sigmoid is differentiable everywhere.
     Proof: sigmoid = 1 / (1 + exp(-x)) is a quotient of differentiable functions.
     The denominator 1 + exp(-x) > 1 > 0 is never zero. -/
 theorem differentiable_sigmoid : Differentiable ℝ sigmoid := by
-  -- Standard calculus: quotient of differentiable functions with nonzero denominator
-  -- Requires finding the right Mathlib4 lemma for differentiability of quotients
-  sorry
+  intro x
+  unfold sigmoid
+  have h_denom_ne : 1 + exp (-x) ≠ 0 := by linarith [exp_pos (-x)]
+  have h_num : DifferentiableAt ℝ (fun _ : ℝ => (1 : ℝ)) x := differentiableAt_const 1
+  have h_exp_neg : DifferentiableAt ℝ (fun y => exp (-y)) x := differentiableAt_exp_neg x
+  have h_denom : DifferentiableAt ℝ (fun y => 1 + exp (-y)) x :=
+    (differentiableAt_const 1).add h_exp_neg
+  exact DifferentiableAt.div h_num h_denom h_denom_ne
+
+/-- The derivative of sigmoid equals sigmoid(x) * (1 - sigmoid(x)).
+    Proof via quotient rule on 1 / (1 + exp(-x)). -/
+theorem deriv_sigmoid (x : ℝ) : deriv sigmoid x = sigmoid x * (1 - sigmoid x) := by
+  unfold sigmoid
+  have h_denom_ne : 1 + exp (-x) ≠ 0 := by linarith [exp_pos (-x)]
+  have h_denom_pos : 0 < 1 + exp (-x) := by linarith [exp_pos (-x)]
+  have h_num : DifferentiableAt ℝ (fun _ : ℝ => (1 : ℝ)) x := differentiableAt_const 1
+  have h_exp_neg : DifferentiableAt ℝ (fun y => exp (-y)) x := differentiableAt_exp_neg x
+  have h_denom : DifferentiableAt ℝ (fun y => 1 + exp (-y)) x :=
+    (differentiableAt_const 1).add h_exp_neg
+  simp only [deriv_fun_div h_num h_denom h_denom_ne]
+  simp only [deriv_const, zero_mul, zero_sub]
+  -- deriv of 1 + exp(-y) = deriv of exp(-y) = -exp(-x)
+  have h_denom_deriv : deriv (fun y => 1 + exp (-y)) x = -exp (-x) := by
+    have h2 : (fun y => 1 + exp (-y)) = (fun y => (1 : ℝ) + exp (-y)) := rfl
+    rw [h2, deriv_const_add]
+    -- deriv of exp(-y) at x = exp(-x) * (-1) = -exp(-x)
+    -- Use HasDerivAt for the chain rule
+    have h_neg : HasDerivAt Neg.neg (-1 : ℝ) x := hasDerivAt_neg x
+    have h_exp : HasDerivAt exp (exp (-x)) (-x) := Real.hasDerivAt_exp (-x)
+    have h_comp : HasDerivAt (fun y => exp (-y)) (exp (-x) * (-1)) x :=
+      h_exp.comp x h_neg
+    simp only [mul_neg_one] at h_comp
+    exact h_comp.deriv
+  rw [h_denom_deriv]
+  -- Simplify: -(1 * (-exp(-x))) / (1 + exp(-x))^2 = exp(-x) / (1 + exp(-x))^2
+  field_simp
+  ring
 
 /-- The derivative of sigmoid is bounded by 1/4.
     Since sigmoid(x) ∈ (0, 1), the product sigmoid(x)(1 - sigmoid(x)) is maximized
@@ -114,14 +179,13 @@ theorem differentiable_sigmoid : Differentiable ℝ sigmoid := by
     Proof: sigmoid'(x) = sigmoid(x) · (1 - sigmoid(x)).
     For s ∈ (0,1), s(1-s) ≤ 1/4 by AM-GM: s(1-s) ≤ ((s + (1-s))/2)² = 1/4. -/
 theorem sigmoid_deriv_bound (x : ℝ) : |deriv sigmoid x| ≤ 1/4 := by
-  -- The derivative formula: deriv sigmoid x = sigmoid(x) * (1 - sigmoid(x))
-  -- For s ∈ (0, 1), s(1-s) achieves max 1/4 at s = 1/2
+  rw [deriv_sigmoid]
   have hs := sigmoid_bounded x
   set s := sigmoid x with hs_def
   have h_prod_nonneg : 0 ≤ s * (1 - s) := mul_nonneg (le_of_lt hs.1) (by linarith [hs.2])
   have h_prod_bound : s * (1 - s) ≤ 1/4 := by nlinarith [hs.1, hs.2, sq_nonneg (s - 1/2)]
-  -- The derivative computation requires the quotient rule
-  sorry
+  rw [abs_of_nonneg h_prod_nonneg]
+  exact h_prod_bound
 
 /-- sigmoid is 1/4-Lipschitz.
     Proof: By the mean value theorem, for any x, y with x ≠ y,
@@ -182,7 +246,7 @@ theorem relu_lipschitz : LipschitzWith 1 relu := by
   simp only [relu, Real.dist_eq, NNReal.coe_one, one_mul]
   -- |max 0 x - max 0 y| ≤ |x - y|
   -- Case analysis on signs of x and y
-  rcases le_or_lt x 0 with hx | hx <;> rcases le_or_lt y 0 with hy | hy
+  rcases le_or_gt x 0 with hx | hx <;> rcases le_or_gt y 0 with hy | hy
   · -- x ≤ 0, y ≤ 0: max 0 x = 0, max 0 y = 0
     simp only [max_eq_left hx, max_eq_left hy, sub_self, abs_zero, abs_nonneg]
   · -- x ≤ 0, y > 0: max 0 x = 0, max 0 y = y
