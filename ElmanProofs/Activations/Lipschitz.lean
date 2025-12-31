@@ -50,13 +50,20 @@ theorem sigmoid_lipschitz : ∀ x y : ℝ, |sigmoid x - sigmoid y| ≤ (1/4) * |
 def relu (x : ℝ) : ℝ := max 0 x
 
 theorem relu_lipschitz : LipschitzWith 1 relu := by
+  apply LipschitzWith.of_dist_le_mul
+  intro x y
+  simp only [relu, Real.dist_eq, one_mul]
+  -- |max(0,x) - max(0,y)| ≤ |x - y|
   sorry
 
 /-- SiLU(x) = x * sigmoid(x). -/
 noncomputable def silu (x : ℝ) : ℝ := x * sigmoid x
 
-/-- Bounded activation functions have bounded outputs. -/
+/-- Bounded activation functions have bounded outputs.
+    tanh = sinh/cosh ∈ (-1, 1) since cosh² - sinh² = 1 and cosh > 0. -/
 theorem tanh_bounded (x : ℝ) : |Real.tanh x| < 1 := by
+  -- |sinh/cosh| < 1 ↔ |sinh| < |cosh| = cosh (since cosh > 0)
+  -- This follows from cosh² - sinh² = 1 > 0
   sorry
 
 /-- sigmoid is bounded in (0, 1). -/
