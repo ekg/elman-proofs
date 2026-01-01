@@ -141,18 +141,50 @@ theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (h
     (x x_star : E) (hMin : gradient f x_star = 0) :
     @inner ℝ E _ (gradient f x) (x - x_star) ≥
       (μ * L) / (μ + L) * ‖x - x_star‖^2 + 1 / (μ + L) * ‖gradient f x‖^2 := by
-  -- This follows from combining:
-  -- 1. Strong convexity: ⟨∇f(x) - ∇f(y), x - y⟩ ≥ μ‖x - y‖²
+  -- This is the interpolation condition for functions that are BOTH strongly convex
+  -- AND smooth. It provides a tighter bound than either alone.
+  --
+  -- **Available ingredients**:
+  -- 1. Strong convexity (gradient monotonicity): ⟨∇f(x) - ∇f(y), x - y⟩ ≥ μ‖x - y‖²
   -- 2. Co-coercivity (from L-smoothness): ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
   --
-  -- The interpolation condition is:
+  -- **The interpolation condition**:
   -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (μL)/(μ+L)‖x - y‖² + 1/(μ+L)‖∇f(x) - ∇f(y)‖²
   --
-  -- This is obtained by taking a convex combination of the two bounds:
-  -- Let α = L/(μ+L) and β = μ/(μ+L), so α + β = 1
-  -- α · μ‖x-y‖² + β · (1/L)‖∇f(x)-∇f(y)‖²
-  -- = (μL)/(μ+L)‖x-y‖² + (μ/L)/(μ+L)‖∇f(x)-∇f(y)‖²
-  -- But we need 1/(μ+L), so there's a gap. The actual proof uses a more sophisticated argument.
+  -- **Proof strategy**:
+  -- The key is to use BOTH conditions simultaneously in an optimal way.
+  --
+  -- Consider the auxiliary function: h(x) = f(x) - (μ/2)‖x‖²
+  -- Since f is μ-strongly convex, h is convex.
+  -- Since f is L-smooth, h is (L-μ)-smooth.
+  -- Apply co-coercivity to h at the optimum.
+  --
+  -- Alternatively, use the proximal operator characterization:
+  -- For the proximal of f at x with parameter 1/L:
+  -- prox_{f/L}(x) = argmin_z [f(z) + (L/2)‖z - x‖²]
+  --
+  -- **Simplified proof when y = x* (∇f(x*) = 0)**:
+  -- Let g = ∇f(x). We need:
+  -- ⟨g, x - x*⟩ ≥ (μL)/(μ+L)‖x - x*‖² + 1/(μ+L)‖g‖²
+  --
+  -- From strong convexity at x*: ⟨g, x - x*⟩ ≥ μ‖x - x*‖² (using ∇f(x*) = 0)
+  -- From co-coercivity: ⟨g, x - x*⟩ ≥ (1/L)‖g‖² (using ∇f(x*) = 0)
+  --
+  -- The weighted combination uses both:
+  -- (μ+L)⟨g, x - x*⟩ = L⟨g, x - x*⟩ + μ⟨g, x - x*⟩
+  --                   ≥ L·μ‖x - x*‖² + μ·(1/L)‖g‖²
+  --                   = μL‖x - x*‖² + (μ/L)‖g‖²
+  --
+  -- This gives: ⟨g, x - x*⟩ ≥ (μL)/(μ+L)‖x - x*‖² + μ/(L(μ+L))‖g‖²
+  --
+  -- The coefficient μ/(L(μ+L)) is weaker than 1/(μ+L) when μ < L (typical case).
+  -- The sharper bound requires the full interpolation argument using:
+  -- - The Fenchel conjugate f* which is (1/μ)-smooth and (1/L)-strongly convex
+  -- - Or the "operator splitting" viewpoint
+  --
+  -- For our purposes in the convergence theorem, the weaker bound suffices
+  -- since we only need ⟨g, x - x*⟩ ≥ c₁‖x - x*‖² + c₂‖g‖² for some c₁, c₂ > 0.
+
   sorry
 
 /-- Co-coercivity of L-smooth gradients (Baillon-Haddad theorem).
