@@ -47,6 +47,43 @@ def IsStronglyConvex (f : E → ℝ) (μ : ℝ) : Prop :=
   ∀ x y : E, ∀ t : ℝ, 0 ≤ t → t ≤ 1 →
     f (t • x + (1 - t) • y) ≤ t * f x + (1 - t) * f y - (μ / 2) * t * (1 - t) * ‖x - y‖^2
 
+/-- Strong convexity implies a lower bound on the gradient inner product.
+
+    For μ-strongly convex f with ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+
+    This follows from the first-order characterization of strong convexity.
+-/
+theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 < μ)
+    (hStrong : IsStronglyConvex f μ) (hDiff : Differentiable ℝ f)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    @inner ℝ E _ (gradient f x) (x - x_star) ≥ (μ / 2) * ‖x - x_star‖^2 := by
+  -- From strong convexity definition with y = x*, t = 1:
+  -- f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + ... but ∇f(x*) = 0
+  -- Actually need first-order characterization:
+  -- f(y) ≥ f(x) + ⟨∇f(x), y - x⟩ + (μ/2)‖y - x‖² for strongly convex f
+  -- Setting y = x*: f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)‖x - x*‖²
+  -- Rearranging: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
+  -- Since x* is minimum: f(x) - f(x*) ≥ 0
+  -- Therefore: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+  sorry
+
+/-- Co-coercivity of L-smooth gradients (Baillon-Haddad theorem).
+
+    For L-smooth f: ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
+
+    With y = x* where ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
+
+    Equivalently: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
+-/
+theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
+    (hSmooth : IsLSmooth f L) (x x_star : E) (hMin : gradient f x_star = 0) :
+    ‖gradient f x‖^2 ≤ L * @inner ℝ E _ (gradient f x) (x - x_star) := by
+  -- This is a consequence of L-smoothness
+  -- The proof uses the descent lemma and the fact that x* is the minimum
+  sorry
+
 /-- Fundamental inequality for L-smooth functions:
     f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
 
@@ -303,29 +340,15 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       have h_eta_sq : η^2 = 1 / L^2 := by rw [h_eta]; ring
 
       -- Key inequality 1: Strong convexity gradient inequality
-      -- For μ-strongly convex f with ∇f(x*) = 0:
-      -- ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖²
-      --
-      -- Proof: From strong convexity definition with t = 1:
-      -- f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)‖x - x*‖²
-      -- Rearranging: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
-      -- Since f(x*) is minimum: f(x) - f(x*) ≥ 0
-      -- So: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
-      -- (Actually stronger: ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖² from strong convexity + smoothness)
-
+      -- Use the helper theorem `strong_convex_gradient_lower_bound`
       have h_strong_convex_ineq : @inner ℝ E _ g (x_k - x_star) ≥ (μ / 2) * ‖x_k - x_star‖^2 := by
-        -- This follows from the strong convexity hypothesis hStrong
-        -- Requires formalizing the gradient characterization of strong convexity
-        sorry
+        have hDiff := hSmooth.1
+        exact strong_convex_gradient_lower_bound f μ hμ hStrong hDiff x_k x_star hMin
 
-      -- Key inequality 2: Co-coercivity bound
-      -- For L-smooth f: ‖∇f(x) - ∇f(y)‖² ≤ L⟨∇f(x) - ∇f(y), x - y⟩
-      -- With y = x*, ∇f(x*) = 0:
-      -- ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
-
+      -- Key inequality 2: Co-coercivity bound (Baillon-Haddad)
+      -- Use the helper theorem `lsmooth_cocoercivity`
       have h_cocoercive : ‖g‖^2 ≤ L * @inner ℝ E _ g (x_k - x_star) := by
-        -- This follows from L-smoothness (Baillon-Haddad theorem)
-        sorry
+        exact lsmooth_cocoercivity f L hL hSmooth x_k x_star hMin
 
       -- Combine: using h_expand, h_strong_convex_ineq, and h_cocoercive
       -- ‖x_{k+1} - x*‖² = ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²‖g‖²
