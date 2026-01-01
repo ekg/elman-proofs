@@ -7,6 +7,8 @@ Authors: Elman Ablation Ladder Team
 import Mathlib.Analysis.Calculus.Gradient.Basic
 import Mathlib.Analysis.Convex.Basic
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
 import Mathlib.Analysis.InnerProductSpace.Calculus
 
 /-!
@@ -123,9 +125,13 @@ theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 <
   -- 3. Bounding g(t) using strong convexity
   -- 4. Taking the limit to get the first-order condition
 
-  -- For the formal proof, we'd use HasDerivAt and the strong convexity bound.
-  -- The derivative calculation uses the chain rule.
-
+  -- The proof uses the first-order characterization of strong convexity.
+  -- The key steps are documented in the comments above.
+  -- Formalizing the derivative limit argument requires careful handling of
+  -- the strong convexity bound as t → 0⁺, which involves Mathlib's asymptotic analysis.
+  -- The key bound is: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖² ≥ (μ/2)‖x - x*‖²
+  -- where the second inequality follows from x* being the global minimum
+  -- (since ∇f(x*) = 0 for strongly convex f implies x* is the unique minimizer).
   sorry
 
 /-- Interpolation condition for strongly convex AND smooth functions.
@@ -317,25 +323,18 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
     (hSmooth : IsLSmooth f L) (x y : E) :
     f y ≤ f x + @inner ℝ E _ (gradient f x) (y - x) + (L / 2) * ‖y - x‖^2 := by
   obtain ⟨hDiff, hLip⟩ := hSmooth
-
   -- Special case: if x = y, the inequality is trivially true
   by_cases hxy : x = y
   · simp only [hxy, sub_self, inner_zero_right, norm_zero, sq, mul_zero, add_zero, le_refl]
-
   -- Special case: if L = 0, gradient is constant, so f is affine
   by_cases hL0 : L = 0
   · -- When L = 0, ∇f is constant (0-Lipschitz means constant)
     -- So f(y) = f(x) + ⟨∇f(x), y - x⟩ for all x, y
     simp only [hL0, zero_div, zero_mul, add_zero]
-
     -- For constant gradient, f is affine: f(y) - f(x) = ⟨∇f(x), y - x⟩
-    -- From 0-Lipschitz: ‖∇f(x) - ∇f(y)‖ ≤ 0 * ‖x - y‖ = 0
-    -- So ∇f(x) = ∇f(y) for all x, y (gradient is constant)
-
-    -- When gradient is constant, by the mean value theorem:
-    -- f(y) - f(x) = ⟨∇f(ξ), y - x⟩ for some ξ on the segment
+    -- From 0-Lipschitz: ‖∇f(x) - ∇f(y)‖ ≤ 0 * ‖x - y‖ = 0. So ∇f(x) = ∇f(y) for all x, y.
+    -- When gradient is constant, by the MVT: f(y) - f(x) = ⟨∇f(ξ), y - x⟩ for some ξ.
     -- Since ∇f is constant, ∇f(ξ) = ∇f(x), so f(y) - f(x) = ⟨∇f(x), y - x⟩
-
     have h_grad_const : ∀ z, gradient f z = gradient f x := by
       intro z
       have h0 : ‖gradient f z - gradient f x‖ ≤ 0 * ‖z - x‖ := by
@@ -343,40 +342,50 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
         exact hLip z x
       simp only [zero_mul, norm_le_zero_iff] at h0
       exact sub_eq_zero.mp h0
-
-    -- f(y) - f(x) = ⟨∇f(x), y - x⟩ follows from integration along the segment
-    -- with constant gradient. This is a special case of the FTC.
-    -- For affine functions f(a + t*v) = f(a) + t*⟨∇f(a), v⟩
-    -- Setting a = x, v = y - x, t = 1 gives f(y) = f(x) + ⟨∇f(x), y - x⟩
-
-    -- Use Mathlib's Convex.add_smul_mem_of_eq to get the segment,
-    -- then apply FTC. The actual FTC proof requires MeasureTheory integration.
-
-    -- For now, we use the fact that constant gradient implies affine function,
-    -- and affine functions satisfy equality in the smoothness bound.
-    -- This is immediate since the (L/2)‖y-x‖² term is 0 when L = 0.
-
-    -- The key mathematical fact: when L = 0, the gradient is constant,
-    -- and f(y) = f(x) + ⟨∇f(x), y - x⟩ exactly (equality, not just ≤).
-    -- This follows from integrating the constant gradient along any path.
-
-    -- The formal proof of f(y) - f(x) = ∫ ⟨∇f, v⟩ dt = ⟨∇f(x), y-x⟩
-    -- requires the line integral formulation which we document here.
-    -- Given the complexity of MeasureTheory integration, we note that
-    -- this is a standard result for affine functions.
-
-    -- Alternative approach using Convex.inner_mul_le_norm_mul_norm and
-    -- the fact that for differentiable f with constant gradient g:
-    -- (d/dt) f(x + t*(y-x)) = ⟨g, y-x⟩ = constant
-    -- So f(y) - f(x) = ∫₀¹ ⟨g, y-x⟩ dt = ⟨g, y-x⟩ * 1 = ⟨∇f(x), y-x⟩
-
-    -- This requires HasDerivAt machinery for paths, which is available
-    -- but verbose. The mathematical content is clear; we defer formalization.
-    sorry
-
+    -- For the formal proof, we use that zero Frechet derivative implies constant.
+    -- Define h(z) = f(z) - ⟨∇f(x), z⟩. Then fderiv h z = 0 (gradient is constant).
+    -- Zero fderiv on convex set implies h is constant, so h(y) = h(x).
+    let g := gradient f x
+    let h := fun z => f z - @inner ℝ E _ g z
+    have hh_diff : Differentiable ℝ h := by
+      intro z
+      apply DifferentiableAt.sub (hDiff z)
+      exact (innerSL (𝕜 := ℝ) g).differentiableAt
+    -- h has zero Frechet derivative everywhere
+    have h_fderiv_zero : ∀ z, fderiv ℝ h z = 0 := by
+      intro z
+      have hf_diff : DifferentiableAt ℝ f z := hDiff z
+      have hg_diff : DifferentiableAt ℝ (fun w => @inner ℝ E _ g w) z :=
+        (innerSL (𝕜 := ℝ) g).differentiableAt
+      -- fderiv of f z = innerSL (gradient f z)
+      have h_fderiv_f : fderiv ℝ f z = innerSL (𝕜 := ℝ) (gradient f z) := by
+        have hgrad := hf_diff.hasGradientAt
+        exact hgrad.hasFDerivAt.fderiv
+      -- fderiv of (inner g ·) = innerSL g
+      have h_fderiv_inner : fderiv ℝ (fun w => @inner ℝ E _ g w) z = innerSL (𝕜 := ℝ) g :=
+        (innerSL (𝕜 := ℝ) g).fderiv
+      -- fderiv of h = fderiv f - fderiv inner
+      have h1 : fderiv ℝ h z = fderiv ℝ f z - fderiv ℝ (fun w => @inner ℝ E _ g w) z := by
+        exact fderiv_sub hf_diff hg_diff
+      rw [h1, h_fderiv_f, h_fderiv_inner, h_grad_const z]
+      exact sub_self _
+    -- h is constant: use that zero derivative on convex set implies constant
+    have h_const : h y = h x := by
+      have hconvex : Convex ℝ (Set.univ : Set E) := convex_univ
+      have hdiff_on : DifferentiableOn ℝ h Set.univ := hh_diff.differentiableOn
+      have hfderiv_on : ∀ z ∈ Set.univ, fderivWithin ℝ h Set.univ z = 0 := by
+        intro z _
+        rw [fderivWithin_univ]
+        exact h_fderiv_zero z
+      exact Convex.is_const_of_fderivWithin_eq_zero hconvex hdiff_on hfderiv_on
+        (Set.mem_univ x) (Set.mem_univ y)
+    -- Expand h(y) = h(x): f(y) - ⟨g, y⟩ = f(x) - ⟨g, x⟩, so f(y) = f(x) + ⟨g, y - x⟩
+    simp only [h] at h_const
+    have h_inner_sub : @inner ℝ E _ g y - @inner ℝ E _ g x = @inner ℝ E _ g (y - x) := by
+      rw [inner_sub_right]
+    linarith [h_const, h_inner_sub]
   -- Main case: L > 0
   have hL_pos : 0 < L := lt_of_le_of_ne hL (Ne.symm hL0)
-
   /- The proof uses integration along the line segment from x to y.
 
      Define γ(t) = x + t(y - x) for t ∈ [0, 1].
@@ -402,9 +411,172 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
 
      This requires Mathlib's MeasureTheory.integral machinery and
      careful handling of the FTC for paths in Hilbert spaces.
+
+     **Mathlib theorems needed**:
+     - `MeasureTheory.integral_Icc` for ∫₀¹ ... dt
+     - `HasDerivAt.integral_eq_sub` for FTC
+     - `real_inner_le_norm` for Cauchy-Schwarz
+     - `intervalIntegral.integral_mono` for bounding integrals
+
+     **Alternative approach via second derivative**:
+     Define g(t) = f(x + t(y-x)). Then:
+     - g'(t) = ⟨∇f(x + t(y-x)), y - x⟩
+     - g''(t) = ⟨Hf(x + t(y-x))(y-x), y - x⟩ where Hf is the Hessian
+     - For L-smooth f, the Hessian satisfies ‖Hf‖ ≤ L, so g''(t) ≤ L‖y-x‖²
+
+     Integrating g''(t) twice:
+     - g'(t) ≤ g'(0) + L·t·‖y-x‖²
+     - g(t) ≤ g(0) + g'(0)·t + (L/2)·t²·‖y-x‖²
+
+     At t = 1:
+     - f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
   -/
 
-  sorry
+  /- **Proof Strategy using Monotonicity (avoids MeasureTheory integration)**
+     Define:
+     - γ(t) = x + t • (y - x) for t ∈ [0, 1]
+     - g(t) = f(γ(t)) - t * ⟨∇f(x), y - x⟩
+     - K = L * ‖y - x‖²
+     - h(t) = g(t) - (K/2) * t²
+     Then:
+     - g'(t) = ⟨∇f(γ(t)) - ∇f(x), y - x⟩ (after simplification)
+     - g'(t) ≤ L * t * ‖y - x‖² = K * t (by Lipschitz + Cauchy-Schwarz)
+     - h'(t) = g'(t) - K * t ≤ 0
+     - By antitoneOn_of_deriv_nonpos: h(1) ≤ h(0)
+     - Expanding: g(1) - K/2 ≤ g(0)
+     - So: f(y) - ⟨∇f(x), y-x⟩ - (L/2)‖y-x‖² ≤ f(x)
+     - Rearranging: f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
+  -/
+  -- Define the path γ(t) = x + t • (y - x)
+  let γ := fun t : ℝ => x + t • (y - x)
+  -- Define K = L * ‖y - x‖²
+  let K := L * ‖y - x‖^2
+  -- Define inner_val = ⟨∇f(x), y - x⟩
+  let inner_val := @inner ℝ E _ (gradient f x) (y - x)
+  -- Define g(t) = f(γ(t)) - t * inner_val : measures deviation from linear model
+  let g := fun t : ℝ => f (γ t) - t * inner_val
+  -- Define h(t) = g(t) - (K/2) * t² : we'll show h is antitone
+  let h := fun t : ℝ => g t - (K / 2) * t^2
+  -- Key boundary values
+  have hγ0 : γ 0 = x := by simp only [γ, zero_smul, add_zero]
+  have hγ1 : γ 1 = y := by simp only [γ, one_smul, add_sub_cancel]
+  have hg0 : g 0 = f x := by simp only [g, hγ0, zero_mul, sub_zero]
+  have hg1 : g 1 = f y - inner_val := by simp only [g, hγ1, one_mul]
+  have hh0 : h 0 = f x := by simp only [h, hg0, sq, mul_zero, sub_zero]
+  have hh1 : h 1 = f y - inner_val - K / 2 := by
+    simp only [h, hg1, one_pow, mul_one]
+  -- γ(t) - x = t • (y - x) for the Lipschitz bound
+  have hγ_diff : ∀ t, γ t - x = t • (y - x) := by
+    intro t; simp only [γ, add_sub_cancel_left]
+  -- ‖γ(t) - x‖ = |t| * ‖y - x‖
+  have hγ_norm : ∀ t, ‖γ t - x‖ = |t| * ‖y - x‖ := by
+    intro t; rw [hγ_diff, norm_smul, Real.norm_eq_abs]
+  -- For t ∈ [0, 1], |t| = t
+  have h_abs_t : ∀ t : ℝ, 0 ≤ t → t ≤ 1 → |t| = t := fun t ht _ => abs_of_nonneg ht
+  -- The key bound: ⟨∇f(γ(t)) - ∇f(x), y - x⟩ ≤ L * t * ‖y - x‖² for t ∈ [0, 1]
+  -- This uses: Cauchy-Schwarz, then L-Lipschitz of gradient, then ‖γ(t) - x‖ = t * ‖y - x‖
+  have h_grad_bound : ∀ t, 0 ≤ t → t ≤ 1 →
+      @inner ℝ E _ (gradient f (γ t) - gradient f x) (y - x) ≤ L * t * ‖y - x‖^2 := by
+    intro t ht0 ht1
+    have hCS : @inner ℝ E _ (gradient f (γ t) - gradient f x) (y - x) ≤
+        ‖gradient f (γ t) - gradient f x‖ * ‖y - x‖ := real_inner_le_norm _ _
+    have hLip : ‖gradient f (γ t) - gradient f x‖ ≤ L * ‖γ t - x‖ := hLip (γ t) x
+    have hNorm : ‖γ t - x‖ = t * ‖y - x‖ := by rw [hγ_norm, h_abs_t t ht0 ht1]
+    calc @inner ℝ E _ (gradient f (γ t) - gradient f x) (y - x)
+        ≤ ‖gradient f (γ t) - gradient f x‖ * ‖y - x‖ := hCS
+      _ ≤ (L * ‖γ t - x‖) * ‖y - x‖ := by nlinarith [norm_nonneg (y - x)]
+      _ = L * (t * ‖y - x‖) * ‖y - x‖ := by rw [hNorm]
+      _ = L * t * ‖y - x‖^2 := by ring
+  -- Step 1: h is continuous on [0, 1]
+  -- γ is continuous
+  have hγ_cont : Continuous γ := by
+    simp only [γ]
+    exact continuous_const.add (continuous_id.smul continuous_const)
+  -- f ∘ γ is continuous
+  have hfγ_cont : Continuous (f ∘ γ) := hDiff.continuous.comp hγ_cont
+  -- g is continuous
+  have hg_cont : Continuous g := by
+    simp only [g]
+    exact hfγ_cont.sub (continuous_id.mul continuous_const)
+  -- h is continuous
+  have hh_cont : Continuous h := by
+    simp only [h]
+    exact hg_cont.sub (continuous_const.mul (continuous_pow 2))
+  have h_cont : ContinuousOn h (Set.Icc 0 1) := hh_cont.continuousOn
+  -- Step 2: h is differentiable on interior (0, 1)
+  -- The derivative of h at t is: ⟨∇f(γ(t)), y-x⟩ - inner_val - K*t
+  --                            = ⟨∇f(γ(t)) - ∇f(x), y-x⟩ - K*t
+  -- We use the chain rule: deriv (f ∘ γ) t = fderiv f (γ t) (deriv γ t)
+  --                                        = ⟨∇f(γ(t)), y - x⟩
+  -- Since γ(t) = x + t • (y - x), we have deriv γ t = y - x (constant)
+  have h_deriv : ∀ t ∈ Set.Ioo (0 : ℝ) 1,
+      HasDerivAt h (@inner ℝ E _ (gradient f (γ t) - gradient f x) (y - x) - K * t) t := by
+    intro t _ht
+    -- γ has derivative y - x
+    have hγ_deriv : HasDerivAt γ (y - x) t := by
+      have h1 : HasDerivAt (fun s : ℝ => x) 0 t := hasDerivAt_const t x
+      have h2 : HasDerivAt (fun s : ℝ => s • (y - x)) ((1 : ℝ) • (y - x)) t := by
+        exact (hasDerivAt_id t).smul_const (y - x)
+      have h3 := h1.add h2
+      simp only [zero_add, one_smul] at h3
+      convert h3 using 1
+    -- f ∘ γ has derivative ⟨∇f(γ(t)), y - x⟩
+    have hfγ_deriv : HasDerivAt (f ∘ γ) (@inner ℝ E _ (gradient f (γ t)) (y - x)) t := by
+      have hf_grad : HasGradientAt f (gradient f (γ t)) (γ t) := (hDiff (γ t)).hasGradientAt
+      have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f (γ t))) (γ t) :=
+        hf_grad.hasFDerivAt
+      have := hf_fderiv.comp_hasDerivAt t hγ_deriv
+      simp only [innerSL_apply_apply] at this
+      exact this
+    -- (t ↦ t * inner_val) has derivative inner_val
+    have h_lin_deriv : HasDerivAt (fun s => s * inner_val) inner_val t := by
+      have := (hasDerivAt_id t).mul_const inner_val
+      simp only [one_mul] at this
+      exact this
+    -- g = (f ∘ γ) - (t ↦ t * inner_val) has derivative ⟨∇f(γ(t)), y-x⟩ - inner_val
+    have hg_deriv : HasDerivAt g (@inner ℝ E _ (gradient f (γ t)) (y - x) - inner_val) t := by
+      exact hfγ_deriv.sub h_lin_deriv
+    -- Rewrite using inner_sub_left: ⟨a, v⟩ - ⟨b, v⟩ = ⟨a - b, v⟩
+    have h_inner_eq : @inner ℝ E _ (gradient f (γ t)) (y - x) - inner_val =
+        @inner ℝ E _ (gradient f (γ t) - gradient f x) (y - x) := by
+      simp only [inner_val, inner_sub_left]
+    rw [h_inner_eq] at hg_deriv
+    -- (t ↦ (K/2) * t²) has derivative K * t
+    have h_quad_deriv : HasDerivAt (fun s => (K / 2) * s^2) (K * t) t := by
+      have h1 := hasDerivAt_pow 2 t
+      have h2 := h1.const_mul (K / 2)
+      simp only [Nat.cast_ofNat] at h2
+      convert h2 using 1
+      ring
+    -- h = g - (t ↦ (K/2) * t²)
+    exact hg_deriv.sub h_quad_deriv
+  -- Step 3: deriv h t ≤ 0 on (0, 1)
+  have h_deriv_nonpos : ∀ t ∈ Set.Ioo (0 : ℝ) 1, deriv h t ≤ 0 := by
+    intro t ht
+    have hd := h_deriv t ht
+    rw [hd.deriv]
+    have hbound := h_grad_bound t (le_of_lt ht.1) (le_of_lt ht.2)
+    linarith
+  -- Step 4: Apply antitone result
+  -- interior of Icc 0 1 = Ioo 0 1
+  have h_interior : interior (Set.Icc (0 : ℝ) 1) = Set.Ioo 0 1 := interior_Icc
+  have h_diff_on : DifferentiableOn ℝ h (interior (Set.Icc (0 : ℝ) 1)) := by
+    rw [h_interior]
+    intro t ht
+    exact (h_deriv t ht).differentiableAt.differentiableWithinAt
+  have h_deriv_le : ∀ t ∈ interior (Set.Icc (0 : ℝ) 1), deriv h t ≤ 0 := by
+    rw [h_interior]
+    exact h_deriv_nonpos
+  have h_mono := Convex.image_sub_le_mul_sub_of_deriv_le (convex_Icc (0 : ℝ) 1) h_cont h_diff_on
+    h_deriv_le 0 (Set.left_mem_Icc.mpr zero_le_one) 1 (Set.right_mem_Icc.mpr zero_le_one)
+    zero_le_one
+  -- h(1) - h(0) ≤ 0 * (1 - 0) = 0
+  simp only [zero_mul, sub_zero] at h_mono
+  -- h(1) ≤ h(0) means f(y) - inner_val - K/2 ≤ f(x)
+  rw [hh1, hh0] at h_mono
+  -- Conclude: f(y) ≤ f(x) + inner_val + K/2
+  simp only [inner_val, K] at h_mono
+  linarith
 
 /-- One step of gradient descent with learning rate η. -/
 noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
@@ -506,7 +678,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     (η : ℝ) (hη : η = 1 / L) (x₀ : E) :
     ∀ k : ℕ, ‖gradientDescentIterates f η x₀ k - x_star‖^2 ≤
       (1 - μ / L)^k * ‖x₀ - x_star‖^2 := by
-
   -- We proceed by induction on k
   intro k
   induction k with
@@ -517,17 +688,13 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     -- This simplifies to ‖x₀ - x_star‖² ≤ ‖x₀ - x_star‖²
     simp only [gradientDescentIterates, pow_zero, one_mul]
     exact le_refl _
-
   | succ k ih =>
     -- Inductive case: assume ‖x_k - x*‖² ≤ (1 - μ/L)^k ‖x₀ - x*‖²
     -- Need to show: ‖x_{k+1} - x*‖² ≤ (1 - μ/L)^{k+1} ‖x₀ - x*‖²
-
     let x_k := gradientDescentIterates f η x₀ k
     let x_k1 := gradientDescentIterates f η x₀ (k + 1)
-
     -- Key: x_{k+1} = x_k - η∇f(x_k)
     have h_step : x_k1 = x_k - η • gradient f x_k := rfl
-
     -- The per-iteration contraction: ‖x_{k+1} - x*‖² ≤ (1 - μ/L) ‖x_k - x*‖²
     --
     -- Proof outline:
@@ -541,13 +708,11 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     -- 3. For L-smooth f:
     --    ‖∇f(x_k)‖² ≤ 2L(f(x_k) - f(x*))
     --    (Co-coercivity of gradient)
-    --
     -- 4. Combining with η = 1/L:
-    --    ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - 2η·μ‖x_k - x*‖² - 2η(f(x_k) - f(x*)) + η²·2L(f(x_k) - f(x*))
-    --    = ‖x_k - x*‖² - (2μ/L)‖x_k - x*‖² - (2/L)(f(x_k) - f(x*)) + (2/L)(f(x_k) - f(x*))
-    --    = (1 - 2μ/L)‖x_k - x*‖²
-    --    ≤ (1 - μ/L)‖x_k - x*‖²  (since 2μ/L ≥ μ/L)
-
+    --    ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - 2η·μ‖x_k - x*‖²
+    --                      - 2η(f(x_k) - f(x*)) + η²·2L(f(x_k) - f(x*))
+    --    = ‖x_k - x*‖² - (2μ/L)‖x_k - x*‖²
+    --    = (1 - 2μ/L)‖x_k - x*‖² ≤ (1 - μ/L)‖x_k - x*‖²  (since 2μ/L ≥ μ/L)
     -- The formal proof requires the following key lemmas:
 
     -- Lemma 1: Strong convexity gradient inequality
@@ -567,16 +732,13 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     -- Since f(x*) is the minimum: f(x*) ≤ f(x - (1/L)∇f(x))
     -- Therefore: f(x*) ≤ f(x) - (1/2L)‖∇f(x)‖²
     -- Rearranging: ‖∇f(x)‖² ≤ 2L(f(x) - f(x*))
-
     have h_contraction : ‖x_k1 - x_star‖^2 ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := by
       -- Let g = ∇f(x_k)
       let g := gradient f x_k
-
       -- x_{k+1} - x* = (x_k - x*) - η·g
       have h_diff : x_k1 - x_star = (x_k - x_star) - η • g := by
         simp only [h_step]
         abel
-
       -- ‖x_{k+1} - x*‖² = ‖(x_k - x*) - η·g‖²
       --                  = ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²‖g‖²
       have h_expand : ‖x_k1 - x_star‖^2 =
@@ -594,28 +756,18 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
         -- ⟨a, η • g⟩ = η * ⟨a, g⟩ = η * ⟨g, a⟩ (by symmetry)
         rw [inner_smul_right, real_inner_comm]
         ring
-
-      -- Now use h_expand and bound each term
-
-      -- From η = 1/L:
+      -- Now use h_expand and bound each term. From η = 1/L:
       have h_eta : η = 1 / L := hη
       have h_eta_sq : η^2 = 1 / L^2 := by rw [h_eta]; ring
-
       -- Use the interpolation condition which combines strong convexity and smoothness
       have h_interp := strong_smooth_interpolation f L μ hL hμ hSmooth hStrong x_k x_star hMin
-
       -- Let inner_val = ⟨g, x_k - x*⟩ for clarity
       let inner_val := @inner ℝ E _ g (x_k - x_star)
-
       -- From h_expand: ‖x_{k+1} - x*‖² = ‖x_k - x*‖² - 2η·inner_val + η²‖g‖²
-      -- With η = 1/L:
-      -- = ‖x_k - x*‖² - (2/L)·inner_val + (1/L²)‖g‖²
-
+      -- With η = 1/L: = ‖x_k - x*‖² - (2/L)·inner_val + (1/L²)‖g‖²
       -- From interpolation: inner_val ≥ (μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²
       -- So: -(2/L)·inner_val ≤ -(2/L)·[(μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²]
-      --                      = -(2μ)/(μ+L)‖x_k - x*‖² - 2/(L(μ+L))‖g‖²
-
-      -- Combined:
+      --                      = -(2μ)/(μ+L)‖x_k - x*‖² - 2/(L(μ+L))‖g‖². Combined:
       -- ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - (2μ)/(μ+L)‖x_k - x*‖² + [1/L² - 2/(L(μ+L))]‖g‖²
       --
       -- The coefficient of ‖g‖²:
@@ -629,7 +781,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       --
       -- Finally: (L-μ)/(L+μ) ≤ 1 - μ/L because:
       -- (L-μ)/(L+μ) ≤ (L-μ)/L = 1 - μ/L iff L+μ ≥ L, which is true since μ > 0
-
       have h_coeff_neg : 1 / L^2 - 2 / (L * (μ + L)) ≤ 0 := by
         have h3 : 1 / L^2 - 2 / (L * (μ + L)) = (μ - L) / (L^2 * (μ + L)) := by field_simp; ring
         rw [h3]
@@ -637,7 +788,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
         · linarith  -- μ - L ≤ 0 since μ ≤ L
         · apply mul_nonneg (sq_nonneg L)
           linarith  -- μ + L > 0
-
       have h_contraction_factor : (L - μ) / (L + μ) ≤ 1 - μ / L := by
         have h1 : (L - μ) / (L + μ) ≤ (L - μ) / L := by
           apply div_le_div_of_nonneg_left
@@ -646,7 +796,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
           · linarith  -- L + μ ≥ L
         have h2 : (L - μ) / L = 1 - μ / L := by field_simp
         linarith
-
       -- Chain h_expand with h_interp and algebraic bounds
       -- Goal: ‖x_k1 - x_star‖^2 ≤ (1 - μ / L) * ‖x_k - x_star‖^2
       --
@@ -666,25 +815,19 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       --                    = [(L-μ)/(L+μ)]‖x_k - x*‖²
       --
       -- By h_contraction_factor: (L-μ)/(L+μ) ≤ 1 - μ/L
-
       -- First compute the coefficient 1 - 2μ/(μ+L) = (L-μ)/(L+μ)
       have h_coeff_eq : 1 - 2 * μ / (μ + L) = (L - μ) / (L + μ) := by
         field_simp
         ring
-
-      -- Combine everything using transitivity
-      -- The proof depends on strong_smooth_interpolation which currently has a sorry.
-      -- Once that is proved, this calc chain will work.
-
+      -- Combine everything using transitivity. The proof depends on
+      -- strong_smooth_interpolation which currently has a sorry.
       -- Key inequality from h_interp:
       have h_inner_bound : inner_val ≥ (μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
                                         1 / (μ + L) * ‖g‖^2 := h_interp
-
       -- Substitute η = 1/L into h_expand
       have h_expand' : ‖x_k1 - x_star‖^2 =
           ‖x_k - x_star‖^2 - 2 / L * inner_val + 1 / L^2 * ‖g‖^2 := by
         rw [h_expand, h_eta]; ring
-
       -- Apply the bound on inner_val
       have h_step1 : ‖x_k1 - x_star‖^2 ≤
           ‖x_k - x_star‖^2 - 2 / L * ((μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
@@ -693,7 +836,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
         have h_L_pos : 0 < L := hL
         have h_2L_pos : 0 < 2 / L := by positivity
         nlinarith [h_inner_bound, sq_nonneg ‖g‖, sq_nonneg ‖x_k - x_star‖]
-
       -- Simplify to get the coefficient form
       have h_step2 : ‖x_k1 - x_star‖^2 ≤
           ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 +
@@ -707,13 +849,11 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
             have hμL_ne : μ + L ≠ 0 := by linarith
             field_simp
             ring
-
       -- Drop the ‖g‖² term (coefficient is ≤ 0)
       have h_step3 : ‖x_k1 - x_star‖^2 ≤
           ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 := by
         have h_g_sq_nonneg : 0 ≤ ‖g‖^2 := sq_nonneg _
         nlinarith [h_step2, h_coeff_neg, h_g_sq_nonneg]
-
       -- Factor and apply contraction bound
       calc ‖x_k1 - x_star‖^2
           ≤ ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 := h_step3
@@ -721,7 +861,6 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
         _ = (L - μ) / (L + μ) * ‖x_k - x_star‖^2 := by rw [h_coeff_eq]
         _ ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := by
             apply mul_le_mul_of_nonneg_right h_contraction_factor (sq_nonneg _)
-
     -- Apply contraction and inductive hypothesis
     calc ‖x_k1 - x_star‖^2
         ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := h_contraction
@@ -752,27 +891,20 @@ theorem descent_lemma (f : E → ℝ) (L : ℝ) (hL : 0 < L)
   -- Define y = x - η∇f(x) (the gradient descent step)
   let y := x - η • gradient f x
   let g := gradient f x
-
   -- Step 1: Apply the fundamental inequality for L-smooth functions
   have h_fund := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x y
-
   -- Step 2: Compute y - x = -(η • ∇f(x))
-  have h_diff : y - x = -(η • g) := by
-    show (x - η • g) - x = -(η • g)
-    abel
-
+  have h_diff : y - x = -(η • g) := by simp only [y, g]; abel
   -- Step 3: Compute ⟨∇f(x), y - x⟩ = -η‖∇f(x)‖²
   have h_inner : @inner ℝ E _ g (y - x) = -η * ‖g‖^2 := by
     rw [h_diff, inner_neg_right, inner_smul_right]
     rw [real_inner_self_eq_norm_sq]
     ring
-
   -- Step 4: Compute ‖y - x‖² = η²‖∇f(x)‖²
   have h_norm_sq : ‖y - x‖^2 = η^2 * ‖g‖^2 := by
     rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs]
     have : |η|^2 = η^2 := sq_abs η
     rw [mul_pow, this]
-
   -- Step 5: Substitute into the fundamental inequality
   -- f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
   --      = f(x) - η‖∇f(x)‖² + (L/2)η²‖∇f(x)‖²
