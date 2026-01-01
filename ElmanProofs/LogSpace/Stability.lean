@@ -80,9 +80,35 @@ noncomputable def logSumExp (xs : List ℝ) : ℝ :=
 
 /-- logSumExp output is bounded relative to max input.
 
-    Proof sketch:
-    - Lower bound: logSumExp xs ≥ c because exp(c - c) = 1 is in the sum, so log(sum) ≥ 0
-    - Upper bound: logSumExp xs ≤ c + log n because each exp(x_i - c) ≤ 1 -/
+    ## Mathematical Proof
+
+    Let c = max(xs) be the maximum element.
+
+    **Lower bound: c ≤ logSumExp xs**
+
+    logSumExp xs = c + log(∑ᵢ exp(xᵢ - c))
+
+    Since c = max(xs), there exists some index j with xⱼ = c.
+    Therefore exp(xⱼ - c) = exp(0) = 1 is in the sum.
+    So ∑ᵢ exp(xᵢ - c) ≥ 1, giving log(∑ᵢ exp(xᵢ - c)) ≥ 0.
+    Hence logSumExp xs = c + log(sum) ≥ c + 0 = c.
+
+    **Upper bound: logSumExp xs ≤ c + log(length xs)**
+
+    For all i: xᵢ ≤ c (since c is the max)
+    So xᵢ - c ≤ 0, meaning exp(xᵢ - c) ≤ exp(0) = 1.
+    Summing n terms each ≤ 1: ∑ᵢ exp(xᵢ - c) ≤ n.
+    Taking log (which is monotone on positive reals): log(∑ᵢ exp(xᵢ - c)) ≤ log(n).
+    Hence logSumExp xs = c + log(sum) ≤ c + log(n).
+
+    ## Lean Formalization Challenges
+
+    The formal proof requires:
+    1. `List.foldl max` properties - showing c = max of the list
+    2. `List.foldl (+)` properties - showing it computes the sum
+    3. Connecting `List.map` with the sum via `List.sum_map`
+    4. Showing the maximum is achieved (requires nonempty list reasoning)
+-/
 theorem logSumExp_bounds (xs : List ℝ) (hne : ¬xs.isEmpty) :
     ∃ c, c = xs.foldl max xs.head! ∧ c ≤ logSumExp xs ∧ logSumExp xs ≤ c + log xs.length := by
   let c := xs.foldl max xs.head!
@@ -90,43 +116,43 @@ theorem logSumExp_bounds (xs : List ℝ) (hne : ¬xs.isEmpty) :
   refine ⟨rfl, ?_, ?_⟩
 
   · -- Lower bound: c ≤ logSumExp xs
-    -- logSumExp xs = c + log(Σ exp(xi - c))
-    -- Need to show: 0 ≤ log(Σ exp(xi - c))
-    -- This follows because the sum includes at least one term exp(xmax - c) = exp(0) = 1
-
-    -- Unfold logSumExp
     unfold logSumExp
     simp only [hne, ↓reduceIte]
 
-    -- The sum Σ exp(xi - c) ≥ 1 because:
-    -- 1. c = max(xs) is in the list or dominates all elements
-    -- 2. There exists xi = c (the maximum), giving exp(0) = 1
-    -- 3. All other terms exp(xj - c) ≥ 0 (exp is positive)
+    -- Key insight: The sum ∑ exp(xᵢ - c) ≥ 1
+    --
+    -- Proof:
+    -- 1. Since xs is nonempty and c = foldl max xs.head!, we have c ≥ xs.head!
+    -- 2. More importantly, c is the maximum of all elements
+    -- 3. At least one element equals c (the maximum is achieved for finite lists)
+    -- 4. exp(c - c) = 1 is in the sum
+    -- 5. All exp terms are positive, so sum ≥ 1
+    -- 6. log(sum) ≥ log(1) = 0
+    -- 7. c + log(sum) ≥ c
 
-    -- Therefore log(sum) ≥ log(1) = 0, giving c + log(sum) ≥ c
+    -- Formal proof requires List.maximum lemmas and reasoning about foldl max
 
-    -- The formal proof requires showing:
-    -- - c is achieved by some element of xs (or all elements ≤ c)
-    -- - The fold computes sum correctly
-    -- - log of sum ≥ 1 is ≥ 0
     sorry
 
-  · -- Upper bound: logSumExp xs ≤ c + log n
-    -- Each xi ≤ c, so exp(xi - c) ≤ exp(0) = 1
-    -- Sum of n terms each ≤ 1 gives sum ≤ n
-    -- Hence log(sum) ≤ log(n)
-
+  · -- Upper bound: logSumExp xs ≤ c + log(length xs)
     unfold logSumExp
     simp only [hne, ↓reduceIte]
 
-    -- Need: c + log(Σ exp(xi - c)) ≤ c + log(length xs)
-    -- Equivalently: log(Σ exp(xi - c)) ≤ log(length xs)
-    -- Since log is monotone and sum ≤ length (each term ≤ 1)
+    -- Key insight: Each exp(xᵢ - c) ≤ 1
+    --
+    -- Proof:
+    -- 1. c = max of xs, so xᵢ ≤ c for all i
+    -- 2. xᵢ - c ≤ 0
+    -- 3. exp(xᵢ - c) ≤ exp(0) = 1
+    -- 4. Sum of n terms each ≤ 1 gives sum ≤ n
+    -- 5. For n ≥ 1 (nonempty list), log(sum) ≤ log(n)
+    -- 6. c + log(sum) ≤ c + log(n)
 
-    -- The formal proof requires:
-    -- - Showing each exp(xi - c) ≤ 1 (since xi ≤ c = max)
-    -- - Summing n terms each ≤ 1 gives ≤ n
-    -- - Applying log_le_log
+    -- Formal proof requires:
+    -- - List.foldl_max_le for showing xᵢ ≤ c
+    -- - List.length_map and List.sum_le_sum for bounding the sum
+    -- - Real.log_le_log for the final inequality
+
     sorry
 
 /-- Gradient of logSumExp is the softmax, which is bounded in (0, 1). -/

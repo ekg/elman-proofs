@@ -50,19 +50,63 @@ def IsStronglyConvex (f : E → ℝ) (μ : ℝ) : Prop :=
 /-- Fundamental inequality for L-smooth functions:
     f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
 
+    ## Mathematical Proof
+
     This follows from integrating the gradient along the line from x to y
-    and using the Lipschitz condition on the gradient. -/
+    and using the Lipschitz condition on the gradient.
+
+    **Step 1: Define the path**
+
+    Let γ(t) = x + t(y - x) for t ∈ [0, 1].
+    Then γ(0) = x and γ(1) = y.
+
+    **Step 2: Apply the Fundamental Theorem of Calculus**
+
+    Define g(t) = f(γ(t)). By chain rule: g'(t) = ⟨∇f(γ(t)), y - x⟩.
+
+    Therefore: f(y) - f(x) = g(1) - g(0) = ∫₀¹ g'(t) dt = ∫₀¹ ⟨∇f(γ(t)), y - x⟩ dt.
+
+    **Step 3: Decompose and bound**
+
+    f(y) - f(x) - ⟨∇f(x), y - x⟩
+      = ∫₀¹ ⟨∇f(γ(t)), y - x⟩ dt - ⟨∇f(x), y - x⟩
+      = ∫₀¹ ⟨∇f(γ(t)) - ∇f(x), y - x⟩ dt
+
+    By Cauchy-Schwarz:
+      |⟨∇f(γ(t)) - ∇f(x), y - x⟩| ≤ ‖∇f(γ(t)) - ∇f(x)‖ · ‖y - x‖
+
+    By L-smoothness (gradient is L-Lipschitz):
+      ‖∇f(γ(t)) - ∇f(x)‖ ≤ L · ‖γ(t) - x‖ = L · t · ‖y - x‖
+
+    Therefore:
+      ⟨∇f(γ(t)) - ∇f(x), y - x⟩ ≤ L · t · ‖y - x‖²
+
+    **Step 4: Integrate**
+
+    f(y) - f(x) - ⟨∇f(x), y - x⟩ ≤ ∫₀¹ L · t · ‖y - x‖² dt
+                                   = L · ‖y - x‖² · ∫₀¹ t dt
+                                   = L · ‖y - x‖² · (1/2)
+                                   = (L/2) · ‖y - x‖²
+
+    **Lean Formalization Requirements**
+
+    1. `MeasureTheory.integral_Icc_eq_integral_Ioc` - integration on [0,1]
+    2. `HasDerivAt.integral_eq_sub` - FTC for path integrals
+    3. `MeasureTheory.integral_mono` - for bounding integrals
+    4. `integral_id` or similar for ∫₀¹ t dt = 1/2
+-/
 theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
     (hSmooth : IsLSmooth f L) (x y : E) :
     f y ≤ f x + @inner ℝ E _ (gradient f x) (y - x) + (L / 2) * ‖y - x‖^2 := by
   obtain ⟨hDiff, hLip⟩ := hSmooth
-  -- The proof uses the mean value inequality for the gradient
-  -- f(y) - f(x) = ∫₀¹ ⟨∇f(x + t(y-x)), y - x⟩ dt
-  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ ⟨∇f(x + t(y-x)) - ∇f(x), y - x⟩ dt
-  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ ‖∇f(x + t(y-x)) - ∇f(x)‖ · ‖y - x‖ dt
-  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ L · t · ‖y - x‖ · ‖y - x‖ dt
-  -- = ⟨∇f(x), y - x⟩ + L · ‖y - x‖² · (1/2)
-  -- The formal proof requires integration machinery
+
+  -- Special case: if x = y, the inequality is trivially true
+  by_cases hxy : x = y
+  · simp only [hxy, sub_self, inner_zero_right, norm_zero, sq, mul_zero, add_zero, le_refl]
+
+  -- The formal proof for x ≠ y requires Mathlib's integration machinery.
+  -- Key steps outlined above.
+
   sorry
 
 /-- One step of gradient descent with learning rate η. -/
@@ -171,21 +215,50 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     -- Inductive case: assume ‖x_k - x*‖² ≤ (1 - μ/L)^k ‖x₀ - x*‖²
     -- Need to show: ‖x_{k+1} - x*‖² ≤ (1 - μ/L)^{k+1} ‖x₀ - x*‖²
 
-    -- The key step is proving the per-iteration contraction
-    -- ‖x_{k+1} - x*‖² ≤ (1 - μ/L) ‖x_k - x*‖²
+    let x_k := gradientDescentIterates f η x₀ k
+    let x_k1 := gradientDescentIterates f η x₀ (k + 1)
 
-    -- This follows from:
-    -- 1. L-smoothness via descent lemma
-    -- 2. μ-strong convexity providing curvature bounds
-    -- 3. Optimality condition ∇f(x*) = 0
+    -- Key: x_{k+1} = x_k - η∇f(x_k)
+    have h_step : x_k1 = x_k - η • gradient f x_k := by
+      simp only [gradientDescentIterates, gradientDescentStep]
 
-    -- The detailed calculation involves:
-    -- - Expand ‖x_{k+1} - x*‖² where x_{k+1} = x_k - η∇f(x_k)
-    -- - Use strong convexity to relate ‖x_k - x*‖ to gradient norms
-    -- - Use L-smoothness to bound ∇f(x_k) in terms of ‖x_k - x*‖
-    -- - Combine to get the (1 - μ/L) contraction factor
+    -- The per-iteration contraction: ‖x_{k+1} - x*‖² ≤ (1 - μ/L) ‖x_k - x*‖²
+    --
+    -- Proof outline:
+    -- 1. Expand: ‖x_{k+1} - x*‖² = ‖(x_k - x*) - η∇f(x_k)‖²
+    --    = ‖x_k - x*‖² - 2η⟨∇f(x_k), x_k - x*⟩ + η²‖∇f(x_k)‖²
+    --
+    -- 2. For μ-strongly convex f with minimum at x*:
+    --    ⟨∇f(x_k), x_k - x*⟩ ≥ μ‖x_k - x*‖² + (f(x_k) - f(x*))
+    --    (This is the "strong convexity gradient inequality")
+    --
+    -- 3. For L-smooth f:
+    --    ‖∇f(x_k)‖² ≤ 2L(f(x_k) - f(x*))
+    --    (Co-coercivity of gradient)
+    --
+    -- 4. Combining with η = 1/L:
+    --    ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - 2η·μ‖x_k - x*‖² - 2η(f(x_k) - f(x*)) + η²·2L(f(x_k) - f(x*))
+    --    = ‖x_k - x*‖² - (2μ/L)‖x_k - x*‖² - (2/L)(f(x_k) - f(x*)) + (2/L)(f(x_k) - f(x*))
+    --    = (1 - 2μ/L)‖x_k - x*‖²
+    --    ≤ (1 - μ/L)‖x_k - x*‖²  (since 2μ/L ≥ μ/L)
 
-    sorry
+    -- The formal proof requires:
+    -- - Strong convexity gradient inequality
+    -- - Co-coercivity lemma for L-smooth functions
+    -- - Algebraic manipulations with inner products and norms
+
+    have h_contraction : ‖x_k1 - x_star‖^2 ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := by
+      sorry
+
+    -- Apply contraction and inductive hypothesis
+    calc ‖x_k1 - x_star‖^2
+        ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := h_contraction
+      _ ≤ (1 - μ / L) * ((1 - μ / L)^k * ‖x₀ - x_star‖^2) := by {
+          apply mul_le_mul_of_nonneg_left ih
+          have h1 : μ / L ≤ 1 := div_le_one_of_le hμL (le_of_lt hL)
+          linarith
+        }
+      _ = (1 - μ / L)^(k + 1) * ‖x₀ - x_star‖^2 := by ring
 
 /-- The descent lemma: one step decreases function value.
 

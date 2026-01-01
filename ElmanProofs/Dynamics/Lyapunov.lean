@@ -91,58 +91,112 @@ theorem lyapunov_iterate_nonincreasing (sys : DiscreteSystem X) (x₀ : X) (V : 
       _ ≤ V x := ih
 
 /-- Lyapunov's direct method: existence of Lyapunov function implies stability.
-    Key insight: if V(x) < inf{V(y) : dist y x₀ = ε}, then x stays in B_ε(x₀). -/
+
+    ## Proof Strategy
+
+    Key insight: if V(x) < inf{V(y) : dist y x₀ = ε}, then x stays in B_ε(x₀).
+
+    Given ε > 0, we need to find δ > 0 such that:
+    ∀ x, dist x x₀ < δ → ∀ n, dist (sys.step^[n] x) x₀ < ε
+
+    **Step 1: Find the minimum of V on the boundary sphere.**
+
+    Let S_ε = {y : dist y x₀ = ε} be the sphere of radius ε.
+    Since V is continuous and positive on S_ε, and S_ε is compact in finite dimensions,
+    V attains a minimum m = inf{V(y) : y ∈ S_ε} > 0.
+
+    **Step 2: Choose δ using continuity of V.**
+
+    Since V is continuous at x₀ and V(x₀) = 0, there exists δ ∈ (0, ε) such that
+    dist x x₀ < δ → V(x) < m.
+
+    **Step 3: Prove stability.**
+
+    For any x with dist x x₀ < δ and any n:
+    - V(sys.step^[n] x) ≤ V(x) < m   (by Lyapunov property)
+    - If dist (sys.step^[n] x) x₀ ≥ ε, then V(sys.step^[n] x) ≥ m (by def of m)
+    - Contradiction! So dist (sys.step^[n] x) x₀ < ε.
+
+    **Note:** The formal proof requires either:
+    - CompactSpace or ProperSpace for X to ensure V attains minimum on S_ε
+    - Or a "radially unbounded" / "proper" hypothesis on V
+-/
 theorem lyapunov_implies_stable (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsStable sys x₀ := by
-  -- We prove: ∀ ε > 0, ∃ δ > 0, ∀ x, dist x x₀ < δ → ∀ n, dist (sys.step^[n] x) x₀ < ε
   intro ε hε
 
-  -- Key insight: By continuity of V at x₀ and V(x₀) = 0,
-  -- we can find δ such that V(x) < ε for dist x x₀ < δ.
-  -- Then use V nonincreasing to show trajectories stay bounded.
+  -- The key topological step requires showing:
+  -- m := inf{V(y) : dist y x₀ = ε} > 0
+  -- This needs compactness of the sphere {y : dist y x₀ = ε}
 
-  -- Step 1: Since V is continuous at x₀ and V(x₀) = 0,
-  -- for any ε' > 0, ∃ δ > 0 such that dist x x₀ < δ → V x < ε'
-  have hV_cont_at : ContinuousAt V x₀ := hV_cont.continuousAt
-  rw [Metric.continuousAt_iff] at hV_cont_at
+  -- In finite dimensional spaces or proper metric spaces, closed bounded sets
+  -- are compact, so V attains its minimum on the sphere.
 
-  -- Step 2: Choose a suitable threshold for V
-  -- We need: if V(x) < some threshold, then dist x x₀ < ε
-  -- This requires V to "grow" as we move away from x₀
+  -- Once we have m > 0, continuity of V at x₀ gives δ > 0 with:
+  -- dist x x₀ < δ → V(x) < m
 
-  -- The proof requires showing that sublevel sets of V are contained in balls.
-  -- This is a consequence of V being positive away from x₀ and continuous.
-  -- Formally, we need: ∃ m > 0 such that dist x x₀ ≥ ε → V x ≥ m
-  -- Then δ chosen so that V x < m for dist x x₀ < δ gives the result.
+  -- Then the proof follows:
+  -- 1. Take x with dist x x₀ < δ
+  -- 2. For any n, V(sys.step^[n] x) ≤ V(x) < m (Lyapunov decreasing)
+  -- 3. If dist (sys.step^[n] x) x₀ ≥ ε, then V(sys.step^[n] x) ≥ m (def of m)
+  -- 4. Contradiction, so dist (sys.step^[n] x) x₀ < ε
 
-  -- This topological argument requires either:
-  -- 1. Compactness of the closed ball to ensure V achieves minimum on boundary
-  -- 2. Or additional hypotheses on V (e.g., proper, radially unbounded)
-
-  -- For now, we provide the structure with the key topological step marked
   sorry
 
-/-- Strict Lyapunov function implies asymptotic stability. -/
+/-- Strict Lyapunov function implies asymptotic stability.
+
+    ## Proof via LaSalle's Invariance Principle
+
+    In a compact space with a strict Lyapunov function:
+
+    **Part 1: Stability** (from `lyapunov_implies_stable`)
+
+    This follows from the non-strict Lyapunov theorem.
+
+    **Part 2: Convergence via LaSalle's Principle**
+
+    Key concepts:
+    - **ω-limit set**: ω(x) = {y : ∃ subsequence sys.step^[n_k] x → y}
+    - **LaSalle's principle**: ω(x) ⊆ largest invariant subset of {z : V(step z) = V(z)}
+
+    For strict Lyapunov functions:
+    1. The set {z : V(step z) = V(z)} = {x₀} (strict decrease away from x₀)
+    2. {x₀} is invariant (it's a fixed point)
+    3. Therefore ω(x) ⊆ {x₀}
+
+    In compact X:
+    4. ω(x) is non-empty for any x (by Bolzano-Weierstrass)
+    5. So ω(x) = {x₀}
+    6. The full sequence converges: sys.step^[n] x → x₀
+
+    **Technical Details**
+
+    The proof uses:
+    - `IsCompact.exists_tendsto_of_frequently_mem` for subsequential limits
+    - Continuity of V to show ω-limit points satisfy V(step y) = V(y)
+    - `tendsto_nhds_unique` for uniqueness of limits
+-/
 theorem strict_lyapunov_implies_asymptotic [CompactSpace X]
     (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsStrictLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsAsymptoticallyStable sys x₀ := by
-  -- The proof uses LaSalle's invariance principle:
-  --
-  -- 1. Stability: follows from lyapunov_implies_stable using hV.toLyapunovFunction
-  -- 2. Convergence: In a compact space, the sequence {sys.step^[n] x} has a
-  --    convergent subsequence. The limit must be in the ω-limit set.
-  -- 3. By LaSalle's principle, the ω-limit set is contained in the largest
-  --    invariant subset of {x : V(sys.step x) = V(x)}.
-  -- 4. Since V strictly decreases away from x₀, this set is exactly {x₀}.
-  -- 5. Therefore, the ω-limit set is {x₀}, implying convergence.
-  --
-  -- The formal proof requires:
-  -- - Showing stability (done by lyapunov_implies_stable)
-  -- - Compactness argument for subsequential limits
-  -- - LaSalle's invariance principle for discrete systems
-  -- - Characterization of the invariant set
+  constructor
+
+  -- Part 1: Stability from the non-strict Lyapunov theorem
+  · exact lyapunov_implies_stable sys x₀ V hV.toIsLyapunovFunction hV_cont hV_pos
+
+  -- Part 2: Asymptotic convergence
+  -- Need: ∃ δ > 0, ∀ x, dist x x₀ < δ → sys.step^[n] x → x₀
+
+  -- In CompactSpace X:
+  -- 1. Any sequence has a convergent subsequence
+  -- 2. V(sys.step^[n] x) is monotone decreasing and bounded below by 0
+  -- 3. So V(sys.step^[n] x) → some limit L ≥ 0
+  -- 4. Any ω-limit point y satisfies V(step y) = V(y) = L
+  -- 5. By strict decrease, y = x₀ is the only such point (L = 0)
+  -- 6. All subsequential limits equal x₀, so the full sequence converges
+
   sorry
 
 /-- Contraction implies exponential stability. -/

@@ -62,26 +62,143 @@ noncomputable def spectralRadius (A : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
 def IsSpectrallyStable (A : Matrix (Fin n) (Fin n) ℝ) : Prop :=
   spectralRadius A < 1
 
-/-- Spectral radius is bounded by operator norm. -/
+/-- Spectral radius is bounded by any submultiplicative matrix norm.
+
+    ## Proof Outline
+
+    For any submultiplicative norm ‖·‖ with ‖A‖ = norm_A:
+
+    1. **Submultiplicativity**: ‖A^k‖ ≤ ‖A‖^k = norm_A^k
+
+    2. **Taking k-th root**: ‖A^k‖^{1/k} ≤ norm_A
+
+    3. **Infimum**: Since this holds for all k, the infimum also satisfies:
+       ρ(A) = ⨅ k, ‖A^(k+1)‖^{1/(k+1)} ≤ norm_A
+
+    Note: This theorem signature is unusual - it claims ρ(A) ≤ norm_A for any norm_A,
+    which is only meaningful when norm_A is actually ‖A‖ for some submultiplicative norm.
+    The proof would need additional hypotheses about norm_A.
+-/
 theorem spectral_radius_le_opNorm (A : Matrix (Fin n) (Fin n) ℝ) (norm_A : ℝ) :
     spectralRadius A ≤ norm_A := by
+  -- Note: This theorem as stated is too strong - it claims ρ(A) ≤ norm_A
+  -- for ANY norm_A, which is false (e.g., norm_A = 0).
+  --
+  -- A correct statement would be:
+  -- For any submultiplicative norm ‖·‖: ρ(A) ≤ ‖A‖
+  --
+  -- The proof would use:
+  -- 1. ‖A^(k+1)‖ ≤ ‖A‖^(k+1) (submultiplicativity)
+  -- 2. ‖A^(k+1)‖^{1/(k+1)} ≤ ‖A‖ (taking roots preserves inequality)
+  -- 3. ⨅ k, ‖A^(k+1)‖^{1/(k+1)} ≤ ‖A‖ (infimum is ≤ any element)
+
   sorry
 
-/-- Powers of spectrally stable matrices converge to zero. -/
+/-- Powers of spectrally stable matrices converge to zero.
+
+    ## Proof Outline
+
+    Given ρ(A) < 1 (spectral stability):
+
+    1. **Choose r with ρ(A) < r < 1**: By definition of spectral radius as infimum,
+       for any r > ρ(A), there exists K such that ‖A^K‖^{1/K} < r.
+
+    2. **Bound on powers**: This means ‖A^K‖ < r^K, and by submultiplicativity:
+       ‖A^{mK}‖ ≤ ‖A^K‖^m < r^{mK}
+
+    3. **General bound**: For any k ≥ K, write k = mK + j where 0 ≤ j < K.
+       Then ‖A^k‖ = ‖A^{mK} · A^j‖ ≤ ‖A^K‖^m · ‖A^j‖ ≤ C · r^{mK}
+       where C = max{‖A^j‖ : j < K}
+
+    4. **Convergence**: Since r < 1, r^k → 0 as k → ∞.
+       Thus ‖A^k‖ → 0, which implies each entry |A^k_{ij}| → 0.
+
+    5. **Entry bound**: |(A^k)_{ij}| ≤ ‖A^k‖ for any matrix norm,
+       so entry-wise convergence follows from norm convergence.
+-/
 theorem powers_tendsto_zero (A : Matrix (Fin n) (Fin n) ℝ)
     (hA : IsSpectrallyStable A) :
     ∀ ε > 0, ∃ N, ∀ k ≥ N, ∀ i j, |(A^k) i j| < ε := by
+  intro ε hε
+
+  -- From spectral stability: ρ(A) < 1
+  -- Choose r with ρ(A) < r < 1
+  unfold IsSpectrallyStable spectralRadius at hA
+
+  -- The infimum definition means:
+  -- ∃ K, (‖A^(K+1)‖_F)^(1/(K+1)) < 1
+  -- which gives ‖A^(K+1)‖_F < 1
+
+  -- Key: For spectrally stable matrices, there exists C, r with r < 1
+  -- such that ‖A^k‖ ≤ C · r^k for all k
+
+  -- The formal proof requires:
+  -- 1. Extract witnessing K from the infimum condition
+  -- 2. Establish the geometric bound
+  -- 3. Convert norm bound to entry-wise bound
+  -- 4. Find N such that C · r^N < ε
+
   sorry
 
-/-- Spectral radius of diagonal matrix is max of absolute diagonal entries. -/
+/-- Spectral radius of diagonal matrix is max of absolute diagonal entries.
+
+    ## Proof Outline
+
+    For a diagonal matrix D = diag(d₀, d₁, ..., d_{n-1}):
+
+    1. **Powers of diagonal matrices**: D^k = diag(d₀^k, d₁^k, ..., d_{n-1}^k)
+
+    2. **Frobenius norm of diagonal**: ‖D^k‖_F = √(∑ᵢ |dᵢ^k|²) = √(∑ᵢ |dᵢ|^{2k})
+
+    3. **k-th root**: ‖D^k‖_F^{1/k} = (∑ᵢ |dᵢ|^{2k})^{1/2k}
+
+    4. **Limit as k → ∞**: This is the ℓ^{2k} → ℓ^∞ limit for the sequence (|d₀|, |d₁|, ...)
+       which converges to max{|dᵢ|}
+
+    The formal proof requires:
+    - `Matrix.diagonal_pow` for powers of diagonal matrices
+    - Analysis of the limit (∑ᵢ xᵢ^p)^{1/p} → max{xᵢ} as p → ∞
+-/
 theorem diagonal_spectral_radius (d : Fin n → ℝ) :
     spectralRadius (Matrix.diagonal d) = Finset.sup' Finset.univ ⟨0, Finset.mem_univ 0⟩
       (fun i => |d i|) := by
+  unfold spectralRadius
+  simp only
+
+  -- Key step 1: (diagonal d)^(k+1) = diagonal (d^(k+1))
+  -- where d^(k+1) means pointwise power
+
+  -- Key step 2: Frobenius norm of diagonal(e) is √(∑ |eᵢ|²)
+  -- For diagonal matrices, off-diagonal entries are 0
+
+  -- Key step 3: The infimum over k of (∑ᵢ |dᵢ|^{2(k+1)})^{1/2(k+1)}
+  -- equals max{|dᵢ|} by the p-norm convergence to ∞-norm
+
+  -- This requires Mathlib's `NNReal.inner_le_Lp_mul_Lq` and related lemmas
+  -- about p-norms and their convergence
+
   sorry
 
 /-- Scaling a matrix scales its spectral radius. -/
 theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
     spectralRadius (c • A) = |c| * spectralRadius A := by
+  -- Key insight: (c • A)^k = c^k • A^k
+  -- So ‖(c • A)^k‖^(1/k) = |c| · ‖A^k‖^(1/k)
+  -- Taking infimum: ρ(c • A) = |c| · ρ(A)
+
+  unfold spectralRadius
+  simp only
+
+  -- The Frobenius norm satisfies ‖c • M‖ = |c| · ‖M‖
+  -- And (c • A)^(k+1) = c^(k+1) • A^(k+1)
+
+  -- For the formal proof, we need:
+  -- 1. Show (c • A)^k = c^k • A^k (scalar-matrix power commutation)
+  -- 2. Show Frobenius norm is absolutely homogeneous
+  -- 3. Show |c|^(k+1)^(1/(k+1)) = |c| for all k
+  -- 4. Apply these to the infimum
+
+  -- This requires matrix algebra lemmas about scalar multiplication and powers
   sorry
 
 /-- Spectral normalization: scale matrix to have spectral radius ≤ target. -/
@@ -93,6 +210,33 @@ noncomputable def spectralNormalize (A : Matrix (Fin n) (Fin n) ℝ) (target : �
 theorem spectralNormalize_radius (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ)
     (ht : 0 < target) (hA : spectralRadius A ≠ 0) :
     spectralRadius (spectralNormalize A target) = target := by
+  -- Unfold the definition of spectralNormalize
+  unfold spectralNormalize
+  simp only [hA, if_neg]
+
+  -- spectralNormalize A target = (target / ρ(A)) • A
+
+  -- By spectral_radius_smul:
+  -- ρ((target / ρ(A)) • A) = |target / ρ(A)| * ρ(A)
+
+  -- Since target > 0 and ρ(A) ≥ 0 (and ≠ 0), we have target / ρ(A) > 0
+  -- Therefore |target / ρ(A)| = target / ρ(A)
+
+  -- So ρ(spectralNormalize A target) = (target / ρ(A)) * ρ(A) = target
+
+  -- The formal proof requires spectral_radius_smul which is also sorry'd
+  -- Once that is proved, this follows by algebra:
+
+  -- have h_smul := spectral_radius_smul (target / spectralRadius A) A
+  -- rw [h_smul]
+  -- have h_pos : 0 < spectralRadius A := by
+  --   cases' (spectralRadius A).eq_or_lt_of_le (le_refl _) with h h
+  --   · exact absurd h.symm hA
+  --   · exact h
+  -- have h_div_pos : 0 < target / spectralRadius A := div_pos ht h_pos
+  -- rw [abs_of_pos h_div_pos]
+  -- field_simp
+
   sorry
 
 end SpectralRadius
