@@ -62,36 +62,23 @@ noncomputable def spectralRadius (A : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
 def IsSpectrallyStable (A : Matrix (Fin n) (Fin n) ℝ) : Prop :=
   spectralRadius A < 1
 
-/-- Spectral radius is bounded by any submultiplicative matrix norm.
+/-- Frobenius norm of a matrix. -/
+noncomputable def frobNorm (M : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
+  Real.sqrt (∑ i, ∑ j, (M i j)^2)
 
-    ## Proof Outline
+/-- Spectral radius is bounded by the Frobenius norm.
 
-    For any submultiplicative norm ‖·‖ with ‖A‖ = norm_A:
+    ## Proof Sketch
 
-    1. **Submultiplicativity**: ‖A^k‖ ≤ ‖A‖^k = norm_A^k
+    The spectral radius is defined as ⨅ k, ‖A^(k+1)‖^{1/(k+1)}.
+    Taking k = 0 gives ‖A^1‖^{1/1} = ‖A‖ = frobNorm A.
+    Since the infimum is ≤ any element in the set, ρ(A) ≤ frobNorm A.
 
-    2. **Taking k-th root**: ‖A^k‖^{1/k} ≤ norm_A
-
-    3. **Infimum**: Since this holds for all k, the infimum also satisfies:
-       ρ(A) = ⨅ k, ‖A^(k+1)‖^{1/(k+1)} ≤ norm_A
-
-    Note: This theorem signature is unusual - it claims ρ(A) ≤ norm_A for any norm_A,
-    which is only meaningful when norm_A is actually ‖A‖ for some submultiplicative norm.
-    The proof would need additional hypotheses about norm_A.
+    **Implementation Note**: Currently uses sorry due to elaboration timeout.
+    The proof strategy is: ciInf_le h_bdd 0 where h_bdd shows 0 is a lower bound.
 -/
-theorem spectral_radius_le_opNorm (A : Matrix (Fin n) (Fin n) ℝ) (norm_A : ℝ) :
-    spectralRadius A ≤ norm_A := by
-  -- Note: This theorem as stated is too strong - it claims ρ(A) ≤ norm_A
-  -- for ANY norm_A, which is false (e.g., norm_A = 0).
-  --
-  -- A correct statement would be:
-  -- For any submultiplicative norm ‖·‖: ρ(A) ≤ ‖A‖
-  --
-  -- The proof would use:
-  -- 1. ‖A^(k+1)‖ ≤ ‖A‖^(k+1) (submultiplicativity)
-  -- 2. ‖A^(k+1)‖^{1/(k+1)} ≤ ‖A‖ (taking roots preserves inequality)
-  -- 3. ⨅ k, ‖A^(k+1)‖^{1/(k+1)} ≤ ‖A‖ (infimum is ≤ any element)
-
+theorem spectral_radius_le_frobNorm (A : Matrix (Fin n) (Fin n) ℝ) :
+    spectralRadius A ≤ frobNorm A := by
   sorry
 
 /-- Powers of spectrally stable matrices converge to zero.
@@ -122,21 +109,94 @@ theorem powers_tendsto_zero (A : Matrix (Fin n) (Fin n) ℝ)
   intro ε hε
 
   -- From spectral stability: ρ(A) < 1
-  -- Choose r with ρ(A) < r < 1
   unfold IsSpectrallyStable spectralRadius at hA
 
-  -- The infimum definition means:
-  -- ∃ K, (‖A^(K+1)‖_F)^(1/(K+1)) < 1
-  -- which gives ‖A^(K+1)‖_F < 1
+  -- Step 1: Extract witnessing K such that ‖A^(K+1)‖_F^(1/(K+1)) < 1
+  -- Use exists_lt_of_ciInf_lt: if iInf < a, then ∃ i, f(i) < a
+  obtain ⟨K, hK⟩ := exists_lt_of_ciInf_lt hA
 
-  -- Key: For spectrally stable matrices, there exists C, r with r < 1
-  -- such that ‖A^k‖ ≤ C · r^k for all k
+  -- hK : (frobNorm (A^(K+1)))^(1/(K+1)) < 1
+  let r := (frobNorm (A^(K+1)))^(1 / (K+1 : ℝ))
+  have h_r_lt_one : r < 1 := hK
+  have h_r_nonneg : 0 ≤ r := by
+    simp only [r]
+    apply Real.rpow_nonneg
+    apply Real.sqrt_nonneg
 
-  -- The formal proof requires:
-  -- 1. Extract witnessing K from the infimum condition
-  -- 2. Establish the geometric bound
-  -- 3. Convert norm bound to entry-wise bound
-  -- 4. Find N such that C · r^N < ε
+  -- Step 2: From r = ‖A^(K+1)‖^(1/(K+1)) < 1, get ‖A^(K+1)‖ ≤ r^(K+1) < 1
+  -- The bound ‖A^(K+1)‖ ≤ 1 is key for geometric decay
+
+  have h_frob_bound : frobNorm (A^(K+1)) ≤ 1 := by
+    -- r = frobNorm(A^(K+1))^(1/(K+1)) < 1
+    -- so frobNorm(A^(K+1)) = r^(K+1) < 1
+    have h_pos : (0 : ℝ) < K + 1 := by positivity
+    have h_frob_nonneg : 0 ≤ frobNorm (A^(K+1)) := Real.sqrt_nonneg _
+
+    -- Key: x^(1/p) < 1 with x ≥ 0, p > 0 implies x < 1
+    -- Since (frobNorm)^(1/(K+1)) = r < 1 and frobNorm ≥ 0, we have frobNorm < 1
+
+    -- Proof: If x ≥ 1 and p > 0, then x^(1/p) ≥ 1 (since x^(1/p) ≥ 1^(1/p) = 1)
+    -- Contrapositive: x^(1/p) < 1 implies x < 1
+    by_contra h_not_le
+    push_neg at h_not_le
+    -- h_not_le : 1 < frobNorm (A^(K+1))
+    have h_ge_one : 1 ≤ frobNorm (A^(K+1)) := le_of_lt h_not_le
+    have h_rpow_ge : (1:ℝ)^(1/(K+1:ℝ)) ≤ (frobNorm (A^(K+1)))^(1/(K+1:ℝ)) := by
+      apply Real.rpow_le_rpow
+      · norm_num
+      · exact h_ge_one
+      · apply div_nonneg; norm_num; linarith
+    simp only [Real.one_rpow] at h_rpow_ge
+    -- Now h_rpow_ge : 1 ≤ r, but h_r_lt_one : r < 1. Contradiction.
+    linarith
+
+  -- Step 3: Entry-wise bound from Frobenius norm
+  -- For any matrix M, |M i j| ≤ ‖M‖_F
+  have h_entry_bound : ∀ M : Matrix (Fin n) (Fin n) ℝ, ∀ i j, |M i j| ≤ frobNorm M := by
+    intro M i j
+    simp only [frobNorm]
+    -- |M i j| ≤ √(∑ i', ∑ j', (M i' j')²)
+    -- Since (M i j)² ≤ ∑ i', ∑ j', (M i' j')², we have |M i j| ≤ √(sum)
+    have h_sq_le : (M i j)^2 ≤ ∑ i', ∑ j', (M i' j')^2 := by
+      have h_row : (M i j)^2 ≤ ∑ j' : Fin n, (M i j')^2 := by
+        have h_nonneg : ∀ k ∈ Finset.univ, 0 ≤ (M i k)^2 := fun k _ => sq_nonneg _
+        exact Finset.single_le_sum h_nonneg (Finset.mem_univ j)
+      have h_col : ∑ j' : Fin n, (M i j')^2 ≤ ∑ i' : Fin n, ∑ j' : Fin n, (M i' j')^2 := by
+        have h_nonneg : ∀ k ∈ Finset.univ, 0 ≤ ∑ j' : Fin n, (M k j')^2 := by
+          intro k _; apply Finset.sum_nonneg; intro l _; exact sq_nonneg _
+        exact Finset.single_le_sum h_nonneg (Finset.mem_univ i)
+      exact le_trans h_row h_col
+    have h_abs_sq : |M i j|^2 = (M i j)^2 := sq_abs (M i j)
+    rw [← h_abs_sq] at h_sq_le
+    have h_sum_nonneg : 0 ≤ ∑ i', ∑ j', (M i' j')^2 := by
+      apply Finset.sum_nonneg; intro i' _
+      apply Finset.sum_nonneg; intro j' _
+      exact sq_nonneg _
+    -- |M i j| ≤ √(sum) iff |M i j|² ≤ sum (for nonneg values)
+    -- Use: a ≤ √b ↔ a² ≤ b (for a ≥ 0)
+    have h := Real.sqrt_le_sqrt h_sq_le
+    rw [Real.sqrt_sq (abs_nonneg _)] at h
+    exact h
+
+  -- Step 4: For the geometric bound on powers, we need submultiplicativity
+  -- This is complex, so we document the approach and provide a partial proof
+
+  -- The key insight is: for large enough k, A^k has small entries
+  -- because ‖A^k‖ decays geometrically with rate r < 1
+
+  -- Formal completion requires:
+  -- - Submultiplicativity: ‖A^k‖ ≤ ‖A‖^k (for submultiplicative norms)
+  -- - The Frobenius norm is submultiplicative
+  -- - Choose N such that r^N < ε / n (to bound each entry)
+
+  -- For now, we use existence of such N from geometric series convergence:
+  -- Since r < 1, r^k → 0, so ∃ N such that r^N < ε / (n * frobNorm(A))
+
+  -- The full proof requires careful handling of:
+  -- 1. Submultiplicativity of Frobenius norm
+  -- 2. Decomposition A^k = A^(mK) · A^j for k = mK + j
+  -- 3. Bound ‖A^(mK)‖ ≤ ‖A^K‖^m
+  -- 4. Overall bound C · r^k where C depends on max{‖A^j‖ : j < K}
 
   sorry
 
@@ -165,19 +225,258 @@ theorem diagonal_spectral_radius (d : Fin n → ℝ) :
   unfold spectralRadius
   simp only
 
+  -- Let m = max{|dᵢ|}
+  let m := Finset.sup' Finset.univ ⟨0, Finset.mem_univ 0⟩ (fun i => |d i|)
+
+  -- Define the Frobenius norm locally
+  let frobNorm := fun M : Matrix (Fin n) (Fin n) ℝ => Real.sqrt (∑ i, ∑ j, (M i j)^2)
+
   -- Key step 1: (diagonal d)^(k+1) = diagonal (d^(k+1))
-  -- where d^(k+1) means pointwise power
+  have h_diag_pow : ∀ k : ℕ, (Matrix.diagonal d)^(k+1) = Matrix.diagonal (d^(k+1)) :=
+    fun k => Matrix.diagonal_pow d (k+1)
 
-  -- Key step 2: Frobenius norm of diagonal(e) is √(∑ |eᵢ|²)
-  -- For diagonal matrices, off-diagonal entries are 0
+  -- Key step 2: For diagonal matrices, Frobenius norm simplifies to √(∑ᵢ (dᵢ)²)
+  -- because off-diagonal entries are 0
+  have h_frob_diag : ∀ e : Fin n → ℝ,
+      frobNorm (Matrix.diagonal e) = Real.sqrt (∑ i, (e i)^2) := by
+    intro e
+    simp only [frobNorm]
+    congr 1
+    apply Finset.sum_congr rfl
+    intro i _
+    -- ∑ j, (diagonal e i j)^2 = (e i)^2 because only diagonal entry is nonzero
+    have h_sum : ∑ j : Fin n, (Matrix.diagonal e i j)^2 = (e i)^2 := by
+      rw [Fintype.sum_eq_single i]
+      · simp only [Matrix.diagonal_apply_eq]
+      · intro j hij
+        have h_off : Matrix.diagonal e i j = 0 := Matrix.diagonal_apply_ne' e hij
+        simp only [h_off, sq, mul_zero]
+    exact h_sum
 
-  -- Key step 3: The infimum over k of (∑ᵢ |dᵢ|^{2(k+1)})^{1/2(k+1)}
-  -- equals max{|dᵢ|} by the p-norm convergence to ∞-norm
+  -- Key step 3: Term simplification
+  -- (frobNorm ((diagonal d)^(k+1)))^(1/(k+1))
+  -- = (frobNorm (diagonal (d^(k+1))))^(1/(k+1))
+  -- = (√(∑ᵢ (dᵢ^(k+1))²))^(1/(k+1))
+  -- = (√(∑ᵢ |dᵢ|^(2(k+1))))^(1/(k+1))
+  -- = (∑ᵢ |dᵢ|^(2(k+1)))^(1/(2(k+1)))
 
-  -- This requires Mathlib's `NNReal.inner_le_Lp_mul_Lq` and related lemmas
-  -- about p-norms and their convergence
+  have h_term : ∀ k : ℕ,
+      (frobNorm ((Matrix.diagonal d)^(k+1)))^(1 / (k+1 : ℝ)) =
+      (∑ i, |d i|^(2*(k+1)))^(1 / (2*(k+1) : ℝ)) := by
+    intro k
+    rw [h_diag_pow k, h_frob_diag]
+    -- √(∑ᵢ (d^(k+1) i)²)^(1/(k+1)) = (∑ᵢ |dᵢ|^(2(k+1)))^(1/(2(k+1)))
 
-  sorry
+    -- First, show (d i ^ (k+1))^2 = |d i|^(2*(k+1))
+    have h_pow_sq : ∀ i, ((d^(k+1)) i)^2 = |d i|^(2*(k+1)) := by
+      intro i
+      simp only [Pi.pow_apply]
+      -- (d i)^(k+1)^2 = (d i)^(2*(k+1))
+      have h1 : (d i ^ (k + 1)) ^ 2 = d i ^ (2 * (k + 1)) := by ring
+      rw [h1]
+      -- (d i)^(2*(k+1)) = |d i|^(2*(k+1)) when exponent is even
+      have h_even : Even (2 * (k + 1)) := ⟨k + 1, by ring⟩
+      exact (Even.pow_abs h_even (d i)).symm
+
+    -- Rewrite the sum using h_pow_sq
+    have h_sum_eq : (∑ i, ((d^(k+1)) i)^2) = ∑ i, |d i|^(2*(k+1)) := by
+      apply Finset.sum_congr rfl
+      intro i _
+      exact h_pow_sq i
+
+    rw [h_sum_eq]
+
+    -- (√x)^(1/(k+1)) = x^(1/(2(k+1))) when x ≥ 0
+    have h_sum_nonneg : 0 ≤ ∑ i : Fin n, |d i| ^ (2 * (k + 1)) := by
+      apply Finset.sum_nonneg
+      intro i _
+      apply pow_nonneg
+      exact abs_nonneg _
+    rw [Real.sqrt_eq_rpow]
+    rw [← Real.rpow_mul h_sum_nonneg]
+    congr 1
+    -- Need: 1 / 2 * (1 / (k + 1)) = 1 / (2 * (k + 1))
+    have h_pos : (0 : ℝ) < k + 1 := by positivity
+    field_simp [ne_of_gt h_pos]
+
+  -- Key step 4: Prove the infimum equals m
+  -- Lower bound: each term ≥ m (since the p-norm is ≥ max)
+  -- Upper bound: as k → ∞, the p-norm approaches m
+
+  apply le_antisymm
+  · -- Upper bound: iInf ≤ m
+    -- Strategy: Show term(k) ≤ n^(1/(2(k+1))) * m, use that this → m as k → ∞
+    -- Then iInf ≤ lim term(k) = m
+
+    -- Get the argmax for m
+    obtain ⟨i_max, _, hi_max⟩ := Finset.exists_mem_eq_sup' ⟨(0 : Fin n), Finset.mem_univ 0⟩
+      (fun i => |d i|)
+
+    have h_m_eq : m = |d i_max| := hi_max
+    have h_m_bound : ∀ j, |d j| ≤ m := fun j =>
+      Finset.le_sup' (fun i => |d i|) (Finset.mem_univ j)
+
+    have h_m_nonneg : 0 ≤ m := by rw [h_m_eq]; exact abs_nonneg _
+
+    -- Key bound: term(k) ≤ n^(1/(2(k+1))) * m
+    have h_term_bound : ∀ k : ℕ,
+        (frobNorm ((Matrix.diagonal d)^(k+1)))^(1 / (k+1 : ℝ)) ≤
+        (n : ℝ)^(1 / (2*(k+1) : ℝ)) * m := by
+      intro k
+      rw [h_term k]
+
+      let p : ℝ := 2 * (↑k + 1)
+      have h_p_pos : 0 < p := by simp only [p]; positivity
+
+      -- Upper bound on sum: ∑ᵢ |dᵢ|^p ≤ n * m^p
+      have h_sum_bound : ∑ i, |d i| ^ (2 * (k + 1)) ≤ (n : ℝ) * m ^ (2 * (k + 1)) := by
+        calc ∑ i : Fin n, |d i| ^ (2 * (k + 1))
+            ≤ ∑ _ : Fin n, m ^ (2 * (k + 1)) := by
+                apply Finset.sum_le_sum
+                intro j _
+                exact pow_le_pow_left₀ (abs_nonneg _) (h_m_bound j) _
+          _ = (Finset.univ : Finset (Fin n)).card • m ^ (2 * (k + 1)) := by
+                rw [Finset.sum_const]
+          _ = n * m ^ (2 * (k + 1)) := by
+                rw [Finset.card_fin, nsmul_eq_mul]
+
+      -- (∑ᵢ |dᵢ|^p)^(1/p) ≤ (n * m^p)^(1/p) = n^(1/p) * m
+      have h_exp_nonneg : 0 ≤ 1 / p := div_nonneg (by norm_num) (le_of_lt h_p_pos)
+      have h_sum_nonneg : 0 ≤ ∑ i, |d i| ^ (2 * (k + 1)) := by
+        apply Finset.sum_nonneg; intro i _; apply pow_nonneg; exact abs_nonneg _
+      have h_nm_nonneg : 0 ≤ (n : ℝ) * m ^ (2 * (k + 1)) := by
+        apply mul_nonneg; exact Nat.cast_nonneg n; apply pow_nonneg h_m_nonneg
+
+      have h_p_eq : p = ↑(2 * (k + 1)) := by
+        simp only [p, Nat.cast_mul, Nat.cast_ofNat, Nat.cast_add, Nat.cast_one]
+
+      -- All coercions handled explicitly
+      have h_one_div_p : (1 : ℝ) / p = 1 / (2 * (↑k + 1)) := by simp only [p]
+
+      calc (∑ i, |d i|^(2*(k+1)))^((1:ℝ)/(2*(↑k+1)))
+          = (∑ i, |d i|^(2*(k+1)))^(1/p) := by rw [← h_one_div_p]
+        _ ≤ ((n : ℝ) * m ^ (2 * (k + 1)))^(1/p) := by
+            apply Real.rpow_le_rpow h_sum_nonneg h_sum_bound h_exp_nonneg
+        _ = (n : ℝ)^(1/p) * (m ^ (2 * (k + 1)))^(1/p) := by
+            rw [Real.mul_rpow (Nat.cast_nonneg n) (pow_nonneg h_m_nonneg _)]
+        _ = (n : ℝ)^(1/p) * m^(↑(2 * (k + 1)) * (1/p)) := by
+            congr 1
+            rw [← Real.rpow_natCast m (2*(k+1)), ← Real.rpow_mul h_m_nonneg]
+        _ = (n : ℝ)^(1/p) * m^(1:ℝ) := by
+            congr 1
+            rw [h_p_eq]
+            field_simp [ne_of_gt h_p_pos]
+        _ = (n : ℝ)^(1/p) * m := by rw [Real.rpow_one]
+        _ = (n : ℝ)^((1:ℝ)/(2*(↑k+1))) * m := by rw [← h_one_div_p]
+
+    -- For iInf ≤ m: use ciInf_le to bound by any term
+    -- Since term(0) is in the sequence, iInf ≤ term(0) ≤ n^(1/2) * m
+    -- But we need iInf ≤ m
+
+    -- The sequence term(k) → m as k → ∞ (since n^(1/p) → 1)
+    -- For the infimum, we use: if term(k) ≥ m for all k and term(k) → m,
+    -- then iInf = m
+
+    -- Since we've already shown m ≤ iInf (in the lower bound), and iInf ≤ term(k) for all k,
+    -- to complete the proof we need to show the sequence gets arbitrarily close to m.
+
+    -- The p-norm convergence to ∞-norm as p → ∞ is a standard result but
+    -- requires topological limit arguments. For now, we use the direct construction:
+
+    -- Use ciInf_le_of_le: iInf ≤ g(i) for any i in the index set
+    -- At k = 0: term(0) = (∑ᵢ |dᵢ|²)^(1/2) ≤ √n * m
+    -- As k → ∞: term(k) → m
+
+    -- For the formal completion, we need a Mathlib lemma about:
+    -- If a ≤ b_k for all k, and b_k → a, then iInf b = a
+    -- This is: the limit of a sequence from above equals the infimum when
+    -- the sequence converges to its infimum
+
+    -- The key insight: since term(k) = (∑ᵢ |dᵢ|^{2(k+1)})^{1/(2(k+1))} is the
+    -- 2(k+1)-norm of the vector (|d₁|, ..., |dₙ|), and p-norms converge to
+    -- max norm as p → ∞, we have term(k) → m.
+
+    -- For a rigorous proof, we'd need to show:
+    -- 1. n^(1/p) → 1 as p → ∞
+    -- 2. term(k) ≤ n^(1/p) * m where p = 2(k+1)
+    -- 3. term(k) ≥ m (already proven)
+    -- 4. By squeeze theorem, term(k) → m
+    -- 5. Therefore iInf = m
+
+    -- This limit proof is complex in Lean. Given the validation context
+    -- (mapping CUDA diagonal stability to formal proofs), we document the
+    -- mathematical insight and leave the topological limit machinery for
+    -- future work if needed.
+
+    sorry
+
+  · -- Lower bound: m ≤ iInf
+    -- For any k, term(k) ≥ m because the p-norm is always ≥ max element
+    apply le_ciInf
+    intro k
+    rw [h_term k]
+    -- Need: m ≤ (∑ᵢ |dᵢ|^(2(k+1)))^(1/(2(k+1)))
+    -- Since m = max{|dᵢ|}, we have m^(2(k+1)) ≤ ∑ᵢ |dᵢ|^(2(k+1))
+    -- Taking (2(k+1))-th root preserves the inequality
+
+    -- Get the argmax
+    obtain ⟨i_max, _, hi_max⟩ := Finset.exists_mem_eq_sup' ⟨(0 : Fin n), Finset.mem_univ 0⟩
+      (fun i => |d i|)
+
+    -- m = |d i_max| and |d j| ≤ m for all j
+    have h_m_eq : m = |d i_max| := hi_max
+    have h_m_bound : ∀ j, |d j| ≤ m := by
+      intro j
+      show |d j| ≤ Finset.sup' Finset.univ ⟨0, Finset.mem_univ 0⟩ (fun i => |d i|)
+      exact Finset.le_sup' (fun i => |d i|) (Finset.mem_univ j)
+
+    -- m^(2(k+1)) ≤ ∑ᵢ |dᵢ|^(2(k+1)) because sum includes m^(2(k+1)) term
+    have h_pow_le_sum : m^(2*(k+1)) ≤ ∑ i, |d i|^(2*(k+1)) := by
+      rw [h_m_eq]
+      have h_nonneg : ∀ j ∈ Finset.univ, (0 : ℝ) ≤ |d j| ^ (2 * (k + 1)) := by
+        intro j _; apply pow_nonneg; exact abs_nonneg _
+      exact Finset.single_le_sum h_nonneg (Finset.mem_univ i_max)
+
+    -- Take (2(k+1))-th root
+    have h_exp_pos : (0 : ℝ) < 2 * (k + 1) := by positivity
+
+    -- m ≥ 0 since it's a sup of absolute values
+    have h_m_nonneg : 0 ≤ m := by
+      rw [h_m_eq]
+      exact abs_nonneg _
+
+    -- Goal: m ≤ (∑ i, |d i|^(2*(k+1)))^(1/(2*(↑k+1)))
+    -- Strategy: m^p ≤ sum, take p-th root, get m ≤ sum^(1/p)
+
+    -- Exponent in ℝ: let p = 2 * (k + 1) as a real number
+    let p : ℝ := 2 * (↑k + 1)
+
+    have h_p_eq_nat : p = ↑(2 * (k + 1)) := by
+      simp only [p, Nat.cast_mul, Nat.cast_ofNat, Nat.cast_add, Nat.cast_one]
+
+    have h_p_pos : 0 < p := by simp only [p]; positivity
+
+    have h_exp_nonneg : (0 : ℝ) ≤ 1 / p := div_nonneg (by norm_num) (le_of_lt h_p_pos)
+
+    -- m^(2*(k+1)) ≤ sum, and since m ≥ 0, taking p-th root gives m ≤ sum^(1/p)
+    have h_sum_nonneg : 0 ≤ ∑ i, |d i| ^ (2 * (k + 1)) := by
+      apply Finset.sum_nonneg; intro i _; apply pow_nonneg; exact abs_nonneg _
+
+    -- Rewrite h_pow_le_sum in terms of rpow
+    have h_pow_le_sum' : m ^ p ≤ ∑ i, |d i| ^ (2 * (k + 1)) := by
+      rw [h_p_eq_nat, Real.rpow_natCast]
+      exact h_pow_le_sum
+
+    calc m = m ^ (1 : ℝ) := (Real.rpow_one m).symm
+       _ = m ^ (p * (1 / p)) := by
+           congr 1
+           field_simp [ne_of_gt h_p_pos]
+       _ = (m ^ p) ^ (1 / p) := by rw [Real.rpow_mul h_m_nonneg]
+       _ ≤ (∑ i, |d i|^(2*(k+1)))^(1/p) := by
+           apply Real.rpow_le_rpow
+           · exact Real.rpow_nonneg h_m_nonneg p
+           · exact h_pow_le_sum'
+           · exact h_exp_nonneg
 
 /-- Scaling a matrix scales its spectral radius.
 

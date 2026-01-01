@@ -117,43 +117,153 @@ theorem logSumExp_bounds (xs : List ℝ) (hne : ¬xs.isEmpty) :
 
   · -- Lower bound: c ≤ logSumExp xs
     unfold logSumExp
-    simp only [hne, ↓reduceIte]
+    simp only [hne]
 
     -- Key insight: The sum ∑ exp(xᵢ - c) ≥ 1
-    --
-    -- Proof:
-    -- 1. Since xs is nonempty and c = foldl max xs.head!, we have c ≥ xs.head!
-    -- 2. More importantly, c is the maximum of all elements
-    -- 3. At least one element equals c (the maximum is achieved for finite lists)
-    -- 4. exp(c - c) = 1 is in the sum
-    -- 5. All exp terms are positive, so sum ≥ 1
-    -- 6. log(sum) ≥ log(1) = 0
-    -- 7. c + log(sum) ≥ c
+    -- Since c is the max, exp(c - c) = 1 is in the sum, so sum ≥ 1
+    -- Therefore log(sum) ≥ 0, so c + log(sum) ≥ c
 
-    -- Formal proof requires List.maximum lemmas and reasoning about foldl max
+    -- Helper: foldl max is either the init or an element
+    have foldl_max_mem_or_init : ∀ (a : ℝ) (ys : List ℝ),
+        ys.foldl max a = a ∨ ys.foldl max a ∈ ys := by
+      intro a ys
+      induction ys generalizing a with
+      | nil => left; rfl
+      | cons y ys ih =>
+        simp only [List.foldl]
+        specialize ih (max a y)
+        cases ih with
+        | inl h =>
+          rw [h]
+          by_cases hay : a ≤ y
+          · right; simp only [max_eq_right hay, List.mem_cons, true_or]
+          · push_neg at hay; left; exact max_eq_left (le_of_lt hay)
+        | inr h => right; exact List.mem_cons_of_mem y h
 
-    sorry
+    -- xs is nonempty
+    have hne' : xs ≠ [] := by
+      intro h
+      simp only [h, List.isEmpty_nil, not_true_eq_false] at hne
+
+    -- The max c is in xs
+    have h_c_mem : c ∈ xs := by
+      cases foldl_max_mem_or_init xs.head! xs with
+      | inl h =>
+        have : c = xs.head! := h
+        rw [this]
+        exact List.head!_mem_self hne'
+      | inr h => exact h
+
+    -- Show the sum is ≥ 1
+    have h_sum_ge_one : (xs.map (fun x => exp (x - c))).foldl (· + ·) 0 ≥ 1 := by
+      rw [← List.sum_eq_foldl]
+      -- exp(c - c) = 1 is in the mapped list
+      have h_one_mem : (1 : ℝ) ∈ xs.map (fun x => exp (x - c)) := by
+        rw [List.mem_map]
+        exact ⟨c, h_c_mem, by simp only [sub_self, exp_zero]⟩
+      -- All terms are nonneg
+      have h_all_nonneg : ∀ x ∈ xs.map (fun x => exp (x - c)), 0 ≤ x := by
+        intro y hy
+        rw [List.mem_map] at hy
+        obtain ⟨z, _, hz⟩ := hy
+        rw [← hz]
+        exact le_of_lt (exp_pos _)
+      exact List.single_le_sum h_all_nonneg 1 h_one_mem
+
+    -- Now use that log is monotone and log 1 = 0
+    have h_log_nonneg : 0 ≤ log ((xs.map (fun x => exp (x - c))).foldl (· + ·) 0) := by
+      have h1 : (0 : ℝ) < 1 := by linarith
+      have h2 : (1 : ℝ) ≤ (xs.map (fun x => exp (x - c))).foldl (· + ·) 0 := h_sum_ge_one
+      have := log_le_log h1 h2
+      simp only [log_one] at this
+      exact this
+    -- Goal: c ≤ c + log(sum)
+    -- Since log(sum) ≥ 0, this follows
+    calc c = c + 0 := by ring
+         _ ≤ c + log ((xs.map (fun x => exp (x - c))).foldl (· + ·) 0) :=
+             add_le_add_right h_log_nonneg c
 
   · -- Upper bound: logSumExp xs ≤ c + log(length xs)
     unfold logSumExp
-    simp only [hne, ↓reduceIte]
+    simp only [hne]
 
-    -- Key insight: Each exp(xᵢ - c) ≤ 1
-    --
-    -- Proof:
-    -- 1. c = max of xs, so xᵢ ≤ c for all i
-    -- 2. xᵢ - c ≤ 0
-    -- 3. exp(xᵢ - c) ≤ exp(0) = 1
-    -- 4. Sum of n terms each ≤ 1 gives sum ≤ n
-    -- 5. For n ≥ 1 (nonempty list), log(sum) ≤ log(n)
-    -- 6. c + log(sum) ≤ c + log(n)
+    -- xs is nonempty
+    have hne' : xs ≠ [] := by
+      intro h
+      simp only [h, List.isEmpty_nil, not_true_eq_false] at hne
 
-    -- Formal proof requires:
-    -- - List.foldl_max_le for showing xᵢ ≤ c
-    -- - List.length_map and List.sum_le_sum for bounding the sum
-    -- - Real.log_le_log for the final inequality
+    -- Helper: foldl max gives an upper bound for all elements
+    have foldl_max_is_ub : ∀ (a : ℝ) (ys : List ℝ) (y : ℝ), y ∈ ys → y ≤ ys.foldl max a := by
+      intro a ys
+      induction ys generalizing a with
+      | nil => intro y hy; simp only [List.not_mem_nil] at hy
+      | cons z zs ih =>
+        intro y hy
+        simp only [List.foldl]
+        cases List.mem_cons.mp hy with
+        | inl h =>
+          rw [h]
+          -- z ≤ foldl max (max a z) zs
+          -- We show by induction that a ≤ foldl max a ys for any a, ys
+          have aux : ∀ (b : ℝ) (ws : List ℝ), b ≤ ws.foldl max b := by
+            intro b ws
+            induction ws generalizing b with
+            | nil => simp only [List.foldl]; exact le_refl b
+            | cons w ws' ih' =>
+              simp only [List.foldl]
+              calc b ≤ max b w := le_max_left b w
+                   _ ≤ List.foldl max (max b w) ws' := ih' (max b w)
+          calc z ≤ max a z := le_max_right a z
+               _ ≤ List.foldl max (max a z) zs := aux (max a z) zs
+        | inr h => exact ih (max a z) y h
 
-    sorry
+    -- c is an upper bound: ∀ x ∈ xs, x ≤ c
+    have h_c_ub : ∀ x ∈ xs, x ≤ c := by
+      intro x hx
+      exact foldl_max_is_ub xs.head! xs x hx
+
+    -- Each exp(x - c) ≤ 1
+    have h_exp_le_one : ∀ y ∈ xs.map (fun x => exp (x - c)), y ≤ 1 := by
+      intro y hy
+      rw [List.mem_map] at hy
+      obtain ⟨x, hx, rfl⟩ := hy
+      have hxc : x ≤ c := h_c_ub x hx
+      calc exp (x - c) ≤ exp 0 := exp_le_exp.mpr (by linarith)
+           _ = 1 := exp_zero
+
+    -- Sum ≤ length (each term ≤ 1)
+    have h_sum_le : (xs.map (fun x => exp (x - c))).foldl (· + ·) 0 ≤ (xs.length : ℝ) := by
+      rw [← List.sum_eq_foldl]
+      have h_len : (xs.map (fun x => exp (x - c))).length = xs.length := List.length_map _
+      calc (xs.map (fun x => exp (x - c))).sum
+           ≤ (xs.map (fun x => exp (x - c))).length • (1 : ℝ) :=
+             List.sum_le_card_nsmul _ 1 h_exp_le_one
+         _ = ((xs.map (fun x => exp (x - c))).length : ℝ) := by simp only [nsmul_eq_mul, mul_one]
+         _ = (xs.length : ℝ) := by rw [h_len]
+
+    -- length xs ≥ 1 (nonempty)
+    have h_len_pos : 0 < xs.length := List.length_pos_iff_ne_nil.mpr hne'
+
+    -- sum > 0 (sum of positive terms)
+    have h_sum_pos : 0 < (xs.map (fun x => exp (x - c))).foldl (· + ·) 0 := by
+      rw [← List.sum_eq_foldl]
+      apply List.sum_pos
+      · intro y hy
+        rw [List.mem_map] at hy
+        obtain ⟨x, _, rfl⟩ := hy
+        exact exp_pos _
+      · intro h
+        rw [List.map_eq_nil_iff] at h
+        exact hne' h
+
+    -- log(sum) ≤ log(length)
+    have h_log_le : log ((xs.map (fun x => exp (x - c))).foldl (· + ·) 0) ≤ log xs.length := by
+      apply log_le_log h_sum_pos
+      exact h_sum_le
+
+    -- Final: c + log(sum) ≤ c + log(length)
+    calc c + log ((xs.map (fun x => exp (x - c))).foldl (· + ·) 0)
+         ≤ c + log xs.length := add_le_add_right h_log_le c
 
 /-- Gradient of logSumExp is the softmax, which is bounded in (0, 1). -/
 theorem logSumExp_gradient_bounded (xs : Fin n → ℝ) (i : Fin n) (hn : 0 < n) :
