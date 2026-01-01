@@ -58,12 +58,35 @@ theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 <
     (hStrong : IsStronglyConvex f μ) (hDiff : Differentiable ℝ f)
     (x x_star : E) (hMin : gradient f x_star = 0) :
     @inner ℝ E _ (gradient f x) (x - x_star) ≥ (μ / 2) * ‖x - x_star‖^2 := by
-  -- From strong convexity definition with y = x*, t = 1:
-  -- f(y) ≥ f(x) + ⟨∇f(x), y - x⟩ + (μ/2)‖y - x‖² for strongly convex f
-  -- Setting y = x*: f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)‖x - x*‖²
-  -- Rearranging: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
-  -- Since x* is minimum: f(x) - f(x*) ≥ 0
-  -- Therefore: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+  /- The proof uses the first-order characterization of strong convexity.
+
+     For μ-strongly convex f, the definition gives:
+     f(t·a + (1-t)·b) ≤ t·f(a) + (1-t)·f(b) - (μ/2)·t·(1-t)·‖a - b‖²
+
+     The first-order characterization (for differentiable f) is:
+     f(y) ≥ f(x) + ⟨∇f(x), y - x⟩ + (μ/2)·‖y - x‖²
+
+     Setting y = x* (where ∇f(x*) = 0):
+     f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)·‖x* - x‖²
+
+     Rearranging:
+     ⟨∇f(x), x - x*⟩ = -⟨∇f(x), x* - x⟩ ≥ f(x) - f(x*) + (μ/2)·‖x - x*‖²
+
+     Since x* is a critical point (∇f(x*) = 0) for a strongly convex function,
+     it's the unique global minimum, so f(x) - f(x*) ≥ 0.
+
+     Therefore: ⟨∇f(x), x - x*⟩ ≥ (μ/2)·‖x - x*‖²
+
+     The key step requiring formalization is deriving the first-order
+     characterization from the definition of IsStronglyConvex.
+     This typically requires taking limits as t → 0 in the definition.
+  -/
+
+  -- The formal proof requires:
+  -- 1. Deriving first-order characterization from IsStronglyConvex
+  -- 2. Using that ∇f(x*) = 0 implies x* is global minimum for strongly convex f
+  -- 3. Combining the bounds
+
   sorry
 
 /-- Interpolation condition for strongly convex AND smooth functions.
@@ -198,8 +221,45 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
   by_cases hxy : x = y
   · simp only [hxy, sub_self, inner_zero_right, norm_zero, sq, mul_zero, add_zero, le_refl]
 
-  -- The formal proof for x ≠ y requires Mathlib's integration machinery.
-  -- Key steps outlined above.
+  -- Special case: if L = 0, gradient is constant, so f is affine
+  by_cases hL0 : L = 0
+  · -- When L = 0, ∇f is constant (0-Lipschitz means constant)
+    -- So f(y) = f(x) + ⟨∇f(x), y - x⟩ for all x, y
+    -- This follows from the mean value theorem for paths
+    simp only [hL0, zero_div, zero_mul, add_zero]
+    -- For constant gradient, f is affine: f(y) - f(x) = ⟨∇f(x), y - x⟩
+    -- The proof requires showing this from 0-Lipschitz gradient
+    sorry
+
+  -- Main case: L > 0
+  have hL_pos : 0 < L := lt_of_le_of_ne hL (Ne.symm hL0)
+
+  /- The proof uses integration along the line segment from x to y.
+
+     Define γ(t) = x + t(y - x) for t ∈ [0, 1].
+     Define g(t) = f(γ(t)).
+
+     Then g'(t) = ⟨∇f(γ(t)), y - x⟩.
+
+     By the fundamental theorem of calculus:
+     f(y) - f(x) = g(1) - g(0) = ∫₀¹ g'(t) dt = ∫₀¹ ⟨∇f(γ(t)), y - x⟩ dt
+
+     Therefore:
+     f(y) - f(x) - ⟨∇f(x), y - x⟩ = ∫₀¹ ⟨∇f(γ(t)) - ∇f(x), y - x⟩ dt
+
+     By Cauchy-Schwarz and L-Lipschitz gradient:
+     ⟨∇f(γ(t)) - ∇f(x), y - x⟩ ≤ ‖∇f(γ(t)) - ∇f(x)‖ · ‖y - x‖
+                                 ≤ L · ‖γ(t) - x‖ · ‖y - x‖
+                                 = L · t · ‖y - x‖²
+
+     Integrating:
+     f(y) - f(x) - ⟨∇f(x), y - x⟩ ≤ ∫₀¹ L · t · ‖y - x‖² dt
+                                   = L · ‖y - x‖² · [t²/2]₀¹
+                                   = (L/2) · ‖y - x‖²
+
+     This requires Mathlib's MeasureTheory.integral machinery and
+     careful handling of the FTC for paths in Hilbert spaces.
+  -/
 
   sorry
 
