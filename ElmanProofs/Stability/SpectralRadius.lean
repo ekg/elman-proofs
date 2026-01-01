@@ -179,26 +179,82 @@ theorem diagonal_spectral_radius (d : Fin n → ℝ) :
 
   sorry
 
-/-- Scaling a matrix scales its spectral radius. -/
+/-- Scaling a matrix scales its spectral radius.
+
+    ## Proof Structure
+
+    **Step 1**: (c • A)^k = c^k • A^k (scalar-matrix power commutation)
+
+    This follows from `smul_pow` in Mathlib: for a scalar c and matrix A,
+    (c • A)^k = c^k • A^k because scalar multiplication commutes with
+    matrix multiplication.
+
+    **Step 2**: Frobenius norm is absolutely homogeneous
+
+    ‖c • M‖_F = √(∑ᵢⱼ |c · Mᵢⱼ|²) = √(|c|² · ∑ᵢⱼ |Mᵢⱼ|²) = |c| · ‖M‖_F
+
+    **Step 3**: Compute the k-th root
+
+    ‖(c • A)^(k+1)‖^{1/(k+1)} = ‖c^(k+1) • A^(k+1)‖^{1/(k+1)}
+                               = (|c|^(k+1) · ‖A^(k+1)‖)^{1/(k+1)}
+                               = |c| · ‖A^(k+1)‖^{1/(k+1)}
+
+    **Step 4**: Taking infimum
+
+    ρ(c • A) = ⨅ k, ‖(c • A)^(k+1)‖^{1/(k+1)}
+             = ⨅ k, |c| · ‖A^(k+1)‖^{1/(k+1)}
+             = |c| · ⨅ k, ‖A^(k+1)‖^{1/(k+1)}
+             = |c| · ρ(A)
+
+    The last step uses: ⨅ k, (c · f(k)) = c · ⨅ k, f(k) for c ≥ 0.
+-/
 theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
     spectralRadius (c • A) = |c| * spectralRadius A := by
-  -- Key insight: (c • A)^k = c^k • A^k
-  -- So ‖(c • A)^k‖^(1/k) = |c| · ‖A^k‖^(1/k)
-  -- Taking infimum: ρ(c • A) = |c| · ρ(A)
-
   unfold spectralRadius
   simp only
 
-  -- The Frobenius norm satisfies ‖c • M‖ = |c| · ‖M‖
-  -- And (c • A)^(k+1) = c^(k+1) • A^(k+1)
+  -- Define the Frobenius norm function for convenience
+  let frobNorm := fun M : Matrix (Fin n) (Fin n) ℝ => Real.sqrt (∑ i, ∑ j, (M i j)^2)
 
-  -- For the formal proof, we need:
-  -- 1. Show (c • A)^k = c^k • A^k (scalar-matrix power commutation)
-  -- 2. Show Frobenius norm is absolutely homogeneous
-  -- 3. Show |c|^(k+1)^(1/(k+1)) = |c| for all k
-  -- 4. Apply these to the infimum
+  -- Key lemma 1: (c • A)^(k+1) = c^(k+1) • A^(k+1)
+  have h_smul_pow : ∀ k : ℕ, (c • A)^(k+1) = c^(k+1) • A^(k+1) := by
+    intro k
+    induction k with
+    | zero => simp [pow_one, pow_one]
+    | succ k ih =>
+      rw [pow_succ, pow_succ, pow_succ, ih]
+      -- (c • A) * (c^(k+1) • A^(k+1)) = c^(k+2) • A^(k+2)
+      rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+      ring_nf
 
-  -- This requires matrix algebra lemmas about scalar multiplication and powers
+  -- Key lemma 2: Frobenius norm of scalar multiple
+  have h_frob_smul : ∀ (s : ℝ) (M : Matrix (Fin n) (Fin n) ℝ),
+      frobNorm (s • M) = |s| * frobNorm M := by
+    intro s M
+    simp only [frobNorm]
+    rw [Real.sqrt_eq_iff_sq_eq]
+    · rw [mul_pow, sq_abs, Real.sq_sqrt]
+      · congr 1
+        simp only [Matrix.smul_apply, smul_eq_mul]
+        rw [Finset.sum_congr rfl (fun i _ => Finset.sum_congr rfl (fun j _ => by ring))]
+        rw [← Finset.mul_sum, ← Finset.mul_sum]
+        ring
+      · apply Finset.sum_nonneg
+        intro i _
+        apply Finset.sum_nonneg
+        intro j _
+        exact sq_nonneg _
+    · apply mul_nonneg (abs_nonneg _)
+      apply Real.sqrt_nonneg
+    · apply Finset.sum_nonneg
+      intro i _
+      apply Finset.sum_nonneg
+      intro j _
+      exact sq_nonneg _
+
+  -- Now combine: the infimum of |c| * f(k) = |c| * infimum of f(k)
+  -- This requires |c| ≥ 0 and properties of iInf
+
   sorry
 
 /-- Spectral normalization: scale matrix to have spectral radius ≤ target. -/
