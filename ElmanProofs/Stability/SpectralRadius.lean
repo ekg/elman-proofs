@@ -404,28 +404,104 @@ theorem diagonal_spectral_radius (d : Fin n → ℝ) :
     -- At k = 0: term(0) = (∑ᵢ |dᵢ|²)^(1/2) ≤ √n * m
     -- As k → ∞: term(k) → m
 
-    -- For the formal completion, we need a Mathlib lemma about:
-    -- If a ≤ b_k for all k, and b_k → a, then iInf b = a
-    -- This is: the limit of a sequence from above equals the infimum when
-    -- the sequence converges to its infimum
+    -- Case split on m: if m = 0, all |d i| = 0, so the sum is 0 and iInf = 0 = m
+    -- If m > 0, we need to use convergence of p-norm to max-norm
 
-    -- The key insight: since term(k) = (∑ᵢ |dᵢ|^{2(k+1)})^{1/(2(k+1))} is the
-    -- 2(k+1)-norm of the vector (|d₁|, ..., |dₙ|), and p-norms converge to
-    -- max norm as p → ∞, we have term(k) → m.
+    by_cases hm : m = 0
+    · -- Case m = 0: all |d i| = 0, so iInf = 0 = m
+      -- If m = 0, then all |d i| = 0 (since m = max |d i|)
+      have h_all_zero : ∀ i, d i = 0 := by
+        intro i
+        have h_le_m : |d i| ≤ m := h_m_bound i
+        rw [hm] at h_le_m
+        exact abs_eq_zero.mp (le_antisymm h_le_m (abs_nonneg _))
 
-    -- For a rigorous proof, we'd need to show:
-    -- 1. n^(1/p) → 1 as p → ∞
-    -- 2. term(k) ≤ n^(1/p) * m where p = 2(k+1)
-    -- 3. term(k) ≥ m (already proven)
-    -- 4. By squeeze theorem, term(k) → m
-    -- 5. Therefore iInf = m
+      -- Therefore term(k) = (∑ᵢ 0^p)^(1/p) = 0 for all k
+      have h_term_zero : ∀ k : ℕ, (frobNorm ((Matrix.diagonal d)^(k+1)))^(1 / (k+1 : ℝ)) = 0 := by
+        intro k
+        rw [h_term k]
+        have h_sum_zero : ∑ i : Fin n, |d i| ^ (2 * (k + 1)) = 0 := by
+          apply Finset.sum_eq_zero
+          intro i _
+          rw [h_all_zero i, abs_zero, zero_pow]
+          omega
+        rw [h_sum_zero]
+        have h_exp_ne_zero : 1 / (2 * (↑k + 1) : ℝ) ≠ 0 := by
+          apply div_ne_zero
+          · norm_num
+          · positivity
+        exact Real.zero_rpow h_exp_ne_zero
 
-    -- This limit proof is complex in Lean. Given the validation context
-    -- (mapping CUDA diagonal stability to formal proofs), we document the
-    -- mathematical insight and leave the topological limit machinery for
-    -- future work if needed.
+      -- iInf of constant 0 is 0, and m = 0, so iInf ≤ m
+      have h_fn_eq : (fun k : ℕ => (frobNorm ((Matrix.diagonal d)^(k+1)))^(1 / (k+1 : ℝ))) =
+                     (fun _ : ℕ => (0 : ℝ)) := by
+        ext k; exact h_term_zero k
+      -- Rewrite the iInf using h_fn_eq
+      conv_lhs => rw [h_fn_eq]
+      simp only [ciInf_const]
+      exact h_m_nonneg
 
-    sorry
+    · -- Case m > 0: we need iInf ≤ m
+      -- Since m ≤ term(k) for all k (shown in lower bound) and term(k) → m,
+      -- by squeeze theorem iInf = m
+
+      have h_m_pos : 0 < m := by
+        apply h_m_nonneg.lt_of_ne'
+        intro h_eq
+        -- h_eq : m = 0, need to show False using hm : ¬(m = 0)
+        exact hm h_eq
+
+      -- The key is showing that for any ε > 0, ∃ K such that term(K) < m + ε
+      -- This uses that n^(1/p) → 1 as p → ∞
+
+      -- For concreteness, use the explicit bound:
+      -- term(k) = (∑ᵢ |dᵢ|^{2(k+1)})^{1/(2(k+1))}
+      --         ≤ (n · m^{2(k+1)})^{1/(2(k+1))}
+      --         = n^{1/(2(k+1))} · m
+
+      -- As k → ∞, n^{1/(2(k+1))} → 1, so term(k) → m
+
+      -- To prove iInf ≤ m without using limits explicitly, we use:
+      -- m ≤ iInf (from lower bound, proven below)
+      -- iInf ≤ term(k) for all k (by definition of iInf)
+      -- Combined: m ≤ iInf ≤ term(k) for all k
+
+      -- Since the lower bound gives m ≤ iInf, we have equality if we can show
+      -- that the iInf is exactly achieved by the limit of term(k).
+
+      -- The mathematical argument is: n^(1/p) → 1 as p → ∞, so term(k) → m.
+      -- Since term(k) ≥ m always, and term(k) approaches m from above,
+      -- inf{term(k)} = m.
+
+      -- For a formal proof without topological machinery, we observe:
+      -- The sequence term(k) is bounded: m ≤ term(k) ≤ n^(1/2) * m (at k=0)
+      -- The infimum exists and lies in [m, n^(1/2) * m]
+      -- By the squeeze argument (term(k) → m), the infimum must be m
+
+      -- Alternative: prove directly using Real.iInf properties
+      -- We'll show that for any a > m, iInf < a (so iInf ≤ m)
+
+      -- Use: iInf ≤ m ↔ ∀ ε > 0, iInf < m + ε
+      --                ↔ ∀ ε > 0, ∃ k, term(k) < m + ε
+
+      -- For large enough k, n^{1/(2(k+1))} is arbitrarily close to 1
+      -- so term(k) ≤ n^{1/(2(k+1))} * m is arbitrarily close to m
+
+      -- The formal proof of n^{1/p} → 1 requires showing that
+      -- log(n)/p → 0, hence n^{1/p} = exp(log(n)/p) → exp(0) = 1
+
+      -- For the Lean formalization, we document the mathematical correctness
+      -- and defer the detailed limit proof to future work if needed.
+
+      -- Since we prove m ≤ iInf in the lower bound, and the terms approach m,
+      -- the equality follows. We use antisymmetry with the lower bound.
+
+      -- Simpler approach: show that the iInf of any sequence bounded below by m
+      -- that converges to m equals m. This is a general fact about infima.
+
+      -- For now, we note that this requires Filter.Tendsto machinery and
+      -- leave as sorry, documenting the full mathematical argument above.
+      sorry
 
   · -- Lower bound: m ≤ iInf
     -- For any k, term(k) ≥ m because the p-norm is always ≥ max element
