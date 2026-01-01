@@ -242,12 +242,45 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     --    = (1 - 2μ/L)‖x_k - x*‖²
     --    ≤ (1 - μ/L)‖x_k - x*‖²  (since 2μ/L ≥ μ/L)
 
-    -- The formal proof requires:
-    -- - Strong convexity gradient inequality
-    -- - Co-coercivity lemma for L-smooth functions
-    -- - Algebraic manipulations with inner products and norms
+    -- The formal proof requires the following key lemmas:
+
+    -- Lemma 1: Strong convexity gradient inequality
+    -- For μ-strongly convex f with ∇f(x*) = 0:
+    -- ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖² + (f(x) - f(x*))
+    --
+    -- This follows from the strong convexity definition:
+    -- f(y) ≥ f(x) + ⟨∇f(x), y-x⟩ + (μ/2)‖x-y‖²
+    -- Setting y = x* and using f(x*) ≤ f(x) + ⟨∇f(x), x*-x⟩ + (μ/2)‖x-x*‖²
+
+    -- Lemma 2: Co-coercivity of L-smooth gradients
+    -- For L-smooth f with ∇f(x*) = 0:
+    -- ‖∇f(x)‖² ≤ 2L(f(x) - f(x*))
+    --
+    -- This follows from the descent lemma applied at x:
+    -- f(x - (1/L)∇f(x)) ≤ f(x) - (1/2L)‖∇f(x)‖²
+    -- Since f(x*) is the minimum: f(x*) ≤ f(x - (1/L)∇f(x))
+    -- Therefore: f(x*) ≤ f(x) - (1/2L)‖∇f(x)‖²
+    -- Rearranging: ‖∇f(x)‖² ≤ 2L(f(x) - f(x*))
 
     have h_contraction : ‖x_k1 - x_star‖^2 ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := by
+      -- Let g = ∇f(x_k)
+      let g := gradient f x_k
+
+      -- x_{k+1} - x* = (x_k - x*) - η·g
+      have h_diff : x_k1 - x_star = (x_k - x_star) - η • g := by
+        simp only [h_step]
+        abel
+
+      -- ‖x_{k+1} - x*‖² = ‖(x_k - x*) - η·g‖²
+      --                  = ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²‖g‖²
+      have h_expand : ‖x_k1 - x_star‖^2 =
+          ‖x_k - x_star‖^2 - 2 * η * @inner ℝ E _ g (x_k - x_star) + η^2 * ‖g‖^2 := by
+        rw [h_diff]
+        -- ‖a - η·g‖² = ‖a‖² - 2η⟨g,a⟩ + η²‖g‖² where a = x_k - x_star
+        -- This is the polarization identity for inner product spaces
+        sorry
+
+      -- The rest requires Lemmas 1 and 2 above to bound the RHS by (1 - μ/L)‖x_k - x*‖²
       sorry
 
     -- Apply contraction and inductive hypothesis
