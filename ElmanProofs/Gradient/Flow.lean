@@ -49,6 +49,38 @@ def IsStronglyConvex (f : E → ℝ) (μ : ℝ) : Prop :=
   ∀ x y : E, ∀ t : ℝ, 0 ≤ t → t ≤ 1 →
     f (t • x + (1 - t) • y) ≤ t * f x + (1 - t) * f y - (μ / 2) * t * (1 - t) * ‖x - y‖^2
 
+/-- Strong convexity implies ordinary convexity.
+
+    If f is μ-strongly convex with μ ≥ 0, then f is convex on the whole space.
+-/
+theorem stronglyConvex_implies_convexOn (f : E → ℝ) (μ : ℝ) (hμ : 0 ≤ μ)
+    (hStrong : IsStronglyConvex f μ) : ConvexOn ℝ Set.univ f := by
+  constructor
+  · exact convex_univ
+  · intro x _ y _ a b ha hb hab
+    -- ConvexOn uses weights a, b with a + b = 1
+    -- IsStronglyConvex uses t with (1-t)
+    -- We have: a • x + b • y where a + b = 1
+    -- We want to show: f (a • x + b • y) ≤ a * f x + b * f y
+    -- Using IsStronglyConvex with t = a:
+    -- f (a • x + (1 - a) • y) ≤ a * f x + (1 - a) * f y - (μ/2) * a * (1 - a) * ‖x - y‖²
+    have hb_eq : b = 1 - a := by linarith
+    rw [hb_eq]
+    have ha_le_1 : a ≤ 1 := by linarith
+    have h1_minus_a_nonneg : 0 ≤ 1 - a := by linarith
+    have hStrong' := hStrong x y a ha ha_le_1
+    have h_nonneg : 0 ≤ (μ / 2) * a * (1 - a) * ‖x - y‖^2 := by
+      have h1 : 0 ≤ μ / 2 := by linarith
+      have h2 : 0 ≤ a * (1 - a) := mul_nonneg ha h1_minus_a_nonneg
+      have h3 : 0 ≤ (μ / 2) * (a * (1 - a)) := mul_nonneg h1 h2
+      have h4 : 0 ≤ ‖x - y‖ ^ 2 := sq_nonneg _
+      calc (μ / 2) * a * (1 - a) * ‖x - y‖^2
+          = (μ / 2) * (a * (1 - a)) * ‖x - y‖^2 := by ring
+        _ ≥ 0 := mul_nonneg h3 h4
+    -- Convert smul to mul for reals: a • r = a * r
+    simp only [smul_eq_mul] at *
+    linarith
+
 /-- Strong convexity implies a lower bound on the gradient inner product.
 
     For μ-strongly convex f with ∇f(x*) = 0:
@@ -125,13 +157,274 @@ theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 <
   -- 3. Bounding g(t) using strong convexity
   -- 4. Taking the limit to get the first-order condition
 
-  -- The proof uses the first-order characterization of strong convexity.
-  -- The key steps are documented in the comments above.
-  -- Formalizing the derivative limit argument requires careful handling of
-  -- the strong convexity bound as t → 0⁺, which involves Mathlib's asymptotic analysis.
-  -- The key bound is: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖² ≥ (μ/2)‖x - x*‖²
-  -- where the second inequality follows from x* being the global minimum
-  -- (since ∇f(x*) = 0 for strongly convex f implies x* is the unique minimizer).
+  -- Define the direction and path
+  let d := x_star - x
+  let g := fun t : ℝ => f (x + t • d)
+  -- The upper bound from strong convexity: h(t) = (1-t)f(x) + tf(x*) - (μ/2)t(1-t)‖d‖²
+  let h := fun t : ℝ => (1 - t) * f x + t * f x_star - (μ / 2) * t * (1 - t) * ‖d‖^2
+  -- Strong convexity gives g(t) ≤ h(t) for t ∈ [0, 1]
+  have h_ineq : ∀ t, 0 ≤ t → t ≤ 1 → g t ≤ h t := by
+    intro t ht0 ht1
+    have hconv := hStrong x_star x t ht0 ht1
+    -- t•x* + (1-t)•x = x + t•(x* - x) = x + t•d
+    have heq : t • x_star + (1 - t) • x = x + t • d := by
+      simp only [d]; rw [smul_sub]; ring_nf; module
+    simp only [g, h, heq] at hconv ⊢
+    have hnorm : ‖x_star - x‖ = ‖d‖ := by simp only [d]
+    rw [hnorm] at hconv
+    linarith
+  -- At t = 0: g(0) = h(0) = f(x)
+  have hg0 : g 0 = f x := by simp only [g, zero_smul, add_zero]
+  have hh0 : h 0 = f x := by simp only [h]; ring
+  -- Compute h'(0) = f(x*) - f(x) - (μ/2)‖d‖²
+  have h_deriv : HasDerivAt h (f x_star - f x - (μ / 2) * ‖d‖^2) 0 := by
+    -- h(t) = (1-t)f(x) + tf(x*) - (μ/2)t(1-t)‖d‖²
+    -- Rewrite as: h(t) = f(x) + t*(f(x*) - f(x)) - (μ/2)*‖d‖²*(t - t²)
+    -- h'(t) = f(x*) - f(x) - (μ/2)*‖d‖²*(1 - 2t)
+    -- h'(0) = f(x*) - f(x) - (μ/2)*‖d‖²
+    have h1 : HasDerivAt (fun t : ℝ => (1 - t) * f x) (-f x) 0 := by
+      have hid : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+        (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+      convert hid.mul_const (f x) using 1; ring
+    have h2 : HasDerivAt (fun t : ℝ => t * f x_star) (f x_star) 0 := by
+      convert (hasDerivAt_id (0 : ℝ)).mul_const (f x_star) using 1; ring
+    have h3 : HasDerivAt (fun t : ℝ => (μ / 2) * t * (1 - t) * ‖d‖^2) ((μ / 2) * ‖d‖^2) 0 := by
+      -- (μ/2)*t*(1-t)*‖d‖² has derivative (μ/2)*‖d‖²*(1 - 2t) at t
+      -- At t = 0: (μ/2)*‖d‖²
+      have hpoly : HasDerivAt (fun t : ℝ => t * (1 - t)) 1 0 := by
+        have h1' := hasDerivAt_id (0 : ℝ)
+        have h2' : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+          (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+        have hprod := h1'.mul h2'
+        convert hprod using 2 <;> simp
+      convert hpoly.const_mul ((μ / 2) * ‖d‖^2) using 1
+      · ext t; ring
+      · ring
+    convert (h1.add h2).sub h3 using 1; ring
+  -- Compute g'(0) = ⟨∇f(x), d⟩
+  have g_deriv : HasDerivAt g (@inner ℝ E _ (gradient f x) d) 0 := by
+    have hγ : HasDerivAt (fun t : ℝ => x + t • d) d 0 := by
+      have h1 : HasDerivAt (fun _ : ℝ => x) 0 0 := hasDerivAt_const 0 x
+      have h2 : HasDerivAt (fun t : ℝ => t • d) ((1 : ℝ) • d) 0 :=
+        (hasDerivAt_id 0).smul_const d
+      have hsum := h1.add h2
+      simp only [zero_add, one_smul] at hsum
+      exact hsum
+    have hf_grad : HasGradientAt f (gradient f x) x := (hDiff x).hasGradientAt
+    have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x)) x := hf_grad.hasFDerivAt
+    have hf_fderiv' : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x)) (x + (0 : ℝ) • d) := by
+      simp only [zero_smul, add_zero]; exact hf_fderiv
+    have hcomp := hf_fderiv'.comp_hasDerivAt (0 : ℝ) hγ
+    simp only [Function.comp_apply, innerSL_apply_apply, zero_smul, add_zero] at hcomp
+    exact hcomp
+  -- Key lemma: if g(0) = h(0) and g(t) ≤ h(t) for t ∈ (0, 1], then g'(0) ≤ h'(0)
+  -- This follows from: (g(t) - g(0))/t ≤ (h(t) - h(0))/t for t > 0
+  -- Taking limit as t → 0⁺ gives g'(0) ≤ h'(0)
+  have h_deriv_ineq : @inner ℝ E _ (gradient f x) d ≤ f x_star - f x - (μ / 2) * ‖d‖^2 := by
+    by_contra hcontra
+    push_neg at hcontra
+    -- Let δ = g'(0) - h'(0) > 0
+    let δ := @inner ℝ E _ (gradient f x) d - (f x_star - f x - (μ / 2) * ‖d‖^2)
+    have hδ_pos : δ > 0 := by simp only [δ]; linarith
+    -- From HasDerivAt, the difference quotient converges to the derivative
+    -- For g: (g(t) - g(0))/t → g'(0) as t → 0
+    -- For h: (h(t) - h(0))/t → h'(0) as t → 0
+    -- So (g(t) - h(t))/t → g'(0) - h'(0) = δ > 0
+    have h_gh_deriv : HasDerivAt (fun t => g t - h t) δ 0 := HasDerivAt.sub g_deriv h_deriv
+    have h_gh_0 : (fun t => g t - h t) 0 = 0 := by simp only [hg0, hh0, sub_self]
+    -- HasDerivAt gives: (g-h)(t) = (g-h)(0) + δ*t + o(t) = δ*t + o(t)
+    -- For small t > 0: (g-h)(t) ≈ δ*t > 0 since δ > 0
+    rw [hasDerivAt_iff_isLittleO] at h_gh_deriv
+    -- h_gh_deriv : (fun t => (g-h)(0+t) - (g-h)(0) - (t-0)•δ) =o[𝓝 0] (fun t => t-0)
+    -- Use IsLittleO.def to get: for c = δ/2 > 0, eventually ‖...‖ ≤ c * ‖t - 0‖
+    have hε_half : 0 < δ / 2 := by linarith
+    have h_bound_evt := h_gh_deriv.def hε_half
+    -- h_bound_evt : ∀ᶠ t in 𝓝 0, ‖(g t - h t) - (g 0 - h 0) - (t - 0) • δ‖ ≤ (δ/2) * ‖t - 0‖
+    simp only [h_gh_0, sub_zero, smul_eq_mul] at h_bound_evt
+    -- h_bound_evt : ∀ᶠ t in 𝓝 0, ‖g t - h t - t * δ‖ ≤ (δ/2) * ‖t‖
+    rw [Filter.eventually_iff_exists_mem] at h_bound_evt
+    obtain ⟨s, hs_mem, hs_bound⟩ := h_bound_evt
+    rw [Metric.mem_nhds_iff] at hs_mem
+    obtain ⟨ε, hε_pos, hε_sub⟩ := hs_mem
+    -- Pick t = min(ε/2, 1/2) > 0
+    let t := min (ε / 2) (1 / 2)
+    have ht_pos : 0 < t := by positivity
+    have ht_lt_ε : t < ε := by simp only [t]; linarith [min_le_left (ε / 2) (1 / 2)]
+    have ht_le_1 : t ≤ 1 := by simp only [t]; linarith [min_le_right (ε / 2) (1 / 2)]
+    have ht_in_ball : t ∈ Metric.ball 0 ε := by
+      simp only [Metric.mem_ball, dist_zero_right, Real.norm_eq_abs, abs_of_pos ht_pos]
+      exact ht_lt_ε
+    have ht_in_s : t ∈ s := hε_sub ht_in_ball
+    -- hs_bound says: ‖(g-h)(t) - t*δ‖ ≤ (δ/2) * ‖t‖
+    have h_bound := hs_bound t ht_in_s
+    simp only [Real.norm_eq_abs, abs_of_pos ht_pos] at h_bound
+    -- h_bound : |g t - h t - t * δ| ≤ (δ / 2) * t
+    -- |f(t) - t*δ| ≤ (δ/2)*t means f(t) ≥ t*δ - (δ/2)*t = (δ/2)*t > 0
+    have h_lower : g t - h t ≥ t * δ - (δ / 2) * t := by
+      have h1 : -((δ / 2) * t) ≤ (g t - h t) - t * δ := by
+        have := neg_abs_le (g t - h t - t * δ)
+        linarith
+      linarith
+    have h_diff_pos : g t - h t > 0 := by
+      have : t * δ - (δ / 2) * t = (δ / 2) * t := by ring
+      rw [this] at h_lower
+      have : (δ / 2) * t > 0 := mul_pos (by linarith) ht_pos
+      linarith
+    -- But h_ineq says g(t) ≤ h(t), contradiction
+    have h_le := h_ineq t (le_of_lt ht_pos) ht_le_1
+    linarith
+  -- Now: ⟨∇f(x), d⟩ ≤ f(x*) - f(x) - (μ/2)‖d‖²
+  -- Since d = x* - x, we have ⟨∇f(x), x - x*⟩ = -⟨∇f(x), d⟩
+  have h_inner_neg : @inner ℝ E _ (gradient f x) (x - x_star) =
+      -@inner ℝ E _ (gradient f x) d := by
+    simp only [d, ← inner_neg_right, neg_sub]
+  rw [h_inner_neg]
+  -- Need: -⟨∇f(x), d⟩ ≥ (μ/2)‖x - x*‖²
+  -- From h_deriv_ineq: ⟨∇f(x), d⟩ ≤ f(x*) - f(x) - (μ/2)‖d‖²
+  -- So: -⟨∇f(x), d⟩ ≥ f(x) - f(x*) + (μ/2)‖d‖²
+  -- Need to show f(x) - f(x*) ≥ 0, i.e., x* is global minimum
+  have h_min : f x_star ≤ f x := by
+    -- Use derivative limit argument at x* with ∇f(x*) = 0
+    -- Define path from x* to x: p(t) = f(x* + t(x - x*))
+    -- Strong convexity gives p(t) ≤ RHS, and taking derivative limit at t = 0
+    -- with p'(0) = ⟨∇f(x*), x - x*⟩ = 0 gives the desired inequality.
+    let e := x - x_star
+    let p := fun t : ℝ => f (x_star + t • e)
+    let q := fun t : ℝ => t * f x + (1 - t) * f x_star - (μ / 2) * t * (1 - t) * ‖e‖^2
+    -- Strong convexity gives p(t) ≤ q(t) for t ∈ [0, 1]
+    have hpq_ineq : ∀ t, 0 ≤ t → t ≤ 1 → p t ≤ q t := by
+      intro t ht0 ht1
+      have hconv := hStrong x x_star t ht0 ht1
+      have heq : t • x + (1 - t) • x_star = x_star + t • e := by
+        simp only [e]; rw [smul_sub]; ring_nf; module
+      simp only [p, q, heq] at hconv ⊢
+      have hnorm : ‖x - x_star‖ = ‖e‖ := by simp only [e]
+      rw [hnorm] at hconv
+      linarith
+    -- At t = 0: p(0) = q(0) = f(x*)
+    have hp0 : p 0 = f x_star := by simp only [p, zero_smul, add_zero]
+    have hq0 : q 0 = f x_star := by simp only [q]; ring
+    -- Compute q'(0) = f(x) - f(x*) - (μ/2)‖e‖²
+    have q_deriv : HasDerivAt q (f x - f x_star - (μ / 2) * ‖e‖^2) 0 := by
+      have h1 : HasDerivAt (fun t : ℝ => t * f x) (f x) 0 := by
+        convert (hasDerivAt_id (0 : ℝ)).mul_const (f x) using 1; ring
+      have h2 : HasDerivAt (fun t : ℝ => (1 - t) * f x_star) (-f x_star) 0 := by
+        have hid : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+          (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+        convert hid.mul_const (f x_star) using 1; ring
+      have h3 : HasDerivAt (fun t : ℝ => (μ / 2) * t * (1 - t) * ‖e‖^2) ((μ / 2) * ‖e‖^2) 0 := by
+        have hpoly : HasDerivAt (fun t : ℝ => t * (1 - t)) 1 0 := by
+          have ha : HasDerivAt (fun t : ℝ => t) 1 0 := hasDerivAt_id (0 : ℝ)
+          have hb : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+            (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+          exact (ha.mul hb).congr_deriv (by simp [id])
+        convert hpoly.const_mul ((μ / 2) * ‖e‖^2) using 1
+        · ext t; ring
+        · ring
+      convert (h1.add h2).sub h3 using 1 <;> ring
+    -- Compute p'(0) = ⟨∇f(x*), e⟩ = 0 (since ∇f(x*) = 0)
+    have p_deriv : HasDerivAt p 0 0 := by
+      have hγ : HasDerivAt (fun t : ℝ => x_star + t • e) e 0 := by
+        have h1 : HasDerivAt (fun _ : ℝ => x_star) 0 0 := hasDerivAt_const 0 x_star
+        have h2 : HasDerivAt (fun t : ℝ => t • e) ((1 : ℝ) • e) 0 :=
+          (hasDerivAt_id 0).smul_const e
+        have hsum := h1.add h2
+        simp only [zero_add, one_smul] at hsum
+        exact hsum
+      have hf_grad : HasGradientAt f (gradient f x_star) x_star := (hDiff x_star).hasGradientAt
+      have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) x_star :=
+        hf_grad.hasFDerivAt
+      have hf_fderiv' : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) (x_star + (0 : ℝ) • e) := by
+        simp only [zero_smul, add_zero]; exact hf_fderiv
+      have hcomp := hf_fderiv'.comp_hasDerivAt (0 : ℝ) hγ
+      simp only [Function.comp_apply, innerSL_apply_apply, zero_smul, add_zero, hMin, inner_zero_left] at hcomp
+      exact hcomp
+    -- Key: if p(0) = q(0), p(t) ≤ q(t) for t > 0, and both differentiable at 0, then p'(0) ≤ q'(0)
+    have hderiv_ineq : 0 ≤ f x - f x_star - (μ / 2) * ‖e‖^2 := by
+      by_contra hcontra
+      push_neg at hcontra
+      -- Let δ = p'(0) - q'(0) = 0 - q'(0) = -(f x - f x_star - (μ/2)‖e‖²) > 0
+      let δ := -(f x - f x_star - (μ / 2) * ‖e‖^2)
+      have hδ_pos : δ > 0 := by simp only [δ]; linarith
+      have h_pq_deriv : HasDerivAt (fun t => p t - q t) δ 0 := by
+        have := HasDerivAt.sub p_deriv q_deriv
+        convert this using 2
+        simp only [δ]; ring
+      have h_pq_0 : (fun t => p t - q t) 0 = 0 := by simp only [hp0, hq0, sub_self]
+      -- Use isLittleO characterization instead of tendsto_slope (which gives nhdsWithin)
+      rw [hasDerivAt_iff_isLittleO] at h_pq_deriv
+      have hε_half : 0 < δ / 2 := by linarith
+      have h_bound_evt := h_pq_deriv.def hε_half
+      simp only [h_pq_0, sub_zero, smul_eq_mul] at h_bound_evt
+      rw [Filter.eventually_iff_exists_mem] at h_bound_evt
+      obtain ⟨s, hs_mem, hs_bound⟩ := h_bound_evt
+      rw [Metric.mem_nhds_iff] at hs_mem
+      obtain ⟨ε, hε_pos, hε_sub⟩ := hs_mem
+      let t := min (ε / 2) (1 / 2)
+      have ht_pos : 0 < t := by positivity
+      have ht_lt_ε : t < ε := by simp only [t]; linarith [min_le_left (ε / 2) (1 / 2)]
+      have ht_le_1 : t ≤ 1 := by simp only [t]; linarith [min_le_right (ε / 2) (1 / 2)]
+      have ht_in_ball : t ∈ Metric.ball 0 ε := by
+        simp only [Metric.mem_ball, dist_zero_right, Real.norm_eq_abs, abs_of_pos ht_pos]
+        exact ht_lt_ε
+      have ht_in_s : t ∈ s := hε_sub ht_in_ball
+      have h_bound := hs_bound t ht_in_s
+      simp only [Real.norm_eq_abs, abs_of_pos ht_pos] at h_bound
+      -- h_bound : ‖p t - q t - t * δ‖ ≤ (δ/2) * t
+      -- This means: -(δ/2)*t ≤ (p t - q t) - t*δ ≤ (δ/2)*t
+      -- So: t*δ - (δ/2)*t ≤ p t - q t, i.e., (δ/2)*t ≤ p t - q t
+      have h_lower : p t - q t ≥ t * δ - (δ / 2) * t := by
+        have h1 : -((δ / 2) * t) ≤ (p t - q t) - t * δ := by
+          have := neg_abs_le (p t - q t - t * δ)
+          linarith
+        linarith
+      have h_diff_pos : p t - q t > 0 := by
+        have : t * δ - (δ / 2) * t = (δ / 2) * t := by ring
+        rw [this] at h_lower
+        have : (δ / 2) * t > 0 := mul_pos (by linarith) ht_pos
+        linarith
+      have h_le := hpq_ineq t (le_of_lt ht_pos) ht_le_1
+      linarith
+    -- From 0 ≤ f(x) - f(x*) - (μ/2)‖e‖², we get f(x*) ≤ f(x) - (μ/2)‖e‖² ≤ f(x)
+    have h_e_sq_nonneg : 0 ≤ (μ / 2) * ‖e‖^2 := by positivity
+    linarith
+  have h_d_norm : ‖d‖ = ‖x - x_star‖ := by simp only [d, norm_sub_rev]
+  rw [h_d_norm] at h_deriv_ineq
+  linarith
+
+/-- Gradient monotonicity for strongly convex functions (full μ, not μ/2).
+
+    For μ-strongly convex f with ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖²
+
+    This is twice as strong as `strong_convex_gradient_lower_bound` and comes from
+    adding the first-order conditions at both x and x*.
+
+    Proof:
+    1. First-order at x: ⟨∇f(x), x* - x⟩ ≤ f(x*) - f(x) - (μ/2)‖x - x*‖²
+       → ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
+    2. First-order at x* with ∇f(x*) = 0: 0 ≤ f(x) - f(x*) - (μ/2)‖x - x*‖²
+       → f(x) - f(x*) ≥ (μ/2)‖x - x*‖²
+    3. Combining: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖² + (μ/2)‖x - x*‖² = μ‖x - x*‖²
+-/
+theorem strong_convex_gradient_monotonicity (f : E → ℝ) (μ : ℝ) (hμ : 0 < μ)
+    (hStrong : IsStronglyConvex f μ) (hDiff : Differentiable ℝ f)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    @inner ℝ E _ (gradient f x) (x - x_star) ≥ μ * ‖x - x_star‖^2 := by
+  -- From strong_convex_gradient_lower_bound, we have:
+  -- ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+  have h1 := strong_convex_gradient_lower_bound f μ hμ hStrong hDiff x x_star hMin
+  -- The key additional fact is that for strongly convex f with ∇f(x*) = 0,
+  -- x* is the unique global minimum and f(x) - f(x*) ≥ (μ/2)‖x - x*‖².
+  --
+  -- From the first-order condition at x:
+  -- ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
+  --
+  -- Combined with f(x) - f(x*) ≥ (μ/2)‖x - x*‖²:
+  -- ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖² + (μ/2)‖x - x*‖² = μ‖x - x*‖²
+  --
+  -- The proof requires showing f(x) - f(x*) ≥ (μ/2)‖x - x*‖², which follows from
+  -- the first-order condition at x* with ∇f(x*) = 0.
   sorry
 
 /-- Interpolation condition for strongly convex AND smooth functions.
@@ -226,49 +519,19 @@ theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (h
     Setting y = x* with ∇f(x*) = 0 gives the result.
 -/
 theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
-    (hSmooth : IsLSmooth f L) (x x_star : E) (hMin : gradient f x_star = 0) :
+    (hSmooth : IsLSmooth f L) (hConvex : ConvexOn ℝ Set.univ f)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
     ‖gradient f x‖^2 ≤ L * @inner ℝ E _ (gradient f x) (x - x_star) := by
-  -- Setting y = x* in the general Baillon-Haddad theorem:
-  -- ⟨∇f(x) - ∇f(x*), x - x*⟩ ≥ (1/L)‖∇f(x) - ∇f(x*)‖²
-  -- Since ∇f(x*) = 0:
-  -- ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
-  -- Multiplying by L:
-  -- L⟨∇f(x), x - x*⟩ ≥ ‖∇f(x)‖²
-
-  -- The Baillon-Haddad theorem itself requires proving:
-  -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
-  -- This is a deep result about L-smooth functions.
-
-  -- **Proof of Baillon-Haddad (general form)**
-  --
-  -- Define h(z) = f(z) - (1/2L)‖∇f(z)‖²
-  --
-  -- Claim: h is convex if f is L-smooth.
-  --
-  -- Proof: We need to show h(αx + (1-α)y) ≤ αh(x) + (1-α)h(y) for α ∈ [0,1].
-  --
-  -- This follows from the descent lemma applied to f and its conjugate properties.
-  -- Specifically, for L-smooth f:
-  -- f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
-  --
-  -- Applying this at x = z - (1/L)∇f(z) shows that the gradient step
-  -- decreases f by at least (1/2L)‖∇f(z)‖².
-  --
-  -- The convexity of h then gives:
-  -- ⟨∇h(x) - ∇h(y), x - y⟩ ≥ 0
-  -- which expands to the Baillon-Haddad inequality.
-  --
-  -- **Alternative proof via descent lemma**
-  --
-  -- From the descent lemma: f(x - (1/L)∇f(x)) ≤ f(x) - (1/2L)‖∇f(x)‖²
-  -- Since x* is the minimum: f(x*) ≤ f(x - (1/L)∇f(x))
-  --
-  -- Also from L-smoothness at x*:
-  -- f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + (L/2)‖x - x*‖²
-  --      = f(x*) + (L/2)‖x - x*‖²  (since ∇f(x*) = 0)
-  --
-  -- Combining these with the standard Cauchy-Schwarz argument gives the result.
-
+  -- The proof uses the Baillon-Haddad theorem via the tilted function technique.
+  -- See the docstring above for the proof strategy.
+  -- Key steps:
+  -- 1. Define h'(z) = f(z) - ⟨∇f(x), z⟩
+  -- 2. h' is L-smooth and convex with ∇h'(x) = 0, so x is global min of h'
+  -- 3. Apply descent lemma to both f and h' to get:
+  --    (1/2L)‖∇f(x)‖² ≤ f(x) - f(x*)  (from f)
+  --    (1/2L)‖∇f(x)‖² ≤ f(x*) - f(x) + ⟨∇f(x), x - x*⟩  (from h')
+  -- 4. Add these to get: (1/L)‖∇f(x)‖² ≤ ⟨∇f(x), x - x*⟩
+  -- 5. Multiply by L: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
   sorry
 
 /-- Fundamental inequality for L-smooth functions:
@@ -623,27 +886,41 @@ theorem convex_convergence_rate (f : E → ℝ) (L : ℝ) (hL : 0 < L)
      ‖∇f(x)‖ ≥ (f(x) - f(x*)) / ‖x - x*‖
 
   5. **Proof Dependencies**:
-     - `lsmooth_fundamental_ineq` (sorry) - needed for descent_lemma
-     - `descent_lemma` (complete, uses lsmooth_fundamental_ineq)
+     - `lsmooth_fundamental_ineq` (COMPLETE)
+     - `descent_lemma` (COMPLETE, uses lsmooth_fundamental_ineq)
      - First-order convexity characterization from Mathlib's ConvexOn
      - Telescoping sum machinery
-
-     Once `lsmooth_fundamental_ineq` is proved, the descent_lemma becomes available
-     and this theorem can be completed using standard convex optimization arguments.
   -/
 
-  -- The proof structure:
-  -- 1. Apply descent_lemma k times to get:
-  --    f(x_k) ≤ f(x₀) - (η/2) ∑ᵢ ‖∇f(xᵢ)‖²
+  -- The proof uses the key identity for distance to optimum:
+  -- ‖x_{k+1} - x*‖² = ‖x_k - η∇f(x_k) - x*‖²
+  --                 = ‖x_k - x*‖² - 2η⟨∇f(x_k), x_k - x*⟩ + η²‖∇f(x_k)‖²
   --
-  -- 2. Use first-order convexity: f(x) - f(x*) ≤ ⟨∇f(x), x - x*⟩
-  --    This follows from ConvexOn hypothesis
+  -- From convexity: f(x_k) - f(x*) ≤ ⟨∇f(x_k), x_k - x*⟩
+  -- So: 2η(f(x_k) - f(x*)) ≤ 2η⟨∇f(x_k), x_k - x*⟩
   --
-  -- 3. Apply Cauchy-Schwarz and average:
-  --    (1/k) ∑ᵢ (f(xᵢ) - f(x*)) ≤ (1/k) ∑ᵢ ⟨∇f(xᵢ), xᵢ - x*⟩
+  -- Rearranging the distance identity:
+  -- 2η(f(x_k) - f(x*)) ≤ ‖x_k - x*‖² - ‖x_{k+1} - x*‖² + η²‖∇f(x_k)‖²
   --
-  -- 4. Use the gradient descent recurrence to show:
-  --    ∑ᵢ ⟨∇f(xᵢ), xᵢ - x*⟩ ≤ ‖x₀ - x*‖² / (2η)
+  -- Summing over i = 0 to k-1:
+  -- 2η∑(f(x_i) - f(x*)) ≤ ‖x_0 - x*‖² - ‖x_k - x*‖² + η²∑‖∇f(x_i)‖²
+  --
+  -- From descent_lemma: f(x_{i+1}) ≤ f(x_i) - (η/2)‖∇f(x_i)‖²
+  -- Telescoping: f(x_k) - f(x_0) ≤ -(η/2)∑‖∇f(x_i)‖²
+  -- So: (η/2)∑‖∇f(x_i)‖² ≤ f(x_0) - f(x_k) ≤ f(x_0) - f(x*)
+  -- Hence: η²∑‖∇f(x_i)‖² ≤ 2η(f(x_0) - f(x*))
+  --
+  -- Substituting:
+  -- 2η∑(f(x_i) - f(x*)) ≤ ‖x_0 - x*‖² + 2η(f(x_0) - f(x*))
+  --
+  -- Since f(x_k) - f(x*) ≤ (1/k)∑(f(x_i) - f(x*)) (minimum ≤ average):
+  -- 2ηk(f(x_k) - f(x*)) ≤ ‖x_0 - x*‖² + 2η(f(x_0) - f(x*))
+  --
+  -- Note: This gives a slightly weaker bound than claimed. The exact bound
+  -- f(x_k) - f(x*) ≤ ‖x_0 - x*‖²/(2ηk) requires showing the last iterate
+  -- satisfies the average bound, which holds for convex objectives.
+  --
+  -- TODO: Complete with induction and Finset.sum machinery
 
   sorry
 
