@@ -95,11 +95,32 @@ theorem lyapunov_iterate_nonincreasing (sys : DiscreteSystem X) (x₀ : X) (V : 
 theorem lyapunov_implies_stable (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsStable sys x₀ := by
-  -- The proof uses the fact that V forms a barrier:
-  -- For ε > 0, let m = inf{V(x) : dist x x₀ = ε}
-  -- By continuity and positivity away from x₀, m > 0
-  -- Choose δ so that V(x) < m for dist x x₀ < δ
-  -- Then trajectories starting in B_δ stay in B_ε because V decreases
+  -- We prove: ∀ ε > 0, ∃ δ > 0, ∀ x, dist x x₀ < δ → ∀ n, dist (sys.step^[n] x) x₀ < ε
+  intro ε hε
+
+  -- Key insight: By continuity of V at x₀ and V(x₀) = 0,
+  -- we can find δ such that V(x) < ε for dist x x₀ < δ.
+  -- Then use V nonincreasing to show trajectories stay bounded.
+
+  -- Step 1: Since V is continuous at x₀ and V(x₀) = 0,
+  -- for any ε' > 0, ∃ δ > 0 such that dist x x₀ < δ → V x < ε'
+  have hV_cont_at : ContinuousAt V x₀ := hV_cont.continuousAt
+  rw [Metric.continuousAt_iff] at hV_cont_at
+
+  -- Step 2: Choose a suitable threshold for V
+  -- We need: if V(x) < some threshold, then dist x x₀ < ε
+  -- This requires V to "grow" as we move away from x₀
+
+  -- The proof requires showing that sublevel sets of V are contained in balls.
+  -- This is a consequence of V being positive away from x₀ and continuous.
+  -- Formally, we need: ∃ m > 0 such that dist x x₀ ≥ ε → V x ≥ m
+  -- Then δ chosen so that V x < m for dist x x₀ < δ gives the result.
+
+  -- This topological argument requires either:
+  -- 1. Compactness of the closed ball to ensure V achieves minimum on boundary
+  -- 2. Or additional hypotheses on V (e.g., proper, radially unbounded)
+
+  -- For now, we provide the structure with the key topological step marked
   sorry
 
 /-- Strict Lyapunov function implies asymptotic stability. -/
@@ -107,9 +128,21 @@ theorem strict_lyapunov_implies_asymptotic [CompactSpace X]
     (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsStrictLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsAsymptoticallyStable sys x₀ := by
-  -- Uses LaSalle's invariance principle:
-  -- V decreasing implies convergence to a level set
-  -- Strict decrease away from x₀ implies limit must be x₀
+  -- The proof uses LaSalle's invariance principle:
+  --
+  -- 1. Stability: follows from lyapunov_implies_stable using hV.toLyapunovFunction
+  -- 2. Convergence: In a compact space, the sequence {sys.step^[n] x} has a
+  --    convergent subsequence. The limit must be in the ω-limit set.
+  -- 3. By LaSalle's principle, the ω-limit set is contained in the largest
+  --    invariant subset of {x : V(sys.step x) = V(x)}.
+  -- 4. Since V strictly decreases away from x₀, this set is exactly {x₀}.
+  -- 5. Therefore, the ω-limit set is {x₀}, implying convergence.
+  --
+  -- The formal proof requires:
+  -- - Showing stability (done by lyapunov_implies_stable)
+  -- - Compactness argument for subsequential limits
+  -- - LaSalle's invariance principle for discrete systems
+  -- - Characterization of the invariant set
   sorry
 
 /-- Contraction implies exponential stability. -/
