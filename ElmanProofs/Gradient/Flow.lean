@@ -87,6 +87,45 @@ theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 <
   -- 2. Using that ∇f(x*) = 0 implies x* is global minimum for strongly convex f
   -- 3. Combining the bounds
 
+  -- Key derivation: From the strong convexity definition with a = x, b = x*, t ∈ (0,1]:
+  -- f(t•x + (1-t)•x*) ≤ t•f(x) + (1-t)•f(x*) - (μ/2)•t•(1-t)•‖x - x*‖²
+  --
+  -- Rearranging: f(x* + t(x - x*)) ≤ f(x*) + t(f(x) - f(x*)) - (μ/2)t(1-t)‖x - x*‖²
+  --
+  -- Taking the derivative w.r.t. t at t = 0 (using differentiability):
+  -- LHS derivative: ⟨∇f(x*), x - x*⟩ = 0 (since ∇f(x*) = 0)
+  -- RHS derivative: f(x) - f(x*) - (μ/2)(1)‖x - x*‖² = f(x) - f(x*) - (μ/2)‖x - x*‖²
+  --
+  -- Wait, this gives information at x*, not at x. Let me use a = x*, b = x instead:
+  -- f(t•x* + (1-t)•x) ≤ t•f(x*) + (1-t)•f(x) - (μ/2)•t•(1-t)•‖x* - x‖²
+  --
+  -- Rewrite LHS: f(x + t(x* - x)) = f(x - t(x - x*))
+  --
+  -- Taking derivative w.r.t. t at t = 0:
+  -- LHS: ⟨∇f(x), x* - x⟩ = -⟨∇f(x), x - x*⟩
+  -- RHS: (d/dt)[t•f(x*) + (1-t)•f(x) - (μ/2)•t•(1-t)•‖x - x*‖²] at t=0
+  --     = f(x*) - f(x) - (μ/2)•(1-2t)•‖x - x*‖² at t=0
+  --     = f(x*) - f(x) - (μ/2)‖x - x*‖²
+  --
+  -- The strong convexity inequality gives: LHS ≤ RHS (as t → 0⁺)
+  -- -⟨∇f(x), x - x*⟩ ≤ f(x*) - f(x) - (μ/2)‖x - x*‖²
+  -- ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
+  --
+  -- Since x* is a critical point of strongly convex f, it's the global minimum:
+  -- f(x) - f(x*) ≥ 0
+  --
+  -- Therefore: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+
+  -- The formal proof requires taking limits as t → 0 in the strong convexity
+  -- definition and using differentiability. This involves:
+  -- 1. Showing the function g(t) = f(x + t(x* - x)) is differentiable at t = 0
+  -- 2. Computing g'(0) = ⟨∇f(x), x* - x⟩
+  -- 3. Bounding g(t) using strong convexity
+  -- 4. Taking the limit to get the first-order condition
+
+  -- For the formal proof, we'd use HasDerivAt and the strong convexity bound.
+  -- The derivative calculation uses the chain rule.
+
   sorry
 
 /-- Interpolation condition for strongly convex AND smooth functions.
@@ -162,6 +201,36 @@ theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
   -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
   -- This is a deep result about L-smooth functions.
 
+  -- **Proof of Baillon-Haddad (general form)**
+  --
+  -- Define h(z) = f(z) - (1/2L)‖∇f(z)‖²
+  --
+  -- Claim: h is convex if f is L-smooth.
+  --
+  -- Proof: We need to show h(αx + (1-α)y) ≤ αh(x) + (1-α)h(y) for α ∈ [0,1].
+  --
+  -- This follows from the descent lemma applied to f and its conjugate properties.
+  -- Specifically, for L-smooth f:
+  -- f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
+  --
+  -- Applying this at x = z - (1/L)∇f(z) shows that the gradient step
+  -- decreases f by at least (1/2L)‖∇f(z)‖².
+  --
+  -- The convexity of h then gives:
+  -- ⟨∇h(x) - ∇h(y), x - y⟩ ≥ 0
+  -- which expands to the Baillon-Haddad inequality.
+  --
+  -- **Alternative proof via descent lemma**
+  --
+  -- From the descent lemma: f(x - (1/L)∇f(x)) ≤ f(x) - (1/2L)‖∇f(x)‖²
+  -- Since x* is the minimum: f(x*) ≤ f(x - (1/L)∇f(x))
+  --
+  -- Also from L-smoothness at x*:
+  -- f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + (L/2)‖x - x*‖²
+  --      = f(x*) + (L/2)‖x - x*‖²  (since ∇f(x*) = 0)
+  --
+  -- Combining these with the standard Cauchy-Schwarz argument gives the result.
+
   sorry
 
 /-- Fundamental inequality for L-smooth functions:
@@ -225,10 +294,52 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
   by_cases hL0 : L = 0
   · -- When L = 0, ∇f is constant (0-Lipschitz means constant)
     -- So f(y) = f(x) + ⟨∇f(x), y - x⟩ for all x, y
-    -- This follows from the mean value theorem for paths
     simp only [hL0, zero_div, zero_mul, add_zero]
+
     -- For constant gradient, f is affine: f(y) - f(x) = ⟨∇f(x), y - x⟩
-    -- The proof requires showing this from 0-Lipschitz gradient
+    -- From 0-Lipschitz: ‖∇f(x) - ∇f(y)‖ ≤ 0 * ‖x - y‖ = 0
+    -- So ∇f(x) = ∇f(y) for all x, y (gradient is constant)
+
+    -- When gradient is constant, by the mean value theorem:
+    -- f(y) - f(x) = ⟨∇f(ξ), y - x⟩ for some ξ on the segment
+    -- Since ∇f is constant, ∇f(ξ) = ∇f(x), so f(y) - f(x) = ⟨∇f(x), y - x⟩
+
+    have h_grad_const : ∀ z, gradient f z = gradient f x := by
+      intro z
+      have h0 : ‖gradient f z - gradient f x‖ ≤ 0 * ‖z - x‖ := by
+        rw [← hL0]
+        exact hLip z x
+      simp only [zero_mul, norm_le_zero_iff] at h0
+      exact sub_eq_zero.mp h0
+
+    -- f(y) - f(x) = ⟨∇f(x), y - x⟩ follows from integration along the segment
+    -- with constant gradient. This is a special case of the FTC.
+    -- For affine functions f(a + t*v) = f(a) + t*⟨∇f(a), v⟩
+    -- Setting a = x, v = y - x, t = 1 gives f(y) = f(x) + ⟨∇f(x), y - x⟩
+
+    -- Use Mathlib's Convex.add_smul_mem_of_eq to get the segment,
+    -- then apply FTC. The actual FTC proof requires MeasureTheory integration.
+
+    -- For now, we use the fact that constant gradient implies affine function,
+    -- and affine functions satisfy equality in the smoothness bound.
+    -- This is immediate since the (L/2)‖y-x‖² term is 0 when L = 0.
+
+    -- The key mathematical fact: when L = 0, the gradient is constant,
+    -- and f(y) = f(x) + ⟨∇f(x), y - x⟩ exactly (equality, not just ≤).
+    -- This follows from integrating the constant gradient along any path.
+
+    -- The formal proof of f(y) - f(x) = ∫ ⟨∇f, v⟩ dt = ⟨∇f(x), y-x⟩
+    -- requires the line integral formulation which we document here.
+    -- Given the complexity of MeasureTheory integration, we note that
+    -- this is a standard result for affine functions.
+
+    -- Alternative approach using Convex.inner_mul_le_norm_mul_norm and
+    -- the fact that for differentiable f with constant gradient g:
+    -- (d/dt) f(x + t*(y-x)) = ⟨g, y-x⟩ = constant
+    -- So f(y) - f(x) = ∫₀¹ ⟨g, y-x⟩ dt = ⟨g, y-x⟩ * 1 = ⟨∇f(x), y-x⟩
+
+    -- This requires HasDerivAt machinery for paths, which is available
+    -- but verbose. The mathematical content is clear; we defer formalization.
     sorry
 
   -- Main case: L > 0
