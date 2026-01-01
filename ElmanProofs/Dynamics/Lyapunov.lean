@@ -126,21 +126,48 @@ theorem lyapunov_implies_stable (sys : DiscreteSystem X) (x₀ : X) (V : X → �
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsStable sys x₀ := by
   intro ε hε
 
-  -- The key topological step requires showing:
-  -- m := inf{V(y) : dist y x₀ = ε} > 0
-  -- This needs compactness of the sphere {y : dist y x₀ = ε}
+  /- Proof Strategy:
 
-  -- In finite dimensional spaces or proper metric spaces, closed bounded sets
-  -- are compact, so V attains its minimum on the sphere.
+     **Step 1**: Define m = inf{V(y) : dist y x₀ = ε}
 
-  -- Once we have m > 0, continuity of V at x₀ gives δ > 0 with:
-  -- dist x x₀ < δ → V(x) < m
+     The sphere S_ε = {y : dist y x₀ = ε} is non-empty (take any point at distance ε).
+     Since V is continuous and positive on S_ε (all points ≠ x₀), we have m > 0.
 
-  -- Then the proof follows:
-  -- 1. Take x with dist x x₀ < δ
-  -- 2. For any n, V(sys.step^[n] x) ≤ V(x) < m (Lyapunov decreasing)
-  -- 3. If dist (sys.step^[n] x) x₀ ≥ ε, then V(sys.step^[n] x) ≥ m (def of m)
-  -- 4. Contradiction, so dist (sys.step^[n] x) x₀ < ε
+     **Technical issue**: Without CompactSpace, we can't guarantee V attains
+     its infimum on S_ε. In a proper metric space (locally compact + complete),
+     closed bounded sets are compact, so this would work.
+
+     For now, we assume m := sInf (V '' {y | dist y x₀ = ε}) > 0.
+     This is justified when:
+     - X is finite dimensional
+     - X is a proper metric space
+     - V is "coercive" (V(x) → ∞ as ‖x‖ → ∞)
+
+     **Step 2**: Find δ > 0 using continuity of V at x₀
+
+     Since V is continuous at x₀ with V(x₀) = 0, and m > 0:
+     ∃ δ > 0, dist x x₀ < δ → V(x) < m
+
+     We also need δ < ε to ensure the ball B_δ(x₀) ⊆ B_ε(x₀).
+
+     **Step 3**: Prove stability by contradiction
+
+     Suppose some iterate sys.step^[n] x leaves B_ε(x₀).
+     Then dist (sys.step^[n] x) x₀ ≥ ε.
+     By continuity of the path (discrete), there exists m ≤ n with
+     dist (sys.step^[m] x) x₀ = ε (first exit time).
+     Thus V(sys.step^[m] x) ≥ m (by definition of m).
+     But V(sys.step^[m] x) ≤ V(x) < m (by Lyapunov decreasing + choice of δ).
+     Contradiction.
+  -/
+
+  -- The formal proof requires:
+  -- 1. Existence of infimum m > 0 on the sphere (needs compactness or properness)
+  -- 2. Continuity argument to find δ
+  -- 3. Contradiction via Lyapunov decrease
+
+  -- Without additional topological hypotheses, we cannot complete the proof.
+  -- See `strict_lyapunov_implies_asymptotic` for the CompactSpace version.
 
   sorry
 
@@ -187,15 +214,58 @@ theorem strict_lyapunov_implies_asymptotic [CompactSpace X]
   · exact lyapunov_implies_stable sys x₀ V hV.toIsLyapunovFunction hV_cont hV_pos
 
   -- Part 2: Asymptotic convergence
-  -- Need: ∃ δ > 0, ∀ x, dist x x₀ < δ → sys.step^[n] x → x₀
+  /- LaSalle's Invariance Principle proof:
 
-  -- In CompactSpace X:
-  -- 1. Any sequence has a convergent subsequence
-  -- 2. V(sys.step^[n] x) is monotone decreasing and bounded below by 0
-  -- 3. So V(sys.step^[n] x) → some limit L ≥ 0
-  -- 4. Any ω-limit point y satisfies V(step y) = V(y) = L
-  -- 5. By strict decrease, y = x₀ is the only such point (L = 0)
-  -- 6. All subsequential limits equal x₀, so the full sequence converges
+     **Step 1**: V along trajectory is monotonically decreasing and bounded
+
+     For any x, the sequence V(sys.step^[n] x) is:
+     - Monotone decreasing: V(step y) ≤ V(y) by Lyapunov property
+     - Bounded below by 0: V(y) ≥ 0 for all y
+
+     Therefore V(sys.step^[n] x) → L for some L ≥ 0.
+
+     **Step 2**: ω-limit set characterization
+
+     In CompactSpace X, every sequence has a convergent subsequence.
+     The ω-limit set ω(x) = {y : ∃ subsequence sys.step^[n_k] x → y} is non-empty.
+
+     For any y ∈ ω(x):
+     - V(y) = L (by continuity of V and subsequential convergence)
+     - V(step y) = L (by continuity of V ∘ step and the fact that
+       step(sys.step^[n_k] x) → step(y) by continuity of step)
+
+     **Step 3**: Strict decrease forces ω(x) = {x₀}
+
+     By strict Lyapunov: if y ≠ x₀, then V(step y) < V(y).
+     But we showed V(step y) = V(y) = L for y ∈ ω(x).
+     Therefore y = x₀ for all y ∈ ω(x), i.e., ω(x) = {x₀}.
+
+     **Step 4**: Unique ω-limit implies full convergence
+
+     If all subsequential limits equal x₀, then sys.step^[n] x → x₀.
+     (In compact metric spaces, this is standard: if every convergent
+     subsequence has the same limit, the full sequence converges.)
+
+     **Lean formalization requires**:
+     - `IsCompact.exists_seq_tendsto_of_frequently` for subsequential limits
+     - Continuity of composition for step ∘ iterate
+     - `tendsto_of_subseq_tendsto` or similar for convergence from subsequences
+  -/
+
+  use 1  -- δ = 1 works since we have global convergence in CompactSpace
+  constructor
+  · linarith
+  intro x _
+  -- The sequence sys.step^[n] x has all subsequential limits equal to x₀
+  -- by the LaSalle argument above. In a compact metric space, this implies
+  -- the full sequence converges to x₀.
+
+  -- The formal proof uses:
+  -- 1. Monotone convergence of V(sys.step^[n] x) to some L ≥ 0
+  -- 2. Compactness to extract convergent subsequence to some y
+  -- 3. Continuity to show V(y) = V(step y) = L
+  -- 4. Strict Lyapunov to conclude y = x₀, hence L = 0
+  -- 5. Unique subsequential limit implies full convergence
 
   sorry
 
