@@ -288,8 +288,43 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
                   from funext h_term_eq]
 
   -- Now need: ⨅ k, |c| * g(k) = |c| * ⨅ k, g(k)
-  -- This is true for |c| ≥ 0 by properties of infimum
-  sorry
+  -- Case split on whether c = 0
+  by_cases hc : c = 0
+  · -- If c = 0, then |c| = 0 and both sides are 0
+    simp only [hc, abs_zero, zero_mul]
+    -- LHS = ⨅ k, 0 * g(k) = ⨅ k, 0 = 0
+    simp only [zero_mul]
+    -- Need to show ⨅ k, (0 : ℝ) = 0, which requires the set to be nonempty
+    have : (⨅ k : ℕ, (0 : ℝ)) = 0 := by simp [ciInf_const]
+    exact this
+  · -- If c ≠ 0, then |c| > 0
+    have hc_pos : 0 < |c| := abs_pos.mpr hc
+
+    -- For a > 0: ⨅ k, a * f(k) = a * ⨅ k, f(k)
+    -- This uses that multiplication by positive constant preserves infimum
+
+    -- The key is that x ↦ |c| * x is an order isomorphism on [0, ∞)
+    -- so it preserves infimums
+
+    let g := fun k : ℕ => (frobNorm (A ^ (k + 1))) ^ (1 / (↑k + 1 : ℝ))
+
+    -- Each g(k) ≥ 0 since it's a power of a sqrt
+    have hg_nonneg : ∀ k, 0 ≤ g k := by
+      intro k
+      apply Real.rpow_nonneg
+      apply Real.sqrt_nonneg
+
+    -- Use the property: for a > 0, ⨅ x, a * f(x) = a * ⨅ x, f(x)
+    -- This is `Real.iInf_mul_left` or similar in Mathlib
+    -- Proof: The infimum is characterized by being the greatest lower bound
+    -- a * (⨅ f) is a lower bound of {a * f(k)} since a > 0 preserves order
+    -- And if b is any lower bound, then b/a ≤ f(k) for all k, so b/a ≤ ⨅ f, hence b ≤ a * ⨅ f
+
+    -- For the formal proof, we need to show:
+    -- 1. |c| * ⨅ g is a lower bound of {|c| * g(k)}
+    -- 2. Any lower bound b satisfies b ≤ |c| * ⨅ g
+
+    sorry
 
 /-- Spectral normalization: scale matrix to have spectral radius ≤ target. -/
 noncomputable def spectralNormalize (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ) :
