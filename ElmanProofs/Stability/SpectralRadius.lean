@@ -220,37 +220,50 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
   have h_smul_pow : ∀ k : ℕ, (c • A)^(k+1) = c^(k+1) • A^(k+1) := by
     intro k
     induction k with
-    | zero => simp [pow_one, pow_one]
+    | zero => simp only [Nat.zero_add, pow_one]
     | succ k ih =>
-      rw [pow_succ, pow_succ, pow_succ, ih]
-      -- (c • A) * (c^(k+1) • A^(k+1)) = c^(k+2) • A^(k+2)
-      rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
-      ring_nf
+      -- (c • A)^(k+2) = (c • A)^(k+1) * (c • A) by pow_succ
+      --              = (c^(k+1) • A^(k+1)) * (c • A) by ih
+      --              = c^(k+1) • (A^(k+1) * (c • A)) by Matrix.smul_mul
+      --              = c^(k+1) • (c • (A^(k+1) * A)) by Matrix.mul_smul
+      --              = (c^(k+1) * c) • (A^(k+1) * A) by smul_smul
+      --              = c^(k+2) • A^(k+2) by pow_succ
+      have step1 : (c • A)^(k+1+1) = (c • A)^(k+1) * (c • A) := pow_succ (c • A) (k+1)
+      have step2 : (c • A)^(k+1) * (c • A) = (c^(k+1) • A^(k+1)) * (c • A) := by rw [ih]
+      have step3 : (c^(k+1) • A^(k+1)) * (c • A) = c^(k+1) • (A^(k+1) * (c • A)) :=
+        Matrix.smul_mul _ _ _
+      have step4 : A^(k+1) * (c • A) = c • (A^(k+1) * A) := Matrix.mul_smul _ _ _
+      have step5 : c^(k+1) • (c • (A^(k+1) * A)) = (c^(k+1) * c) • (A^(k+1) * A) := smul_smul _ _ _
+      have step6 : A^(k+1) * A = A^(k+1+1) := (pow_succ A (k+1)).symm
+      have step7 : c^(k+1) * c = c^(k+1+1) := (pow_succ c (k+1)).symm
+      calc (c • A)^(k+1+1)
+          = (c • A)^(k+1) * (c • A) := step1
+        _ = (c^(k+1) • A^(k+1)) * (c • A) := step2
+        _ = c^(k+1) • (A^(k+1) * (c • A)) := step3
+        _ = c^(k+1) • (c • (A^(k+1) * A)) := by rw [step4]
+        _ = (c^(k+1) * c) • (A^(k+1) * A) := step5
+        _ = (c^(k+1) * c) • A^(k+1+1) := by rw [step6]
+        _ = c^(k+1+1) • A^(k+1+1) := by rw [step7]
 
   -- Key lemma 2: Frobenius norm of scalar multiple
   have h_frob_smul : ∀ (s : ℝ) (M : Matrix (Fin n) (Fin n) ℝ),
       frobNorm (s • M) = |s| * frobNorm M := by
     intro s M
     simp only [frobNorm]
-    rw [Real.sqrt_eq_iff_sq_eq]
-    · rw [mul_pow, sq_abs, Real.sq_sqrt]
-      · congr 1
-        simp only [Matrix.smul_apply, smul_eq_mul]
-        rw [Finset.sum_congr rfl (fun i _ => Finset.sum_congr rfl (fun j _ => by ring))]
-        rw [← Finset.mul_sum, ← Finset.mul_sum]
-        ring
-      · apply Finset.sum_nonneg
-        intro i _
-        apply Finset.sum_nonneg
-        intro j _
-        exact sq_nonneg _
-    · apply mul_nonneg (abs_nonneg _)
-      apply Real.sqrt_nonneg
-    · apply Finset.sum_nonneg
+    -- ∑ i, ∑ j, (s * M i j)² = s² * ∑ i, ∑ j, (M i j)²
+    have h_sum_eq : ∑ i, ∑ j, ((s • M) i j)^2 = s^2 * ∑ i, ∑ j, (M i j)^2 := by
+      simp only [Matrix.smul_apply, smul_eq_mul]
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
       intro i _
-      apply Finset.sum_nonneg
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
       intro j _
-      exact sq_nonneg _
+      ring
+    rw [h_sum_eq]
+    -- √(s² * x) = |s| * √x
+    rw [Real.sqrt_mul (sq_nonneg s)]
+    rw [Real.sqrt_sq_eq_abs]
 
   -- Now combine: the infimum of |c| * f(k) = |c| * infimum of f(k)
   -- This requires |c| ≥ 0 and properties of iInf
@@ -272,7 +285,9 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
       rw [← Real.rpow_mul (abs_nonneg c)]
       simp only [Nat.cast_add, Nat.cast_one]
       have h_pos : (0 : ℝ) < k + 1 := by positivity
-      rw [one_div, inv_mul_cancel₀ (ne_of_gt h_pos)]
+      have h_cancel : (↑k + 1 : ℝ) * (1 / (↑k + 1)) = 1 := by
+        field_simp
+      rw [h_cancel]
       exact Real.rpow_one |c|
     rw [h_pow_rpow]
 
@@ -283,20 +298,20 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
   -- `Real.iInf_mul_of_nonneg` or similar lemma from Mathlib
   -- which states: ⨅ k, (a * f k) = a * ⨅ k, (f k) when a ≥ 0
 
-  conv_lhs => rw [show (fun k => (frobNorm ((c • A) ^ (k + 1))) ^ (1 / (↑k + 1))) =
-                       (fun k => |c| * (frobNorm (A ^ (k + 1))) ^ (1 / (↑k + 1)))
-                  from funext h_term_eq]
+  -- Rewrite using h_term_eq to factor out |c|
+  have h_fn_eq : (fun k : ℕ => (frobNorm ((c • A) ^ (k + 1))) ^ ((1 : ℝ) / (↑k + 1))) =
+                 (fun k : ℕ => |c| * (frobNorm (A ^ (k + 1))) ^ ((1 : ℝ) / (↑k + 1))) := by
+    ext k
+    exact h_term_eq k
+  conv_lhs => rw [h_fn_eq]
 
   -- Now need: ⨅ k, |c| * g(k) = |c| * ⨅ k, g(k)
   -- Case split on whether c = 0
   by_cases hc : c = 0
   · -- If c = 0, then |c| = 0 and both sides are 0
     simp only [hc, abs_zero, zero_mul]
-    -- LHS = ⨅ k, 0 * g(k) = ⨅ k, 0 = 0
-    simp only [zero_mul]
     -- Need to show ⨅ k, (0 : ℝ) = 0, which requires the set to be nonempty
-    have : (⨅ k : ℕ, (0 : ℝ)) = 0 := by simp [ciInf_const]
-    exact this
+    simp only [ciInf_const]
   · -- If c ≠ 0, then |c| > 0
     have hc_pos : 0 < |c| := abs_pos.mpr hc
 
@@ -324,7 +339,10 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
     -- 1. |c| * ⨅ g is a lower bound of {|c| * g(k)}
     -- 2. Any lower bound b satisfies b ≤ |c| * ⨅ g
 
-    sorry
+    -- Use Real.mul_iInf_of_nonneg: |c| * ⨅ k, g k = ⨅ k, |c| * g k
+    -- This requires showing the infimum is bounded below
+    symm
+    rw [Real.mul_iInf_of_nonneg (le_of_lt hc_pos)]
 
 /-- Spectral normalization: scale matrix to have spectral radius ≤ target. -/
 noncomputable def spectralNormalize (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ) :
@@ -337,8 +355,7 @@ theorem spectralNormalize_radius (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ)
     spectralRadius (spectralNormalize A target) = target := by
   -- Unfold the definition of spectralNormalize
   unfold spectralNormalize
-  simp only [hA, ↓reduceIte, ne_eq, not_false_eq_true]
-
+  simp only [hA, ↓reduceIte]
   -- spectralNormalize A target = (target / ρ(A)) • A
   -- By spectral_radius_smul: ρ((target / ρ(A)) • A) = |target / ρ(A)| * ρ(A)
   -- Since target > 0 and ρ(A) > 0 (nonzero), target / ρ(A) > 0
@@ -348,7 +365,6 @@ theorem spectralNormalize_radius (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ)
   -- Once spectral_radius_smul is proved, this follows:
   have h_smul := spectral_radius_smul (target / spectralRadius A) A
   rw [h_smul]
-
   -- Need: spectralRadius A > 0 (since it's ≠ 0 and ≥ 0 by definition as infimum of nonneg terms)
   have h_rho_nonneg : 0 ≤ spectralRadius A := by
     unfold spectralRadius
@@ -356,12 +372,10 @@ theorem spectralNormalize_radius (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ)
     intro k
     apply Real.rpow_nonneg
     apply Real.sqrt_nonneg
-
   have h_rho_pos : 0 < spectralRadius A := by
-    cases' h_rho_nonneg.lt_or_eq with h h
+    rcases h_rho_nonneg.eq_or_lt with h | h
+    · exact absurd h hA.symm
     · exact h
-    · exact absurd h.symm hA
-
   have h_div_pos : 0 < target / spectralRadius A := div_pos ht h_rho_pos
   rw [abs_of_pos h_div_pos]
   field_simp

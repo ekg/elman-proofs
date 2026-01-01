@@ -101,12 +101,44 @@ theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (h
     ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
 
     Equivalently: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
+
+    ## Proof Outline
+
+    **Method 1: Via descent lemma**
+
+    From the descent lemma with step size 1/L:
+    f(x - (1/L)∇f(x)) ≤ f(x) - (1/(2L))‖∇f(x)‖²
+
+    Since x* minimizes f:
+    f(x*) ≤ f(x - (1/L)∇f(x)) ≤ f(x) - (1/(2L))‖∇f(x)‖²
+
+    Also from L-smoothness at x*:
+    f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + (L/2)‖x - x*‖²
+         = f(x*) + (L/2)‖x - x*‖²  (since ∇f(x*) = 0)
+
+    Combining and using strong convexity-type arguments gives the result.
+
+    **Method 2: Direct from Baillon-Haddad**
+
+    The general Baillon-Haddad theorem states that for L-smooth f:
+    ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
+
+    Setting y = x* with ∇f(x*) = 0 gives the result.
 -/
 theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
     (hSmooth : IsLSmooth f L) (x x_star : E) (hMin : gradient f x_star = 0) :
     ‖gradient f x‖^2 ≤ L * @inner ℝ E _ (gradient f x) (x - x_star) := by
-  -- This is a consequence of L-smoothness
-  -- The proof uses the descent lemma and the fact that x* is the minimum
+  -- Setting y = x* in the general Baillon-Haddad theorem:
+  -- ⟨∇f(x) - ∇f(x*), x - x*⟩ ≥ (1/L)‖∇f(x) - ∇f(x*)‖²
+  -- Since ∇f(x*) = 0:
+  -- ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
+  -- Multiplying by L:
+  -- L⟨∇f(x), x - x*⟩ ≥ ‖∇f(x)‖²
+
+  -- The Baillon-Haddad theorem itself requires proving:
+  -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
+  -- This is a deep result about L-smooth functions.
+
   sorry
 
 /-- Fundamental inequality for L-smooth functions:
@@ -291,8 +323,7 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
     let x_k1 := gradientDescentIterates f η x₀ (k + 1)
 
     -- Key: x_{k+1} = x_k - η∇f(x_k)
-    have h_step : x_k1 = x_k - η • gradient f x_k := by
-      simp only [gradientDescentIterates, gradientDescentStep]
+    have h_step : x_k1 = x_k - η • gradient f x_k := rfl
 
     -- The per-iteration contraction: ‖x_{k+1} - x*‖² ≤ (1 - μ/L) ‖x_k - x*‖²
     --
@@ -349,12 +380,15 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
           ‖x_k - x_star‖^2 - 2 * η * @inner ℝ E _ g (x_k - x_star) + η^2 * ‖g‖^2 := by
         rw [h_diff]
         -- Use polarization: ‖a - b‖² = ‖a‖² + ‖b‖² - 2⟨a, b⟩
-        let a := x_k - x_star
         -- ‖a - η • g‖² = ‖a‖² + ‖η • g‖² - 2⟨a, η • g⟩
         --              = ‖a‖² + η²‖g‖² - 2η⟨a, g⟩
         --              = ‖a‖² - 2η⟨g, a⟩ + η²‖g‖² (by inner product symmetry)
         rw [norm_sub_sq_real]
-        rw [norm_smul, Real.norm_eq_abs, sq_abs]
+        -- ‖η • g‖² = (|η| * ‖g‖)² = |η|² * ‖g‖² = η² * ‖g‖²
+        have h_norm_smul_sq : ‖η • g‖^2 = η^2 * ‖g‖^2 := by
+          rw [norm_smul, Real.norm_eq_abs, mul_pow, sq_abs]
+        rw [h_norm_smul_sq]
+        -- ⟨a, η • g⟩ = η * ⟨a, g⟩ = η * ⟨g, a⟩ (by symmetry)
         rw [inner_smul_right, real_inner_comm]
         ring
 
@@ -394,12 +428,8 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       -- (L-μ)/(L+μ) ≤ (L-μ)/L = 1 - μ/L iff L+μ ≥ L, which is true since μ > 0
 
       have h_coeff_neg : 1 / L^2 - 2 / (L * (μ + L)) ≤ 0 := by
-        have h1 : 1 / L^2 = (μ + L) / (L^2 * (μ + L)) := by field_simp
-        have h2 : 2 / (L * (μ + L)) = 2 * L / (L^2 * (μ + L)) := by field_simp
-        have h3 : 1 / L^2 - 2 / (L * (μ + L)) = (μ + L - 2 * L) / (L^2 * (μ + L)) := by field_simp; ring
+        have h3 : 1 / L^2 - 2 / (L * (μ + L)) = (μ - L) / (L^2 * (μ + L)) := by field_simp; ring
         rw [h3]
-        have h4 : μ + L - 2 * L = μ - L := by ring
-        rw [h4]
         apply div_nonpos_of_nonpos_of_nonneg
         · linarith  -- μ - L ≤ 0 since μ ≤ L
         · apply mul_nonneg (sq_nonneg L)
@@ -411,18 +441,90 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
           · linarith  -- L - μ ≥ 0
           · linarith  -- L > 0
           · linarith  -- L + μ ≥ L
-        calc (L - μ) / (L + μ) ≤ (L - μ) / L := h1
-          _ = 1 - μ / L := by field_simp; ring
+        have h2 : (L - μ) / L = 1 - μ / L := by field_simp
+        linarith
 
-      -- The full proof requires chaining h_expand with h_interp and the algebraic bounds
-      sorry
+      -- Chain h_expand with h_interp and algebraic bounds
+      -- Goal: ‖x_k1 - x_star‖^2 ≤ (1 - μ / L) * ‖x_k - x_star‖^2
+      --
+      -- From h_expand (with η = 1/L):
+      -- ‖x_k1 - x_star‖^2 = ‖x_k - x_star‖^2 - (2/L)⟨g, x_k - x*⟩ + (1/L²)‖g‖²
+      --
+      -- From h_interp (assuming strong_smooth_interpolation is proved):
+      -- ⟨g, x_k - x*⟩ ≥ (μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²
+      --
+      -- Substituting:
+      -- ‖x_k1 - x_star‖^2 ≤ ‖x_k - x*‖² - (2/L)·[(μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²] + (1/L²)‖g‖²
+      --                    = ‖x_k - x*‖² - (2μ)/(μ+L)‖x_k - x*‖² + [1/L² - 2/(L(μ+L))]‖g‖²
+      --
+      -- By h_coeff_neg, the coefficient of ‖g‖² is ≤ 0, and ‖g‖² ≥ 0, so:
+      -- ‖x_k1 - x_star‖^2 ≤ ‖x_k - x*‖² - (2μ)/(μ+L)‖x_k - x*‖²
+      --                    = [1 - 2μ/(μ+L)]‖x_k - x*‖²
+      --                    = [(L-μ)/(L+μ)]‖x_k - x*‖²
+      --
+      -- By h_contraction_factor: (L-μ)/(L+μ) ≤ 1 - μ/L
+
+      -- First compute the coefficient 1 - 2μ/(μ+L) = (L-μ)/(L+μ)
+      have h_coeff_eq : 1 - 2 * μ / (μ + L) = (L - μ) / (L + μ) := by
+        field_simp
+        ring
+
+      -- Combine everything using transitivity
+      -- The proof depends on strong_smooth_interpolation which currently has a sorry.
+      -- Once that is proved, this calc chain will work.
+
+      -- Key inequality from h_interp:
+      have h_inner_bound : inner_val ≥ (μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
+                                        1 / (μ + L) * ‖g‖^2 := h_interp
+
+      -- Substitute η = 1/L into h_expand
+      have h_expand' : ‖x_k1 - x_star‖^2 =
+          ‖x_k - x_star‖^2 - 2 / L * inner_val + 1 / L^2 * ‖g‖^2 := by
+        rw [h_expand, h_eta]; ring
+
+      -- Apply the bound on inner_val
+      have h_step1 : ‖x_k1 - x_star‖^2 ≤
+          ‖x_k - x_star‖^2 - 2 / L * ((μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
+                                       1 / (μ + L) * ‖g‖^2) + 1 / L^2 * ‖g‖^2 := by
+        rw [h_expand']
+        have h_L_pos : 0 < L := hL
+        have h_2L_pos : 0 < 2 / L := by positivity
+        nlinarith [h_inner_bound, sq_nonneg ‖g‖, sq_nonneg ‖x_k - x_star‖]
+
+      -- Simplify to get the coefficient form
+      have h_step2 : ‖x_k1 - x_star‖^2 ≤
+          ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 +
+          (1 / L^2 - 2 / (L * (μ + L))) * ‖g‖^2 := by
+        calc ‖x_k1 - x_star‖^2
+            ≤ ‖x_k - x_star‖^2 - 2 / L * ((μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
+                                           1 / (μ + L) * ‖g‖^2) + 1 / L^2 * ‖g‖^2 := h_step1
+          _ = ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 +
+              (1 / L^2 - 2 / (L * (μ + L))) * ‖g‖^2 := by
+            have hL_ne : L ≠ 0 := ne_of_gt hL
+            have hμL_ne : μ + L ≠ 0 := by linarith
+            field_simp
+            ring
+
+      -- Drop the ‖g‖² term (coefficient is ≤ 0)
+      have h_step3 : ‖x_k1 - x_star‖^2 ≤
+          ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 := by
+        have h_g_sq_nonneg : 0 ≤ ‖g‖^2 := sq_nonneg _
+        nlinarith [h_step2, h_coeff_neg, h_g_sq_nonneg]
+
+      -- Factor and apply contraction bound
+      calc ‖x_k1 - x_star‖^2
+          ≤ ‖x_k - x_star‖^2 - 2 * μ / (μ + L) * ‖x_k - x_star‖^2 := h_step3
+        _ = (1 - 2 * μ / (μ + L)) * ‖x_k - x_star‖^2 := by ring
+        _ = (L - μ) / (L + μ) * ‖x_k - x_star‖^2 := by rw [h_coeff_eq]
+        _ ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := by
+            apply mul_le_mul_of_nonneg_right h_contraction_factor (sq_nonneg _)
 
     -- Apply contraction and inductive hypothesis
     calc ‖x_k1 - x_star‖^2
         ≤ (1 - μ / L) * ‖x_k - x_star‖^2 := h_contraction
       _ ≤ (1 - μ / L) * ((1 - μ / L)^k * ‖x₀ - x_star‖^2) := by {
           apply mul_le_mul_of_nonneg_left ih
-          have h1 : μ / L ≤ 1 := div_le_one_of_le hμL (le_of_lt hL)
+          have h1 : μ / L ≤ 1 := (div_le_one (by linarith : 0 < L)).mpr hμL
           linarith
         }
       _ = (1 - μ / L)^(k + 1) * ‖x₀ - x_star‖^2 := by ring
