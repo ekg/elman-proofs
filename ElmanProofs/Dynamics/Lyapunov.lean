@@ -7,6 +7,9 @@ Authors: Elman Ablation Ladder Team
 import Mathlib.Analysis.Normed.Group.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Topology.Order.Basic
+import Mathlib.Topology.Compactness.Compact
+import Mathlib.Topology.MetricSpace.Bounded
+import Mathlib.Topology.Sequences
 
 /-!
 # Lyapunov Stability Theory
@@ -94,180 +97,201 @@ theorem lyapunov_iterate_nonincreasing (sys : DiscreteSystem X) (x₀ : X) (V : 
 
     ## Proof Strategy
 
-    Key insight: if V(x) < inf{V(y) : dist y x₀ = ε}, then x stays in B_ε(x₀).
+    Key insight: if V(x) < inf{V(y) : dist y x₀ ≥ ε}, then x stays in B_ε(x₀).
 
     Given ε > 0, we need to find δ > 0 such that:
     ∀ x, dist x x₀ < δ → ∀ n, dist (sys.step^[n] x) x₀ < ε
 
-    **Step 1: Find the minimum of V on the boundary sphere.**
+    **Step 1: Find the minimum of V on the complement of the open ball.**
 
-    Let S_ε = {y : dist y x₀ = ε} be the sphere of radius ε.
-    Since V is continuous and positive on S_ε, and S_ε is compact in finite dimensions,
-    V attains a minimum m = inf{V(y) : y ∈ S_ε} > 0.
+    Let S = {y : dist y x₀ ≥ ε} = (ball x₀ ε)ᶜ.
+    S is closed (complement of open ball), hence compact in CompactSpace.
+    V '' S is compact in ℝ (continuous image of compact).
+    If S is nonempty, V attains its minimum m = sInf(V '' S) > 0 on S.
 
     **Step 2: Choose δ using continuity of V.**
 
     Since V is continuous at x₀ and V(x₀) = 0, there exists δ ∈ (0, ε) such that
     dist x x₀ < δ → V(x) < m.
 
-    **Step 3: Prove stability.**
+    **Step 3: Prove stability by contradiction.**
 
     For any x with dist x x₀ < δ and any n:
     - V(sys.step^[n] x) ≤ V(x) < m   (by Lyapunov property)
-    - If dist (sys.step^[n] x) x₀ ≥ ε, then V(sys.step^[n] x) ≥ m (by def of m)
+    - If dist (sys.step^[n] x) x₀ ≥ ε, then sys.step^[n] x ∈ S
+    - So V(sys.step^[n] x) ≥ m (by definition of m as infimum)
     - Contradiction! So dist (sys.step^[n] x) x₀ < ε.
-
-    **Note:** The formal proof requires either:
-    - CompactSpace or ProperSpace for X to ensure V attains minimum on S_ε
-    - Or a "radially unbounded" / "proper" hypothesis on V
 -/
-theorem lyapunov_implies_stable (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
+theorem lyapunov_implies_stable [CompactSpace X]
+    (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsStable sys x₀ := by
   intro ε hε
+  -- Define S = complement of open ball = {x : dist x x₀ ≥ ε}
+  set S := (Metric.ball x₀ ε)ᶜ with hS_def
 
-  /- Proof Strategy:
+  -- Case 1: S is empty (all points are within ε of x₀)
+  by_cases hS_empty : S = ∅
+  · -- Any δ > 0 works since all points are already within ε
+    use ε, hε
+    intro x _ n
+    have h_all_in_ball : ∀ y, dist y x₀ < ε := by
+      intro y
+      by_contra h_not
+      have h_in_compl : y ∈ (Metric.ball x₀ ε)ᶜ := by
+        simp only [Set.mem_compl_iff, Metric.mem_ball]
+        exact fun h => h_not h
+      rw [← hS_def, hS_empty] at h_in_compl
+      exact Set.notMem_empty y h_in_compl
+    exact h_all_in_ball (sys.step^[n] x)
 
-     **Step 1**: Define m = inf{V(y) : dist y x₀ = ε}
+  -- Case 2: S is nonempty
+  · have hS_nonempty : S.Nonempty := Set.nonempty_iff_ne_empty.mpr hS_empty
 
-     The sphere S_ε = {y : dist y x₀ = ε} is non-empty (take any point at distance ε).
-     Since V is continuous and positive on S_ε (all points ≠ x₀), we have m > 0.
+    -- S is closed (complement of open ball)
+    have hS_closed : IsClosed S := Metric.isOpen_ball.isClosed_compl
 
-     **Technical issue**: Without CompactSpace, we can't guarantee V attains
-     its infimum on S_ε. In a proper metric space (locally compact + complete),
-     closed bounded sets are compact, so this would work.
+    -- S is compact in CompactSpace
+    have hS_compact : IsCompact S := hS_closed.isCompact
 
-     For now, we assume m := sInf (V '' {y | dist y x₀ = ε}) > 0.
-     This is justified when:
-     - X is finite dimensional
-     - X is a proper metric space
-     - V is "coercive" (V(x) → ∞ as ‖x‖ → ∞)
+    -- V '' S is compact in ℝ
+    have hVS_compact : IsCompact (V '' S) := hS_compact.image hV_cont
 
-     **Step 2**: Find δ > 0 using continuity of V at x₀
+    -- V '' S is nonempty
+    have hVS_nonempty : (V '' S).Nonempty := Set.Nonempty.image V hS_nonempty
 
-     Since V is continuous at x₀ with V(x₀) = 0, and m > 0:
-     ∃ δ > 0, dist x x₀ < δ → V(x) < m
+    -- sInf (V '' S) is in V '' S
+    have h_sInf_mem : sInf (V '' S) ∈ V '' S := hVS_compact.sInf_mem hVS_nonempty
 
-     We also need δ < ε to ensure the ball B_δ(x₀) ⊆ B_ε(x₀).
+    -- Extract the witness: ∃ y ∈ S, V(y) = sInf (V '' S)
+    obtain ⟨y, hy_in_S, hy_eq⟩ := h_sInf_mem
 
-     **Step 3**: Prove stability by contradiction
+    -- m := sInf (V '' S) > 0 since y ≠ x₀ (y is at distance ≥ ε from x₀)
+    set m := sInf (V '' S) with hm_def
+    have hy_ne_x0 : y ≠ x₀ := by
+      intro h_eq
+      simp only [hS_def, Set.mem_compl_iff, Metric.mem_ball] at hy_in_S
+      rw [h_eq, dist_self] at hy_in_S
+      exact hy_in_S hε
+    have hm_pos : 0 < m := by
+      rw [← hy_eq]
+      exact hV_pos y hy_ne_x0
 
-     Suppose some iterate sys.step^[n] x leaves B_ε(x₀).
-     Then dist (sys.step^[n] x) x₀ ≥ ε.
-     By continuity of the path (discrete), there exists m ≤ n with
-     dist (sys.step^[m] x) x₀ = ε (first exit time).
-     Thus V(sys.step^[m] x) ≥ m (by definition of m).
-     But V(sys.step^[m] x) ≤ V(x) < m (by Lyapunov decreasing + choice of δ).
-     Contradiction.
-  -/
+    -- By continuity of V at x₀, find δ such that V(x) < m when dist x x₀ < δ
+    have h_cont_at := hV_cont.continuousAt (x := x₀)
+    rw [Metric.continuousAt_iff] at h_cont_at
+    obtain ⟨δ', hδ'_pos, hδ'⟩ := h_cont_at m hm_pos
 
-  -- The formal proof requires:
-  -- 1. Existence of infimum m > 0 on the sphere (needs compactness or properness)
-  -- 2. Continuity argument to find δ
-  -- 3. Contradiction via Lyapunov decrease
+    -- Use δ = min(δ', ε) to ensure δ < ε
+    use min δ' ε, lt_min hδ'_pos hε
+    intro x hx n
 
-  -- Without additional topological hypotheses, we cannot complete the proof.
-  -- See `strict_lyapunov_implies_asymptotic` for the CompactSpace version.
+    -- V(x) < m since dist x x₀ < δ' ≤ δ
+    have hVx_lt_m : V x < m := by
+      have hx_lt_δ' : dist x x₀ < δ' := lt_of_lt_of_le hx (min_le_left δ' ε)
+      have := hδ' hx_lt_δ'
+      rw [hV.zero_at_eq, Real.dist_eq, sub_zero, abs_of_nonneg (hV.nonneg x)] at this
+      exact this
 
-  sorry
+    -- V(step^n(x)) ≤ V(x) < m
+    have hV_iter_lt_m : V (sys.step^[n] x) < m :=
+      lt_of_le_of_lt (lyapunov_iterate_nonincreasing sys x₀ V hV x n) hVx_lt_m
+
+    -- If step^n(x) ∈ S, then V(step^n(x)) ≥ m, contradiction
+    by_contra h_not_lt
+    push_neg at h_not_lt
+    have h_in_S : sys.step^[n] x ∈ S := by
+      simp only [hS_def, Set.mem_compl_iff, Metric.mem_ball]
+      intro h_lt
+      exact not_lt.mpr h_not_lt h_lt
+    have hV_ge_m : m ≤ V (sys.step^[n] x) := by
+      apply csInf_le
+      · exact hVS_compact.bddBelow
+      · exact Set.mem_image_of_mem V h_in_S
+    exact not_lt.mpr hV_ge_m hV_iter_lt_m
+
+/-- Key lemma: all subsequential limits of the trajectory equal the equilibrium.
+
+    The proof uses LaSalle's invariance principle:
+    - V along the trajectory is antitone and bounded below, so V(traj(φ n)) → L
+    - By continuity of V, V(y) = L where y is the subsequential limit
+    - By continuity of step, V(step y) = L as well
+    - By strict Lyapunov, V(step y) = V(y) implies y = x₀
+-/
+lemma subseq_limit_eq_equilibrium [CompactSpace X]
+    (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
+    (hV : IsStrictLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
+    (hstep_cont : Continuous sys.step)
+    (x : X) (y : X) (φ : ℕ → ℕ) (hφ_mono : StrictMono φ)
+    (hφ_tendsto : Filter.Tendsto (fun n => sys.step^[φ n] x) Filter.atTop (nhds y)) :
+    y = x₀ := by
+  /- The key insight is that for any subsequential limit y:
+     - V(y) = lim V(traj(φ n)) = L (some limit of the antitone sequence)
+     - V(step y) = lim V(traj(φ n + 1)) = L (same limit, since antitone bounded below)
+     - By strict Lyapunov: V(step y) = V(y) implies y = x₀ -/
+  have hV_eq : V y = V (sys.step y) := by
+    -- This requires showing that V(traj(φ n)) and V(traj(φ n + 1)) have the same limit
+    -- which follows from both being subsequences of an antitone bounded sequence
+    sorry
+  by_contra h_ne
+  have : V (sys.step y) < V y := hV.strict_decrease y h_ne
+  rw [hV_eq] at this
+  exact lt_irrefl _ this
 
 /-- Strict Lyapunov function implies asymptotic stability.
 
     ## Proof via LaSalle's Invariance Principle
 
-    In a compact space with a strict Lyapunov function:
+    **Part 1: Stability** follows from `lyapunov_implies_stable`.
 
-    **Part 1: Stability** (from `lyapunov_implies_stable`)
-
-    This follows from the non-strict Lyapunov theorem.
-
-    **Part 2: Convergence via LaSalle's Principle**
-
-    Key concepts:
-    - **ω-limit set**: ω(x) = {y : ∃ subsequence sys.step^[n_k] x → y}
-    - **LaSalle's principle**: ω(x) ⊆ largest invariant subset of {z : V(step z) = V(z)}
-
-    For strict Lyapunov functions:
-    1. The set {z : V(step z) = V(z)} = {x₀} (strict decrease away from x₀)
-    2. {x₀} is invariant (it's a fixed point)
-    3. Therefore ω(x) ⊆ {x₀}
-
-    In compact X:
-    4. ω(x) is non-empty for any x (by Bolzano-Weierstrass)
-    5. So ω(x) = {x₀}
-    6. The full sequence converges: sys.step^[n] x → x₀
-
-    **Technical Details**
-
-    The proof uses:
-    - `IsCompact.exists_tendsto_of_frequently_mem` for subsequential limits
-    - Continuity of V to show ω-limit points satisfy V(step y) = V(y)
-    - `tendsto_nhds_unique` for uniqueness of limits
+    **Part 2: Convergence** uses the unique cluster point argument:
+    1. All subsequential limits equal x₀ (by `subseq_limit_eq_equilibrium`)
+    2. In compact metric space, unique cluster point implies convergence
+    3. Contradiction: if not convergent, extract subsequence staying outside ε-ball
+       but any such subsequence has a further convergent subsequence to x₀
 -/
 theorem strict_lyapunov_implies_asymptotic [CompactSpace X]
     (sys : DiscreteSystem X) (x₀ : X) (V : X → ℝ)
     (hV : IsStrictLyapunovFunction sys x₀ V) (hV_cont : Continuous V)
+    (hstep_cont : Continuous sys.step)
     (hV_pos : ∀ x, x ≠ x₀ → 0 < V x) : IsAsymptoticallyStable sys x₀ := by
   constructor
-
-  -- Part 1: Stability from the non-strict Lyapunov theorem
   · exact lyapunov_implies_stable sys x₀ V hV.toIsLyapunovFunction hV_cont hV_pos
-
-  -- Part 2: Asymptotic convergence
-  /- LaSalle's Invariance Principle proof:
-
-     **Step 1**: V along trajectory is monotonically decreasing and bounded
-
-     For any x, the sequence V(sys.step^[n] x) is:
-     - Monotone decreasing: V(step y) ≤ V(y) by Lyapunov property
-     - Bounded below by 0: V(y) ≥ 0 for all y
-
-     Therefore V(sys.step^[n] x) → L for some L ≥ 0.
-
-     **Step 2**: ω-limit set characterization
-
-     In CompactSpace X, every sequence has a convergent subsequence.
-     The ω-limit set ω(x) = {y : ∃ subsequence sys.step^[n_k] x → y} is non-empty.
-
-     For any y ∈ ω(x):
-     - V(y) = L (by continuity of V and subsequential convergence)
-     - V(step y) = L (by continuity of V ∘ step and the fact that
-       step(sys.step^[n_k] x) → step(y) by continuity of step)
-
-     **Step 3**: Strict decrease forces ω(x) = {x₀}
-
-     By strict Lyapunov: if y ≠ x₀, then V(step y) < V(y).
-     But we showed V(step y) = V(y) = L for y ∈ ω(x).
-     Therefore y = x₀ for all y ∈ ω(x), i.e., ω(x) = {x₀}.
-
-     **Step 4**: Unique ω-limit implies full convergence
-
-     If all subsequential limits equal x₀, then sys.step^[n] x → x₀.
-     (In compact metric spaces, this is standard: if every convergent
-     subsequence has the same limit, the full sequence converges.)
-
-     **Lean formalization requires**:
-     - `IsCompact.exists_seq_tendsto_of_frequently` for subsequential limits
-     - Continuity of composition for step ∘ iterate
-     - `tendsto_of_subseq_tendsto` or similar for convergence from subsequences
-  -/
-
-  use 1  -- δ = 1 works since we have global convergence in CompactSpace
-  constructor
-  · linarith
+  use 1, by linarith
   intro x _
-  -- The sequence sys.step^[n] x has all subsequential limits equal to x₀
-  -- by the LaSalle argument above. In a compact metric space, this implies
-  -- the full sequence converges to x₀.
-
-  -- The formal proof uses:
-  -- 1. Monotone convergence of V(sys.step^[n] x) to some L ≥ 0
-  -- 2. Compactness to extract convergent subsequence to some y
-  -- 3. Continuity to show V(y) = V(step y) = L
-  -- 4. Strict Lyapunov to conclude y = x₀, hence L = 0
-  -- 5. Unique subsequential limit implies full convergence
-
-  sorry
+  let traj : ℕ → X := fun n => sys.step^[n] x
+  -- All subsequential limits equal x₀
+  have h_unique_limit : ∀ (y : X) (φ : ℕ → ℕ), StrictMono φ →
+      Filter.Tendsto (traj ∘ φ) Filter.atTop (nhds y) → y = x₀ := by
+    intro y φ hφ_mono hφ_tendsto
+    exact subseq_limit_eq_equilibrium sys x₀ V hV hV_cont hstep_cont x y φ hφ_mono hφ_tendsto
+  -- Prove convergence by contradiction
+  rw [Metric.tendsto_atTop]
+  by_contra h_not
+  push_neg at h_not
+  obtain ⟨ε, hε, h_inf⟩ := h_not
+  -- Construct strictly increasing sequence staying outside ε-ball
+  have h_build : ∃ ψ : ℕ → ℕ, StrictMono ψ ∧ ∀ k, ε ≤ dist (traj (ψ k)) x₀ := by
+    -- Standard construction: ψ 0 = first n with dist ≥ ε, ψ (k+1) = first n > ψ k with dist ≥ ε
+    sorry
+  obtain ⟨ψ, hψ_mono, hψ_dist⟩ := h_build
+  -- Extract convergent subsequence by compactness
+  have := isCompact_univ.tendsto_subseq (fun n => Set.mem_univ ((traj ∘ ψ) n))
+  obtain ⟨z, _, θ, hθ_mono, hθ_tendsto⟩ := this
+  -- z = x₀ by unique limit property
+  have hz_eq : z = x₀ := h_unique_limit z (ψ ∘ θ) (hψ_mono.comp hθ_mono) hθ_tendsto
+  -- But dist(z, x₀) ≥ ε, contradiction
+  have h_dist_ge : ∀ k, ε ≤ dist ((traj ∘ ψ ∘ θ) k) x₀ := fun k => hψ_dist (θ k)
+  have h_dist_tendsto : Filter.Tendsto (fun k => dist ((traj ∘ ψ ∘ θ) k) x₀)
+      Filter.atTop (nhds (dist z x₀)) := by
+    have h_cont : Continuous (fun y => dist y x₀) := Continuous.dist continuous_id continuous_const
+    exact h_cont.continuousAt.tendsto.comp hθ_tendsto
+  have h_dist_z : ε ≤ dist z x₀ := by
+    apply ge_of_tendsto h_dist_tendsto
+    filter_upwards with k
+    exact h_dist_ge k
+  rw [hz_eq, dist_self] at h_dist_z
+  exact not_lt.mpr h_dist_z hε
 
 /-- Contraction implies exponential stability. -/
 theorem contraction_exponentially_stable (sys : DiscreteSystem X) (x₀ : X)
