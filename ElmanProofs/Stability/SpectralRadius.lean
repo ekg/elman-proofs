@@ -79,7 +79,24 @@ noncomputable def frobNorm (M : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
 -/
 theorem spectral_radius_le_frobNorm (A : Matrix (Fin n) (Fin n) ℝ) :
     spectralRadius A ≤ frobNorm A := by
-  sorry
+  unfold spectralRadius frobNorm
+  let f : ℕ → ℝ := fun k => (Real.sqrt (∑ i, ∑ j, (A ^ (k + 1)) i j ^ 2)) ^ ((1 : ℝ) / (↑k + 1))
+  show ⨅ k, f k ≤ Real.sqrt (∑ i, ∑ j, A i j ^ 2)
+  have h_bdd : BddBelow (Set.range f) := by
+    use 0
+    intro x hx
+    simp only [Set.mem_range] at hx
+    obtain ⟨k, rfl⟩ := hx
+    simp only [f]
+    apply Real.rpow_nonneg
+    exact Real.sqrt_nonneg _
+  have h := ciInf_le h_bdd 0
+  have h_f0 : f 0 = Real.sqrt (∑ i, ∑ j, A i j ^ 2) := by
+    simp only [f, zero_add, pow_one]
+    have h1 : (1 : ℝ) / (↑(0 : ℕ) + 1) = 1 := by norm_num
+    rw [h1, Real.rpow_one]
+  rw [h_f0] at h
+  exact h
 
 /-- Powers of spectrally stable matrices converge to zero.
 
