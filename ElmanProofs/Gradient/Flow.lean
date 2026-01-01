@@ -276,9 +276,15 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       have h_expand : ‖x_k1 - x_star‖^2 =
           ‖x_k - x_star‖^2 - 2 * η * @inner ℝ E _ g (x_k - x_star) + η^2 * ‖g‖^2 := by
         rw [h_diff]
-        -- ‖a - η·g‖² = ‖a‖² - 2η⟨g,a⟩ + η²‖g‖² where a = x_k - x_star
-        -- This is the polarization identity for inner product spaces
-        sorry
+        -- Use polarization: ‖a - b‖² = ‖a‖² + ‖b‖² - 2⟨a, b⟩
+        let a := x_k - x_star
+        -- ‖a - η • g‖² = ‖a‖² + ‖η • g‖² - 2⟨a, η • g⟩
+        --              = ‖a‖² + η²‖g‖² - 2η⟨a, g⟩
+        --              = ‖a‖² - 2η⟨g, a⟩ + η²‖g‖² (by inner product symmetry)
+        rw [norm_sub_sq_real]
+        rw [norm_smul, Real.norm_eq_abs, sq_abs]
+        rw [inner_smul_right, real_inner_comm]
+        ring
 
       -- The rest requires Lemmas 1 and 2 above to bound the RHS by (1 - μ/L)‖x_k - x*‖²
       sorry
