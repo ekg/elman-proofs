@@ -6,6 +6,8 @@ Authors: Elman Ablation Ladder Team
 
 import Mathlib.Analysis.Calculus.Gradient.Basic
 import Mathlib.Analysis.Convex.Basic
+import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.InnerProductSpace.Calculus
 
 /-!
 # Gradient Flow and Learning Dynamics
@@ -44,6 +46,24 @@ def IsLSmooth (f : E → ℝ) (L : ℝ) : Prop :=
 def IsStronglyConvex (f : E → ℝ) (μ : ℝ) : Prop :=
   ∀ x y : E, ∀ t : ℝ, 0 ≤ t → t ≤ 1 →
     f (t • x + (1 - t) • y) ≤ t * f x + (1 - t) * f y - (μ / 2) * t * (1 - t) * ‖x - y‖^2
+
+/-- Fundamental inequality for L-smooth functions:
+    f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
+
+    This follows from integrating the gradient along the line from x to y
+    and using the Lipschitz condition on the gradient. -/
+theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
+    (hSmooth : IsLSmooth f L) (x y : E) :
+    f y ≤ f x + @inner ℝ E _ (gradient f x) (y - x) + (L / 2) * ‖y - x‖^2 := by
+  obtain ⟨hDiff, hLip⟩ := hSmooth
+  -- The proof uses the mean value inequality for the gradient
+  -- f(y) - f(x) = ∫₀¹ ⟨∇f(x + t(y-x)), y - x⟩ dt
+  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ ⟨∇f(x + t(y-x)) - ∇f(x), y - x⟩ dt
+  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ ‖∇f(x + t(y-x)) - ∇f(x)‖ · ‖y - x‖ dt
+  -- ≤ ⟨∇f(x), y - x⟩ + ∫₀¹ L · t · ‖y - x‖ · ‖y - x‖ dt
+  -- = ⟨∇f(x), y - x⟩ + L · ‖y - x‖² · (1/2)
+  -- The formal proof requires integration machinery
+  sorry
 
 /-- One step of gradient descent with learning rate η. -/
 noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
@@ -184,32 +204,57 @@ which allows us to show descent over a single gradient step.
 theorem descent_lemma (f : E → ℝ) (L : ℝ) (hL : 0 < L)
     (hSmooth : IsLSmooth f L) (x : E) (η : ℝ) (hη : 0 < η) (hηL : η ≤ 1 / L) :
     f (gradientDescentStep f η x) ≤ f x - (η / 2) * ‖gradient f x‖^2 := by
-  -- Unfold gradient descent step definition
-  unfold gradientDescentStep
+  -- Define y = x - η∇f(x) (the gradient descent step)
+  let y := x - η • gradient f x
+  let g := gradient f x
 
-  -- Extract the smoothness and differentiability conditions
-  obtain ⟨_, hSmooth_ineq⟩ := hSmooth
+  -- Step 1: Apply the fundamental inequality for L-smooth functions
+  have h_fund := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x y
 
-  -- The descent lemma is a fundamental result in convex optimization.
-  -- It states that for L-smooth functions, a single gradient step with step size η ≤ 1/L
-  -- guarantees a descent in the function value.
-  --
-  -- The proof strategy:
-  -- 1. Define y = x - η∇f(x)
-  -- 2. Use the fundamental inequality of L-smooth functions:
-  --    f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
-  -- 3. Substitute y - x = -η∇f(x):
-  --    ⟨∇f(x), y - x⟩ = -η‖∇f(x)‖²
-  --    ‖y - x‖² = η²‖∇f(x)‖²
-  -- 4. Obtain: f(y) ≤ f(x) - η‖∇f(x)‖² + (Lη²/2)‖∇f(x)‖²
-  -- 5. Factor: f(y) ≤ f(x) + (-η + Lη²/2)‖∇f(x)‖²
-  -- 6. Since η ≤ 1/L, we have Lη ≤ 1, so Lη²/2 ≤ η/2
-  -- 7. Therefore: f(y) ≤ f(x) - (η/2)‖∇f(x)‖²
-  --
-  -- The implementation of step 2 requires deriving the descent inequality
-  -- from the Lipschitz condition on the gradient. This is a standard result
-  -- that would typically be lemmatized in the library.
+  -- Step 2: Compute y - x = -(η • ∇f(x))
+  have h_diff : y - x = -(η • g) := by
+    show (x - η • g) - x = -(η • g)
+    abel
 
-  sorry
+  -- Step 3: Compute ⟨∇f(x), y - x⟩ = -η‖∇f(x)‖²
+  have h_inner : @inner ℝ E _ g (y - x) = -η * ‖g‖^2 := by
+    rw [h_diff, inner_neg_right, inner_smul_right]
+    rw [real_inner_self_eq_norm_sq]
+    ring
+
+  -- Step 4: Compute ‖y - x‖² = η²‖∇f(x)‖²
+  have h_norm_sq : ‖y - x‖^2 = η^2 * ‖g‖^2 := by
+    rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs]
+    have : |η|^2 = η^2 := sq_abs η
+    rw [mul_pow, this]
+
+  -- Step 5: Substitute into the fundamental inequality
+  -- f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
+  --      = f(x) - η‖∇f(x)‖² + (L/2)η²‖∇f(x)‖²
+  --      = f(x) + (-η + Lη²/2)‖∇f(x)‖²
+  calc f y ≤ f x + @inner ℝ E _ g (y - x) + (L / 2) * ‖y - x‖^2 := h_fund
+    _ = f x + (-η * ‖g‖^2) + (L / 2) * (η^2 * ‖g‖^2) := by rw [h_inner, h_norm_sq]
+    _ = f x + (-η + L * η^2 / 2) * ‖g‖^2 := by ring
+    _ ≤ f x + (-η / 2) * ‖g‖^2 := by {
+        -- Need: -η + L*η²/2 ≤ -η/2
+        -- i.e., L*η²/2 ≤ η/2
+        -- i.e., L*η ≤ 1
+        -- which follows from η ≤ 1/L
+        have h_Lη : L * η ≤ 1 := by
+          calc L * η = η * L := mul_comm L η
+            _ ≤ (1 / L) * L := mul_le_mul_of_nonneg_right hηL (le_of_lt hL)
+            _ = 1 := div_mul_cancel₀ 1 (ne_of_gt hL)
+        have h_coeff : -η + L * η^2 / 2 ≤ -η / 2 := by
+          have h1 : L * η^2 / 2 ≤ η / 2 := by
+            have : L * η^2 ≤ η := by
+              calc L * η^2 = (L * η) * η := by ring
+                _ ≤ 1 * η := mul_le_mul_of_nonneg_right h_Lη (le_of_lt hη)
+                _ = η := one_mul η
+            linarith
+          linarith
+        have h_g_sq_nonneg : 0 ≤ ‖g‖^2 := sq_nonneg _
+        nlinarith [sq_nonneg ‖g‖]
+      }
+    _ = f x - (η / 2) * ‖g‖^2 := by ring
 
 end Gradient
