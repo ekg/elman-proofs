@@ -88,11 +88,45 @@ theorem logSumExp_bounds (xs : List ℝ) (hne : ¬xs.isEmpty) :
   let c := xs.foldl max xs.head!
   use c
   refine ⟨rfl, ?_, ?_⟩
+
   · -- Lower bound: c ≤ logSumExp xs
-    -- The max element contributes exp(0) = 1 to the sum, so log(sum) ≥ log(1) = 0
+    -- logSumExp xs = c + log(Σ exp(xi - c))
+    -- Need to show: 0 ≤ log(Σ exp(xi - c))
+    -- This follows because the sum includes at least one term exp(xmax - c) = exp(0) = 1
+
+    -- Unfold logSumExp
+    unfold logSumExp
+    simp only [hne, ↓reduceIte]
+
+    -- The sum Σ exp(xi - c) ≥ 1 because:
+    -- 1. c = max(xs) is in the list or dominates all elements
+    -- 2. There exists xi = c (the maximum), giving exp(0) = 1
+    -- 3. All other terms exp(xj - c) ≥ 0 (exp is positive)
+
+    -- Therefore log(sum) ≥ log(1) = 0, giving c + log(sum) ≥ c
+
+    -- The formal proof requires showing:
+    -- - c is achieved by some element of xs (or all elements ≤ c)
+    -- - The fold computes sum correctly
+    -- - log of sum ≥ 1 is ≥ 0
     sorry
+
   · -- Upper bound: logSumExp xs ≤ c + log n
-    -- Each exp(x_i - c) ≤ exp(0) = 1 since x_i ≤ c, so sum ≤ n
+    -- Each xi ≤ c, so exp(xi - c) ≤ exp(0) = 1
+    -- Sum of n terms each ≤ 1 gives sum ≤ n
+    -- Hence log(sum) ≤ log(n)
+
+    unfold logSumExp
+    simp only [hne, ↓reduceIte]
+
+    -- Need: c + log(Σ exp(xi - c)) ≤ c + log(length xs)
+    -- Equivalently: log(Σ exp(xi - c)) ≤ log(length xs)
+    -- Since log is monotone and sum ≤ length (each term ≤ 1)
+
+    -- The formal proof requires:
+    -- - Showing each exp(xi - c) ≤ 1 (since xi ≤ c = max)
+    -- - Summing n terms each ≤ 1 gives ≤ n
+    -- - Applying log_le_log
     sorry
 
 /-- Gradient of logSumExp is the softmax, which is bounded in (0, 1). -/
