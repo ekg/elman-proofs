@@ -255,6 +255,40 @@ theorem spectral_radius_smul (c : ℝ) (A : Matrix (Fin n) (Fin n) ℝ) :
   -- Now combine: the infimum of |c| * f(k) = |c| * infimum of f(k)
   -- This requires |c| ≥ 0 and properties of iInf
 
+  -- First, show that frobNorm((c • A)^(k+1))^(1/(k+1)) = |c| * frobNorm(A^(k+1))^(1/(k+1))
+  have h_term_eq : ∀ k : ℕ,
+      (frobNorm ((c • A)^(k+1)))^(1 / (k+1 : ℝ)) =
+      |c| * (frobNorm (A^(k+1)))^(1 / (k+1 : ℝ)) := by
+    intro k
+    rw [h_smul_pow k]
+    rw [h_frob_smul (c^(k+1)) (A^(k+1))]
+    -- |c^(k+1)| = |c|^(k+1)
+    rw [abs_pow]
+    -- (|c|^(k+1) * frobNorm(A^(k+1)))^(1/(k+1)) = |c| * frobNorm(A^(k+1))^(1/(k+1))
+    rw [Real.mul_rpow (pow_nonneg (abs_nonneg c) _) (Real.sqrt_nonneg _)]
+    -- |c|^(k+1)^(1/(k+1)) = |c|
+    have h_pow_rpow : (|c|^(k+1 : ℕ))^(1 / (k+1 : ℝ)) = |c| := by
+      rw [← Real.rpow_natCast |c| (k+1)]
+      rw [← Real.rpow_mul (abs_nonneg c)]
+      simp only [Nat.cast_add, Nat.cast_one]
+      have h_pos : (0 : ℝ) < k + 1 := by positivity
+      rw [one_div, inv_mul_cancel₀ (ne_of_gt h_pos)]
+      exact Real.rpow_one |c|
+    rw [h_pow_rpow]
+
+  -- Now use that iInf over (|c| * f k) = |c| * iInf over (f k)
+  -- when |c| ≥ 0 and the infimum is over a nonempty set
+
+  -- The formal proof requires:
+  -- `Real.iInf_mul_of_nonneg` or similar lemma from Mathlib
+  -- which states: ⨅ k, (a * f k) = a * ⨅ k, (f k) when a ≥ 0
+
+  conv_lhs => rw [show (fun k => (frobNorm ((c • A) ^ (k + 1))) ^ (1 / (↑k + 1))) =
+                       (fun k => |c| * (frobNorm (A ^ (k + 1))) ^ (1 / (↑k + 1)))
+                  from funext h_term_eq]
+
+  -- Now need: ⨅ k, |c| * g(k) = |c| * ⨅ k, g(k)
+  -- This is true for |c| ≥ 0 by properties of infimum
   sorry
 
 /-- Spectral normalization: scale matrix to have spectral radius ≤ target. -/
