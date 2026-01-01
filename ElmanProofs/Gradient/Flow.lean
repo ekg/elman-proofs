@@ -296,7 +296,50 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
         rw [inner_smul_right, real_inner_comm]
         ring
 
-      -- The rest requires Lemmas 1 and 2 above to bound the RHS by (1 - μ/L)‖x_k - x*‖²
+      -- Now use h_expand and bound each term
+
+      -- From η = 1/L:
+      have h_eta : η = 1 / L := hη
+      have h_eta_sq : η^2 = 1 / L^2 := by rw [h_eta]; ring
+
+      -- Key inequality 1: Strong convexity gradient inequality
+      -- For μ-strongly convex f with ∇f(x*) = 0:
+      -- ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖²
+      --
+      -- Proof: From strong convexity definition with t = 1:
+      -- f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)‖x - x*‖²
+      -- Rearranging: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
+      -- Since f(x*) is minimum: f(x) - f(x*) ≥ 0
+      -- So: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+      -- (Actually stronger: ⟨∇f(x), x - x*⟩ ≥ μ‖x - x*‖² from strong convexity + smoothness)
+
+      have h_strong_convex_ineq : @inner ℝ E _ g (x_k - x_star) ≥ (μ / 2) * ‖x_k - x_star‖^2 := by
+        -- This follows from the strong convexity hypothesis hStrong
+        -- Requires formalizing the gradient characterization of strong convexity
+        sorry
+
+      -- Key inequality 2: Co-coercivity bound
+      -- For L-smooth f: ‖∇f(x) - ∇f(y)‖² ≤ L⟨∇f(x) - ∇f(y), x - y⟩
+      -- With y = x*, ∇f(x*) = 0:
+      -- ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
+
+      have h_cocoercive : ‖g‖^2 ≤ L * @inner ℝ E _ g (x_k - x_star) := by
+        -- This follows from L-smoothness (Baillon-Haddad theorem)
+        sorry
+
+      -- Combine: using h_expand, h_strong_convex_ineq, and h_cocoercive
+      -- ‖x_{k+1} - x*‖² = ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²‖g‖²
+      --                 ≤ ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²·L⟨g, x_k - x*⟩
+      --                 = ‖x_k - x*‖² - (2η - η²L)⟨g, x_k - x*⟩
+      --                 = ‖x_k - x*‖² - (2/L - 1/L)⟨g, x_k - x*⟩  (using η = 1/L)
+      --                 = ‖x_k - x*‖² - (1/L)⟨g, x_k - x*⟩
+      --                 ≤ ‖x_k - x*‖² - (1/L)·(μ/2)‖x_k - x*‖²
+      --                 = (1 - μ/(2L))‖x_k - x*‖²
+      --                 ≤ (1 - μ/L)‖x_k - x*‖²  -- Need: μ/(2L) ≥ 0, which holds
+
+      -- Note: The above gives (1 - μ/(2L)) which is weaker than (1 - μ/L)
+      -- A tighter analysis using both strong convexity AND smoothness gives (1 - μ/L)
+
       sorry
 
     -- Apply contraction and inductive hypothesis
