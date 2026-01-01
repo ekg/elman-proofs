@@ -153,18 +153,28 @@ theorem convex_convergence_rate (f : E → ℝ) (L : ℝ) (hL : 0 < L)
      Which combined with ‖∇f(x)‖ · ‖x - x*‖ ≥ |⟨∇f(x), x - x*⟩| gives:
      ‖∇f(x)‖ ≥ (f(x) - f(x*)) / ‖x - x*‖
 
-  5. **Key Challenge**:
-     To complete the proof rigorously, we would need to:
-     - Establish descent_lemma (currently sorry in this file)
-     - Formalize the first-order convexity condition in Lean
-     - Handle the case analysis on whether ‖x_i - x*‖ > 0
-     - Carefully track all inequality directions in the telescoping sum
-     - Prove that the sum ∑ᵢ (f(x_i) - f(x*)) telescopes properly
+  5. **Proof Dependencies**:
+     - `lsmooth_fundamental_ineq` (sorry) - needed for descent_lemma
+     - `descent_lemma` (complete, uses lsmooth_fundamental_ineq)
+     - First-order convexity characterization from Mathlib's ConvexOn
+     - Telescoping sum machinery
 
-  Given that descent_lemma is marked sorry, completing this proof requires
-  first establishing the foundation. The mathematical argument is sound but
-  requires careful formalization of convex analysis results in Lean 4.
+     Once `lsmooth_fundamental_ineq` is proved, the descent_lemma becomes available
+     and this theorem can be completed using standard convex optimization arguments.
   -/
+
+  -- The proof structure:
+  -- 1. Apply descent_lemma k times to get:
+  --    f(x_k) ≤ f(x₀) - (η/2) ∑ᵢ ‖∇f(xᵢ)‖²
+  --
+  -- 2. Use first-order convexity: f(x) - f(x*) ≤ ⟨∇f(x), x - x*⟩
+  --    This follows from ConvexOn hypothesis
+  --
+  -- 3. Apply Cauchy-Schwarz and average:
+  --    (1/k) ∑ᵢ (f(xᵢ) - f(x*)) ≤ (1/k) ∑ᵢ ⟨∇f(xᵢ), xᵢ - x*⟩
+  --
+  -- 4. Use the gradient descent recurrence to show:
+  --    ∑ᵢ ⟨∇f(xᵢ), xᵢ - x*⟩ ≤ ‖x₀ - x*‖² / (2η)
 
   sorry
 
