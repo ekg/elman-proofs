@@ -59,13 +59,38 @@ theorem strong_convex_gradient_lower_bound (f : E → ℝ) (μ : ℝ) (hμ : 0 <
     (x x_star : E) (hMin : gradient f x_star = 0) :
     @inner ℝ E _ (gradient f x) (x - x_star) ≥ (μ / 2) * ‖x - x_star‖^2 := by
   -- From strong convexity definition with y = x*, t = 1:
-  -- f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + ... but ∇f(x*) = 0
-  -- Actually need first-order characterization:
   -- f(y) ≥ f(x) + ⟨∇f(x), y - x⟩ + (μ/2)‖y - x‖² for strongly convex f
   -- Setting y = x*: f(x*) ≥ f(x) + ⟨∇f(x), x* - x⟩ + (μ/2)‖x - x*‖²
   -- Rearranging: ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
   -- Since x* is minimum: f(x) - f(x*) ≥ 0
   -- Therefore: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
+  sorry
+
+/-- Interpolation condition for strongly convex AND smooth functions.
+
+    For μ-strongly convex and L-smooth f with ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ (μL)/(μ+L) ‖x - x*‖² + 1/(μ+L) ‖∇f(x)‖²
+
+    This is stronger than using strong convexity or smoothness alone.
+    It's the key to achieving the optimal (1 - μ/L) contraction rate.
+-/
+theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (hμ : 0 < μ)
+    (hSmooth : IsLSmooth f L) (hStrong : IsStronglyConvex f μ)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    @inner ℝ E _ (gradient f x) (x - x_star) ≥
+      (μ * L) / (μ + L) * ‖x - x_star‖^2 + 1 / (μ + L) * ‖gradient f x‖^2 := by
+  -- This follows from combining:
+  -- 1. Strong convexity: ⟨∇f(x) - ∇f(y), x - y⟩ ≥ μ‖x - y‖²
+  -- 2. Co-coercivity (from L-smoothness): ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
+  --
+  -- The interpolation condition is:
+  -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (μL)/(μ+L)‖x - y‖² + 1/(μ+L)‖∇f(x) - ∇f(y)‖²
+  --
+  -- This is obtained by taking a convex combination of the two bounds:
+  -- Let α = L/(μ+L) and β = μ/(μ+L), so α + β = 1
+  -- α · μ‖x-y‖² + β · (1/L)‖∇f(x)-∇f(y)‖²
+  -- = (μL)/(μ+L)‖x-y‖² + (μ/L)/(μ+L)‖∇f(x)-∇f(y)‖²
+  -- But we need 1/(μ+L), so there's a gap. The actual proof uses a more sophisticated argument.
   sorry
 
 /-- Co-coercivity of L-smooth gradients (Baillon-Haddad theorem).
@@ -339,30 +364,57 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       have h_eta : η = 1 / L := hη
       have h_eta_sq : η^2 = 1 / L^2 := by rw [h_eta]; ring
 
-      -- Key inequality 1: Strong convexity gradient inequality
-      -- Use the helper theorem `strong_convex_gradient_lower_bound`
-      have h_strong_convex_ineq : @inner ℝ E _ g (x_k - x_star) ≥ (μ / 2) * ‖x_k - x_star‖^2 := by
-        have hDiff := hSmooth.1
-        exact strong_convex_gradient_lower_bound f μ hμ hStrong hDiff x_k x_star hMin
+      -- Use the interpolation condition which combines strong convexity and smoothness
+      have h_interp := strong_smooth_interpolation f L μ hL hμ hSmooth hStrong x_k x_star hMin
 
-      -- Key inequality 2: Co-coercivity bound (Baillon-Haddad)
-      -- Use the helper theorem `lsmooth_cocoercivity`
-      have h_cocoercive : ‖g‖^2 ≤ L * @inner ℝ E _ g (x_k - x_star) := by
-        exact lsmooth_cocoercivity f L hL hSmooth x_k x_star hMin
+      -- Let inner_val = ⟨g, x_k - x*⟩ for clarity
+      let inner_val := @inner ℝ E _ g (x_k - x_star)
 
-      -- Combine: using h_expand, h_strong_convex_ineq, and h_cocoercive
-      -- ‖x_{k+1} - x*‖² = ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²‖g‖²
-      --                 ≤ ‖x_k - x*‖² - 2η⟨g, x_k - x*⟩ + η²·L⟨g, x_k - x*⟩
-      --                 = ‖x_k - x*‖² - (2η - η²L)⟨g, x_k - x*⟩
-      --                 = ‖x_k - x*‖² - (2/L - 1/L)⟨g, x_k - x*⟩  (using η = 1/L)
-      --                 = ‖x_k - x*‖² - (1/L)⟨g, x_k - x*⟩
-      --                 ≤ ‖x_k - x*‖² - (1/L)·(μ/2)‖x_k - x*‖²
-      --                 = (1 - μ/(2L))‖x_k - x*‖²
-      --                 ≤ (1 - μ/L)‖x_k - x*‖²  -- Need: μ/(2L) ≥ 0, which holds
+      -- From h_expand: ‖x_{k+1} - x*‖² = ‖x_k - x*‖² - 2η·inner_val + η²‖g‖²
+      -- With η = 1/L:
+      -- = ‖x_k - x*‖² - (2/L)·inner_val + (1/L²)‖g‖²
 
-      -- Note: The above gives (1 - μ/(2L)) which is weaker than (1 - μ/L)
-      -- A tighter analysis using both strong convexity AND smoothness gives (1 - μ/L)
+      -- From interpolation: inner_val ≥ (μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²
+      -- So: -(2/L)·inner_val ≤ -(2/L)·[(μL)/(μ+L)‖x_k - x*‖² + 1/(μ+L)‖g‖²]
+      --                      = -(2μ)/(μ+L)‖x_k - x*‖² - 2/(L(μ+L))‖g‖²
 
+      -- Combined:
+      -- ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - (2μ)/(μ+L)‖x_k - x*‖² + [1/L² - 2/(L(μ+L))]‖g‖²
+      --
+      -- The coefficient of ‖g‖²:
+      -- 1/L² - 2/(L(μ+L)) = [(μ+L) - 2L] / [L²(μ+L)] = (μ-L) / [L²(μ+L)] ≤ 0 (since μ ≤ L)
+      --
+      -- So we can drop the ‖g‖² term:
+      -- ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - (2μ)/(μ+L)‖x_k - x*‖²
+      --                = [1 - 2μ/(μ+L)]‖x_k - x*‖²
+      --                = [(μ+L-2μ)/(μ+L)]‖x_k - x*‖²
+      --                = [(L-μ)/(L+μ)]‖x_k - x*‖²
+      --
+      -- Finally: (L-μ)/(L+μ) ≤ 1 - μ/L because:
+      -- (L-μ)/(L+μ) ≤ (L-μ)/L = 1 - μ/L iff L+μ ≥ L, which is true since μ > 0
+
+      have h_coeff_neg : 1 / L^2 - 2 / (L * (μ + L)) ≤ 0 := by
+        have h1 : 1 / L^2 = (μ + L) / (L^2 * (μ + L)) := by field_simp
+        have h2 : 2 / (L * (μ + L)) = 2 * L / (L^2 * (μ + L)) := by field_simp
+        have h3 : 1 / L^2 - 2 / (L * (μ + L)) = (μ + L - 2 * L) / (L^2 * (μ + L)) := by field_simp; ring
+        rw [h3]
+        have h4 : μ + L - 2 * L = μ - L := by ring
+        rw [h4]
+        apply div_nonpos_of_nonpos_of_nonneg
+        · linarith  -- μ - L ≤ 0 since μ ≤ L
+        · apply mul_nonneg (sq_nonneg L)
+          linarith  -- μ + L > 0
+
+      have h_contraction_factor : (L - μ) / (L + μ) ≤ 1 - μ / L := by
+        have h1 : (L - μ) / (L + μ) ≤ (L - μ) / L := by
+          apply div_le_div_of_nonneg_left
+          · linarith  -- L - μ ≥ 0
+          · linarith  -- L > 0
+          · linarith  -- L + μ ≥ L
+        calc (L - μ) / (L + μ) ≤ (L - μ) / L := h1
+          _ = 1 - μ / L := by field_simp; ring
+
+      -- The full proof requires chaining h_expand with h_interp and the algebraic bounds
       sorry
 
     -- Apply contraction and inductive hypothesis
