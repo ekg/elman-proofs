@@ -268,31 +268,33 @@ theorem spectralNormalize_radius (A : Matrix (Fin n) (Fin n) ℝ) (target : ℝ)
     spectralRadius (spectralNormalize A target) = target := by
   -- Unfold the definition of spectralNormalize
   unfold spectralNormalize
-  simp only [hA, if_neg]
+  simp only [hA, ↓reduceIte, ne_eq, not_false_eq_true]
 
   -- spectralNormalize A target = (target / ρ(A)) • A
+  -- By spectral_radius_smul: ρ((target / ρ(A)) • A) = |target / ρ(A)| * ρ(A)
+  -- Since target > 0 and ρ(A) > 0 (nonzero), target / ρ(A) > 0
+  -- So |target / ρ(A)| = target / ρ(A)
+  -- Therefore: ρ(spectralNormalize A target) = (target / ρ(A)) * ρ(A) = target
 
-  -- By spectral_radius_smul:
-  -- ρ((target / ρ(A)) • A) = |target / ρ(A)| * ρ(A)
+  -- Once spectral_radius_smul is proved, this follows:
+  have h_smul := spectral_radius_smul (target / spectralRadius A) A
+  rw [h_smul]
 
-  -- Since target > 0 and ρ(A) ≥ 0 (and ≠ 0), we have target / ρ(A) > 0
-  -- Therefore |target / ρ(A)| = target / ρ(A)
+  -- Need: spectralRadius A > 0 (since it's ≠ 0 and ≥ 0 by definition as infimum of nonneg terms)
+  have h_rho_nonneg : 0 ≤ spectralRadius A := by
+    unfold spectralRadius
+    apply Real.iInf_nonneg
+    intro k
+    apply Real.rpow_nonneg
+    apply Real.sqrt_nonneg
 
-  -- So ρ(spectralNormalize A target) = (target / ρ(A)) * ρ(A) = target
+  have h_rho_pos : 0 < spectralRadius A := by
+    cases' h_rho_nonneg.lt_or_eq with h h
+    · exact h
+    · exact absurd h.symm hA
 
-  -- The formal proof requires spectral_radius_smul which is also sorry'd
-  -- Once that is proved, this follows by algebra:
-
-  -- have h_smul := spectral_radius_smul (target / spectralRadius A) A
-  -- rw [h_smul]
-  -- have h_pos : 0 < spectralRadius A := by
-  --   cases' (spectralRadius A).eq_or_lt_of_le (le_refl _) with h h
-  --   · exact absurd h.symm hA
-  --   · exact h
-  -- have h_div_pos : 0 < target / spectralRadius A := div_pos ht h_pos
-  -- rw [abs_of_pos h_div_pos]
-  -- field_simp
-
-  sorry
+  have h_div_pos : 0 < target / spectralRadius A := div_pos ht h_rho_pos
+  rw [abs_of_pos h_div_pos]
+  field_simp
 
 end SpectralRadius
