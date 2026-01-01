@@ -411,21 +411,218 @@ theorem strong_convex_gradient_monotonicity (f : E → ℝ) (μ : ℝ) (hμ : 0 
     (hStrong : IsStronglyConvex f μ) (hDiff : Differentiable ℝ f)
     (x x_star : E) (hMin : gradient f x_star = 0) :
     @inner ℝ E _ (gradient f x) (x - x_star) ≥ μ * ‖x - x_star‖^2 := by
-  -- From strong_convex_gradient_lower_bound, we have:
-  -- ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖²
-  have h1 := strong_convex_gradient_lower_bound f μ hμ hStrong hDiff x x_star hMin
-  -- The key additional fact is that for strongly convex f with ∇f(x*) = 0,
-  -- x* is the unique global minimum and f(x) - f(x*) ≥ (μ/2)‖x - x*‖².
-  --
-  -- From the first-order condition at x:
+  -- The proof combines two first-order conditions from strong convexity.
+  -- Define d = x* - x and e = x - x*
+  let d := x_star - x
+  let e := x - x_star
+
+  -- Part 1: First-order condition at x gives:
   -- ⟨∇f(x), x - x*⟩ ≥ f(x) - f(x*) + (μ/2)‖x - x*‖²
-  --
-  -- Combined with f(x) - f(x*) ≥ (μ/2)‖x - x*‖²:
-  -- ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖² + (μ/2)‖x - x*‖² = μ‖x - x*‖²
-  --
-  -- The proof requires showing f(x) - f(x*) ≥ (μ/2)‖x - x*‖², which follows from
-  -- the first-order condition at x* with ∇f(x*) = 0.
-  sorry
+  -- (This is derived in strong_convex_gradient_lower_bound as h_deriv_ineq)
+
+  -- We'll derive both bounds together using the same technique.
+
+  -- Step A: Derive ⟨∇f(x), d⟩ ≤ f(x*) - f(x) - (μ/2)‖d‖² via derivative limit
+  let g := fun t : ℝ => f (x + t • d)
+  let h := fun t : ℝ => (1 - t) * f x + t * f x_star - (μ / 2) * t * (1 - t) * ‖d‖^2
+  have h_ineq : ∀ t, 0 ≤ t → t ≤ 1 → g t ≤ h t := by
+    intro t ht0 ht1
+    have hconv := hStrong x_star x t ht0 ht1
+    have heq : t • x_star + (1 - t) • x = x + t • d := by
+      simp only [d]; rw [smul_sub]; ring_nf; module
+    simp only [g, h, heq] at hconv ⊢
+    have hnorm : ‖x_star - x‖ = ‖d‖ := by simp only [d]
+    rw [hnorm] at hconv
+    linarith
+  have hg0 : g 0 = f x := by simp only [g, zero_smul, add_zero]
+  have hh0 : h 0 = f x := by simp only [h]; ring
+  have h_deriv : HasDerivAt h (f x_star - f x - (μ / 2) * ‖d‖^2) 0 := by
+    have h1 : HasDerivAt (fun t : ℝ => (1 - t) * f x) (-f x) 0 := by
+      have hid : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+        (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+      convert hid.mul_const (f x) using 1; ring
+    have h2 : HasDerivAt (fun t : ℝ => t * f x_star) (f x_star) 0 := by
+      convert (hasDerivAt_id (0 : ℝ)).mul_const (f x_star) using 1; ring
+    have h3 : HasDerivAt (fun t : ℝ => (μ / 2) * t * (1 - t) * ‖d‖^2) ((μ / 2) * ‖d‖^2) 0 := by
+      have hpoly : HasDerivAt (fun t : ℝ => t * (1 - t)) 1 0 := by
+        have h1' := hasDerivAt_id (0 : ℝ)
+        have h2' : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+          (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+        have hprod := h1'.mul h2'
+        convert hprod using 2 <;> simp
+      convert hpoly.const_mul ((μ / 2) * ‖d‖^2) using 1
+      · ext t; ring
+      · ring
+    convert (h1.add h2).sub h3 using 1; ring
+  have g_deriv : HasDerivAt g (@inner ℝ E _ (gradient f x) d) 0 := by
+    have hγ : HasDerivAt (fun t : ℝ => x + t • d) d 0 := by
+      have h1 : HasDerivAt (fun _ : ℝ => x) 0 0 := hasDerivAt_const 0 x
+      have h2 : HasDerivAt (fun t : ℝ => t • d) ((1 : ℝ) • d) 0 :=
+        (hasDerivAt_id 0).smul_const d
+      have hsum := h1.add h2
+      simp only [zero_add, one_smul] at hsum
+      exact hsum
+    have hf_grad : HasGradientAt f (gradient f x) x := (hDiff x).hasGradientAt
+    have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x)) x := hf_grad.hasFDerivAt
+    have hf_fderiv' : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x)) (x + (0 : ℝ) • d) := by
+      simp only [zero_smul, add_zero]; exact hf_fderiv
+    have hcomp := hf_fderiv'.comp_hasDerivAt (0 : ℝ) hγ
+    simp only [Function.comp_apply, innerSL_apply_apply, zero_smul, add_zero] at hcomp
+    exact hcomp
+  -- Derivative limit argument: g(0) = h(0), g ≤ h on (0,1], so g'(0) ≤ h'(0)
+  have h_deriv_ineq : @inner ℝ E _ (gradient f x) d ≤ f x_star - f x - (μ / 2) * ‖d‖^2 := by
+    by_contra hcontra
+    push_neg at hcontra
+    let δ := @inner ℝ E _ (gradient f x) d - (f x_star - f x - (μ / 2) * ‖d‖^2)
+    have hδ_pos : δ > 0 := by simp only [δ]; linarith
+    have h_gh_deriv : HasDerivAt (fun t => g t - h t) δ 0 := HasDerivAt.sub g_deriv h_deriv
+    have h_gh_0 : (fun t => g t - h t) 0 = 0 := by simp only [hg0, hh0, sub_self]
+    rw [hasDerivAt_iff_isLittleO] at h_gh_deriv
+    have hε_half : 0 < δ / 2 := by linarith
+    have h_bound_evt := h_gh_deriv.def hε_half
+    simp only [h_gh_0, sub_zero, smul_eq_mul] at h_bound_evt
+    rw [Filter.eventually_iff_exists_mem] at h_bound_evt
+    obtain ⟨s, hs_mem, hs_bound⟩ := h_bound_evt
+    rw [Metric.mem_nhds_iff] at hs_mem
+    obtain ⟨ε, hε_pos, hε_sub⟩ := hs_mem
+    let t := min (ε / 2) (1 / 2)
+    have ht_pos : 0 < t := by positivity
+    have ht_lt_ε : t < ε := by simp only [t]; linarith [min_le_left (ε / 2) (1 / 2)]
+    have ht_le_1 : t ≤ 1 := by simp only [t]; linarith [min_le_right (ε / 2) (1 / 2)]
+    have ht_in_ball : t ∈ Metric.ball 0 ε := by
+      simp only [Metric.mem_ball, dist_zero_right, Real.norm_eq_abs, abs_of_pos ht_pos]
+      exact ht_lt_ε
+    have ht_in_s : t ∈ s := hε_sub ht_in_ball
+    have h_bound := hs_bound t ht_in_s
+    simp only [Real.norm_eq_abs, abs_of_pos ht_pos] at h_bound
+    have h_lower : g t - h t ≥ t * δ - (δ / 2) * t := by
+      have h1 : -((δ / 2) * t) ≤ (g t - h t) - t * δ := by
+        have := neg_abs_le (g t - h t - t * δ)
+        linarith
+      linarith
+    have h_diff_pos : g t - h t > 0 := by
+      have : t * δ - (δ / 2) * t = (δ / 2) * t := by ring
+      rw [this] at h_lower
+      have : (δ / 2) * t > 0 := mul_pos (by linarith) ht_pos
+      linarith
+    have h_le := h_ineq t (le_of_lt ht_pos) ht_le_1
+    linarith
+
+  -- Step B: Derive f(x) - f(x*) ≥ (μ/2)‖e‖² via derivative limit at x*
+  let p := fun t : ℝ => f (x_star + t • e)
+  let q := fun t : ℝ => t * f x + (1 - t) * f x_star - (μ / 2) * t * (1 - t) * ‖e‖^2
+  have hpq_ineq : ∀ t, 0 ≤ t → t ≤ 1 → p t ≤ q t := by
+    intro t ht0 ht1
+    have hconv := hStrong x x_star t ht0 ht1
+    have heq : t • x + (1 - t) • x_star = x_star + t • e := by
+      simp only [e]; rw [smul_sub]; ring_nf; module
+    simp only [p, q, heq] at hconv ⊢
+    have hnorm : ‖x - x_star‖ = ‖e‖ := by simp only [e]
+    rw [hnorm] at hconv
+    linarith
+  have hp0 : p 0 = f x_star := by simp only [p, zero_smul, add_zero]
+  have hq0 : q 0 = f x_star := by simp only [q]; ring
+  have q_deriv : HasDerivAt q (f x - f x_star - (μ / 2) * ‖e‖^2) 0 := by
+    have h1 : HasDerivAt (fun t : ℝ => t * f x) (f x) 0 := by
+      convert (hasDerivAt_id (0 : ℝ)).mul_const (f x) using 1; ring
+    have h2 : HasDerivAt (fun t : ℝ => (1 - t) * f x_star) (-f x_star) 0 := by
+      have hid : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+        (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+      convert hid.mul_const (f x_star) using 1; ring
+    have h3 : HasDerivAt (fun t : ℝ => (μ / 2) * t * (1 - t) * ‖e‖^2) ((μ / 2) * ‖e‖^2) 0 := by
+      have hpoly : HasDerivAt (fun t : ℝ => t * (1 - t)) 1 0 := by
+        have ha : HasDerivAt (fun t : ℝ => t) 1 0 := hasDerivAt_id (0 : ℝ)
+        have hb : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 :=
+          (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ)) |>.congr_deriv (by ring)
+        exact (ha.mul hb).congr_deriv (by simp [id])
+      convert hpoly.const_mul ((μ / 2) * ‖e‖^2) using 1
+      · ext t; ring
+      · ring
+    convert (h1.add h2).sub h3 using 1 <;> ring
+  have p_deriv : HasDerivAt p 0 0 := by
+    have hγ : HasDerivAt (fun t : ℝ => x_star + t • e) e 0 := by
+      have h1 : HasDerivAt (fun _ : ℝ => x_star) 0 0 := hasDerivAt_const 0 x_star
+      have h2 : HasDerivAt (fun t : ℝ => t • e) ((1 : ℝ) • e) 0 :=
+        (hasDerivAt_id 0).smul_const e
+      have hsum := h1.add h2
+      simp only [zero_add, one_smul] at hsum
+      exact hsum
+    have hf_grad : HasGradientAt f (gradient f x_star) x_star := (hDiff x_star).hasGradientAt
+    have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) x_star :=
+      hf_grad.hasFDerivAt
+    have hf_fderiv' : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) (x_star + (0 : ℝ) • e) := by
+      simp only [zero_smul, add_zero]; exact hf_fderiv
+    have hcomp := hf_fderiv'.comp_hasDerivAt (0 : ℝ) hγ
+    simp only [Function.comp_apply, innerSL_apply_apply, zero_smul, add_zero, hMin, inner_zero_left] at hcomp
+    exact hcomp
+  -- p'(0) = 0 ≤ q'(0) = f(x) - f(x*) - (μ/2)‖e‖² gives f(x) - f(x*) ≥ (μ/2)‖e‖²
+  have h_func_bound : 0 ≤ f x - f x_star - (μ / 2) * ‖e‖^2 := by
+    by_contra hcontra
+    push_neg at hcontra
+    let δ := -(f x - f x_star - (μ / 2) * ‖e‖^2)
+    have hδ_pos : δ > 0 := by simp only [δ]; linarith
+    have h_pq_deriv : HasDerivAt (fun t => p t - q t) δ 0 := by
+      have := HasDerivAt.sub p_deriv q_deriv
+      convert this using 2
+      simp only [δ]; ring
+    have h_pq_0 : (fun t => p t - q t) 0 = 0 := by simp only [hp0, hq0, sub_self]
+    rw [hasDerivAt_iff_isLittleO] at h_pq_deriv
+    have hε_half : 0 < δ / 2 := by linarith
+    have h_bound_evt := h_pq_deriv.def hε_half
+    simp only [h_pq_0, sub_zero, smul_eq_mul] at h_bound_evt
+    rw [Filter.eventually_iff_exists_mem] at h_bound_evt
+    obtain ⟨s, hs_mem, hs_bound⟩ := h_bound_evt
+    rw [Metric.mem_nhds_iff] at hs_mem
+    obtain ⟨ε, hε_pos, hε_sub⟩ := hs_mem
+    let t := min (ε / 2) (1 / 2)
+    have ht_pos : 0 < t := by positivity
+    have ht_lt_ε : t < ε := by simp only [t]; linarith [min_le_left (ε / 2) (1 / 2)]
+    have ht_le_1 : t ≤ 1 := by simp only [t]; linarith [min_le_right (ε / 2) (1 / 2)]
+    have ht_in_ball : t ∈ Metric.ball 0 ε := by
+      simp only [Metric.mem_ball, dist_zero_right, Real.norm_eq_abs, abs_of_pos ht_pos]
+      exact ht_lt_ε
+    have ht_in_s : t ∈ s := hε_sub ht_in_ball
+    have h_bound := hs_bound t ht_in_s
+    simp only [Real.norm_eq_abs, abs_of_pos ht_pos] at h_bound
+    have h_lower : p t - q t ≥ t * δ - (δ / 2) * t := by
+      have h1 : -((δ / 2) * t) ≤ (p t - q t) - t * δ := by
+        have := neg_abs_le (p t - q t - t * δ)
+        linarith
+      linarith
+    have h_diff_pos : p t - q t > 0 := by
+      have : t * δ - (δ / 2) * t = (δ / 2) * t := by ring
+      rw [this] at h_lower
+      have : (δ / 2) * t > 0 := mul_pos (by linarith) ht_pos
+      linarith
+    have h_le := hpq_ineq t (le_of_lt ht_pos) ht_le_1
+    linarith
+
+  -- Step C: Combine the two bounds
+  -- From h_deriv_ineq: ⟨∇f(x), d⟩ ≤ f(x*) - f(x) - (μ/2)‖d‖²
+  -- So: ⟨∇f(x), x - x*⟩ = -⟨∇f(x), d⟩ ≥ f(x) - f(x*) + (μ/2)‖d‖²
+  have h_inner_neg : @inner ℝ E _ (gradient f x) (x - x_star) =
+      -@inner ℝ E _ (gradient f x) d := by
+    simp only [d, ← inner_neg_right, neg_sub]
+  have h_d_norm : ‖d‖ = ‖x - x_star‖ := by simp only [d, norm_sub_rev]
+  have h_e_norm : ‖e‖ = ‖x - x_star‖ := by simp only [e]
+
+  -- From h_deriv_ineq: -⟨∇f(x), d⟩ ≥ f(x) - f(x*) + (μ/2)‖d‖²
+  have h_inner_lb : @inner ℝ E _ (gradient f x) (x - x_star) ≥
+      f x - f x_star + (μ / 2) * ‖x - x_star‖^2 := by
+    rw [h_inner_neg]
+    simp only [h_d_norm] at h_deriv_ineq
+    linarith
+
+  -- From h_func_bound: f(x) - f(x*) ≥ (μ/2)‖e‖² = (μ/2)‖x - x*‖²
+  have h_func_lb : f x - f x_star ≥ (μ / 2) * ‖x - x_star‖^2 := by
+    rw [h_e_norm] at h_func_bound
+    linarith
+
+  -- Combine: ⟨∇f(x), x - x*⟩ ≥ (μ/2)‖x - x*‖² + (μ/2)‖x - x*‖² = μ‖x - x*‖²
+  calc @inner ℝ E _ (gradient f x) (x - x_star)
+      ≥ f x - f x_star + (μ / 2) * ‖x - x_star‖^2 := h_inner_lb
+    _ ≥ (μ / 2) * ‖x - x_star‖^2 + (μ / 2) * ‖x - x_star‖^2 := by linarith [h_func_lb]
+    _ = μ * ‖x - x_star‖^2 := by ring
 
 /-- Interpolation condition for strongly convex AND smooth functions.
 
