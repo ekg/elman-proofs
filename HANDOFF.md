@@ -6,11 +6,43 @@ This Lean 4 project contains formal proofs for gradient descent convergence, Lya
 
 ## Current State (2026-01-02)
 
-### All Sorries Resolved
+### New Research Direction: Expressivity Bounds
 
-The project now compiles without any sorry statements. All major theorems are fully proven.
+A new research direction has been established to formally prove expressivity and computational tradeoffs between:
+- **Linear recurrence** (Mamba2, S4D, minGRU): Enables parallel scan via associativity
+- **Nonlinear recurrence** (Elman, GRU): Requires sequential computation but has more expressivity
+- **Log-polynomial** (novel): A middle ground being explored in ~/elman
 
-### Recently Completed Proofs
+See `RESEARCH_ROADMAP.md` for the full research plan.
+
+### Associativity Separation (Mostly Complete)
+
+**New file**: `ElmanProofs/Expressivity/Associativity.lean`
+
+Core theorems proven:
+- `LinearScanElement.instMonoid`: Linear RNN state transitions form a monoid (key for parallel scan!)
+- `polynomial_composition_structure`: Pure power functions compose nicely: `(|a * |b|^α|)^α = |a|^α * |b|^(α²)`
+- `tanh_strictMono`: Tanh is strictly monotone
+- `tanh_injective`: Tanh is injective
+
+Theorems with sorries (need numerical calculus bounds):
+- `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step
+- `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
+
+### Linear State Capacity (Complete)
+
+**File**: `ElmanProofs/Expressivity/LinearCapacity.lean`
+
+All core theorems proven:
+- `linear_state_is_sum`: State = Σ A^{T-1-t} B x_t (explicit sum formula!)
+- `state_additive`, `state_scalar`: State function is linear in inputs
+- `output_determined_by_state`: Output depends only on current state
+- `same_state_same_future`: Same state → same future outputs (indistinguishability!)
+- `reachable_is_subspace`: Reachable states form a vector subspace
+- `reachable_dim_bound`: dim(reachable) ≤ n (information capacity bound)
+- `not_linearly_computable_if_state_independent`: Key limitation theorem
+
+### Previously Completed Proofs
 
 **Gradient Descent Convergence** (`ElmanProofs/Gradient/Flow.lean`):
 - `convex_convergence_rate`: O(1/k) convergence for smooth convex functions
@@ -36,6 +68,7 @@ The project now compiles without any sorry statements. All major theorems are fu
 
 | File | Purpose |
 |------|---------|
+| `ElmanProofs/Expressivity/Associativity.lean` | **NEW** Associativity separation proofs |
 | `ElmanProofs/Gradient/Flow.lean` | Gradient descent convergence proofs |
 | `ElmanProofs/Dynamics/Lyapunov.lean` | Lyapunov stability theory |
 | `ElmanProofs/Stability/SpectralRadius.lean` | Spectral radius bounds |
@@ -113,9 +146,15 @@ Matrix.frobenius_norm_mul M N
 
 ## Possible Next Steps
 
-1. **Linear convergence for strongly convex**: Use `strong_smooth_interpolation` to prove (1-μ/L)^k contraction
-2. **Connect to RNN analysis**: Use Lyapunov and spectral radius results for Elman network stability
-3. **Extend gradient descent**: Accelerated methods (Nesterov), stochastic gradient descent
+### Expressivity Research (Priority)
+1. **Complete counterexample proofs**: Prove `tanh(x)/x` is strictly decreasing for x > 0
+2. **Linear state capacity**: Prove linear RNN state is linear combination of inputs (`LinearCapacity.lean`)
+3. **Linear limitations**: Prove linear RNNs cannot compute threshold/XOR functions (`LinearLimitations.lean`)
+
+### Convergence Theory
+4. **Linear convergence for strongly convex**: Use `strong_smooth_interpolation` to prove (1-μ/L)^k contraction
+5. **Connect to RNN analysis**: Use Lyapunov and spectral radius results for Elman network stability
+6. **Extend gradient descent**: Accelerated methods (Nesterov), stochastic gradient descent
 
 ## Tips for Working on This Codebase
 
