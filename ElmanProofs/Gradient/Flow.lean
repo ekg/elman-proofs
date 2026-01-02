@@ -683,54 +683,6 @@ theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (h
 
   sorry
 
-/-- Co-coercivity of L-smooth gradients (Baillon-Haddad theorem).
-
-    For L-smooth f: ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
-
-    With y = x* where ∇f(x*) = 0:
-    ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
-
-    Equivalently: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
-
-    ## Proof Outline
-
-    **Method 1: Via descent lemma**
-
-    From the descent lemma with step size 1/L:
-    f(x - (1/L)∇f(x)) ≤ f(x) - (1/(2L))‖∇f(x)‖²
-
-    Since x* minimizes f:
-    f(x*) ≤ f(x - (1/L)∇f(x)) ≤ f(x) - (1/(2L))‖∇f(x)‖²
-
-    Also from L-smoothness at x*:
-    f(x) ≤ f(x*) + ⟨∇f(x*), x - x*⟩ + (L/2)‖x - x*‖²
-         = f(x*) + (L/2)‖x - x*‖²  (since ∇f(x*) = 0)
-
-    Combining and using strong convexity-type arguments gives the result.
-
-    **Method 2: Direct from Baillon-Haddad**
-
-    The general Baillon-Haddad theorem states that for L-smooth f:
-    ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
-
-    Setting y = x* with ∇f(x*) = 0 gives the result.
--/
-theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
-    (hSmooth : IsLSmooth f L) (hConvex : ConvexOn ℝ Set.univ f)
-    (x x_star : E) (hMin : gradient f x_star = 0) :
-    ‖gradient f x‖^2 ≤ L * @inner ℝ E _ (gradient f x) (x - x_star) := by
-  -- The proof uses the Baillon-Haddad theorem via the tilted function technique.
-  -- See the docstring above for the proof strategy.
-  -- Key steps:
-  -- 1. Define h'(z) = f(z) - ⟨∇f(x), z⟩
-  -- 2. h' is L-smooth and convex with ∇h'(x) = 0, so x is global min of h'
-  -- 3. Apply descent lemma to both f and h' to get:
-  --    (1/2L)‖∇f(x)‖² ≤ f(x) - f(x*)  (from f)
-  --    (1/2L)‖∇f(x)‖² ≤ f(x*) - f(x) + ⟨∇f(x), x - x*⟩  (from h')
-  -- 4. Add these to get: (1/L)‖∇f(x)‖² ≤ ⟨∇f(x), x - x*⟩
-  -- 5. Multiply by L: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩
-  sorry
-
 /-- Fundamental inequality for L-smooth functions:
     f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
 
@@ -1037,6 +989,271 @@ theorem lsmooth_fundamental_ineq (f : E → ℝ) (L : ℝ) (hL : 0 ≤ L)
   -- Conclude: f(y) ≤ f(x) + inner_val + K/2
   simp only [inner_val, K] at h_mono
   linarith
+
+/-- First-order optimality for convex functions: if ∇f(x*) = 0 and f is convex and differentiable,
+    then x* is a global minimizer.
+
+    This is proved using a derivative limit argument: define p(t) = f(x* + t(y - x*)).
+    Convexity gives p(t) ≤ (1-t)p(0) + tp(1). At t = 0, p(0) = p(0), so equality holds.
+    p'(0) = ⟨∇f(x*), y - x*⟩ = 0. For the convex bound p(t) ≤ (1-t)p(0) + tp(1) with
+    derivative 0 at t = 0, we must have p(0) ≤ p(1), i.e., f(x*) ≤ f(y). -/
+lemma convex_first_order_optimality (f : E → ℝ) (hConvex : ConvexOn ℝ Set.univ f)
+    (hDiff : Differentiable ℝ f) (x_star : E) (hMin : gradient f x_star = 0) :
+    ∀ y, f x_star ≤ f y := by
+  -- First-order optimality: for convex differentiable f, ∇f(x*) = 0 implies x* is a global minimizer.
+  -- The proof uses convexity along paths and derivative comparison at t = 0.
+  intro y
+  -- Define p(t) = f(x* + t(y - x*)) and q(t) = (1-t)f(x*) + tf(y)
+  let e := y - x_star
+  let p := fun t : ℝ => f (x_star + t • e)
+  let q := fun t : ℝ => (1 - t) * f x_star + t * f y
+  -- By convexity: p(t) ≤ q(t) for t ∈ [0, 1]
+  have hpq_ineq : ∀ t, 0 ≤ t → t ≤ 1 → p t ≤ q t := by
+    intro t ht0 ht1
+    have h1mt : 0 ≤ 1 - t := by linarith
+    have hsum : (1 - t) + t = 1 := by ring
+    have hconv := hConvex.2 (Set.mem_univ x_star) (Set.mem_univ y) h1mt ht0 hsum
+    have heq : (1 - t) • x_star + t • y = x_star + t • e := by
+      simp only [e, smul_sub]
+      ring_nf
+      module
+    simp only [p, q, heq, smul_eq_mul] at hconv ⊢
+    linarith
+  -- At t = 0: p(0) = q(0) = f(x*)
+  have hp0 : p 0 = f x_star := by simp only [p, zero_smul, add_zero]
+  have hq0 : q 0 = f x_star := by simp only [q]; ring
+  -- p'(0) = ⟨∇f(x*), e⟩ = 0
+  have p_deriv : HasDerivAt p 0 0 := by
+    have hγ : HasDerivAt (fun t : ℝ => x_star + t • e) e 0 := by
+      have h1 : HasDerivAt (fun _ : ℝ => x_star) 0 0 := hasDerivAt_const 0 x_star
+      have h2 : HasDerivAt (fun t : ℝ => t • e) ((1 : ℝ) • e) 0 := (hasDerivAt_id 0).smul_const e
+      have hsum := h1.add h2
+      simp only [zero_add, one_smul] at hsum
+      exact hsum
+    have hf_grad : HasGradientAt f (gradient f x_star) x_star := (hDiff x_star).hasGradientAt
+    have hf_fderiv : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) x_star := hf_grad.hasFDerivAt
+    have hf_fderiv' : HasFDerivAt f (innerSL (𝕜 := ℝ) (gradient f x_star)) (x_star + (0 : ℝ) • e) := by
+      simp only [zero_smul, add_zero]; exact hf_fderiv
+    have hcomp := hf_fderiv'.comp_hasDerivAt (0 : ℝ) hγ
+    simp only [Function.comp_apply, innerSL_apply_apply, zero_smul, add_zero, hMin, inner_zero_left] at hcomp
+    exact hcomp
+  -- q'(0) = f(y) - f(x*)
+  have q_deriv : HasDerivAt q (f y - f x_star) 0 := by
+    have h1 : HasDerivAt (fun t : ℝ => (1 - t) * f x_star) (-f x_star) 0 := by
+      have hid : HasDerivAt (fun t : ℝ => 1 - t) (-1) 0 := by
+        have := (hasDerivAt_const (0 : ℝ) (1 : ℝ)).sub (hasDerivAt_id (0 : ℝ))
+        convert this using 1
+        ring
+      have := hid.mul_const (f x_star)
+      convert this using 1
+      ring
+    have h2 : HasDerivAt (fun t : ℝ => t * f y) (f y) 0 := by
+      have := (hasDerivAt_id (0 : ℝ)).mul_const (f y)
+      convert this using 1
+      ring
+    have h3 := h1.add h2
+    convert h3 using 1
+    ring
+  -- Proof by contradiction: assume f(x*) > f(y)
+  by_contra hcontra
+  push_neg at hcontra
+  let δ := f x_star - f y
+  have hδ_pos : δ > 0 := by simp only [δ]; linarith
+  -- (p - q)'(0) = 0 - (f(y) - f(x*)) = δ > 0
+  have h_pq_deriv : HasDerivAt (fun t => p t - q t) δ 0 := by
+    have hsub := HasDerivAt.sub p_deriv q_deriv
+    convert hsub using 1
+    simp only [δ]
+    ring
+  have h_pq_0 : (fun t => p t - q t) 0 = 0 := by simp only [hp0, hq0, sub_self]
+  -- Use isLittleO characterization of derivative
+  rw [hasDerivAt_iff_isLittleO] at h_pq_deriv
+  have hε_half : 0 < δ / 2 := by linarith
+  have h_bound_evt := h_pq_deriv.def hε_half
+  simp only [h_pq_0, sub_zero, smul_eq_mul] at h_bound_evt
+  rw [Filter.eventually_iff_exists_mem] at h_bound_evt
+  obtain ⟨s, hs_mem, hs_bound⟩ := h_bound_evt
+  rw [Metric.mem_nhds_iff] at hs_mem
+  obtain ⟨ε, hε_pos, hε_sub⟩ := hs_mem
+  -- Choose t in (0, min(ε/2, 1/2)]
+  let t := min (ε / 2) (1 / 2)
+  have ht_pos : 0 < t := by positivity
+  have ht_lt_ε : t < ε := by simp only [t]; linarith [min_le_left (ε / 2) (1 / 2)]
+  have ht_le_1 : t ≤ 1 := by simp only [t]; linarith [min_le_right (ε / 2) (1 / 2)]
+  have ht_in_ball : t ∈ Metric.ball 0 ε := by
+    simp only [Metric.mem_ball, dist_zero_right, Real.norm_eq_abs, abs_of_pos ht_pos]
+    exact ht_lt_ε
+  have ht_in_s : t ∈ s := hε_sub ht_in_ball
+  have h_bound := hs_bound t ht_in_s
+  simp only [Real.norm_eq_abs, abs_of_pos ht_pos] at h_bound
+  -- From derivative approximation: |(p(t) - q(t)) - t*δ| ≤ (δ/2)*t
+  -- So p(t) - q(t) ≥ t*δ - (δ/2)*t = (δ/2)*t > 0
+  have h_lower : p t - q t ≥ t * δ - (δ / 2) * t := by
+    have h1 : -((δ / 2) * t) ≤ (p t - q t) - t * δ := by
+      have := neg_abs_le (p t - q t - t * δ)
+      linarith
+    linarith
+  have h_diff_pos : p t - q t > 0 := by
+    have : t * δ - (δ / 2) * t = (δ / 2) * t := by ring
+    rw [this] at h_lower
+    have : (δ / 2) * t > 0 := mul_pos (by linarith) ht_pos
+    linarith
+  -- But convexity says p(t) ≤ q(t), contradiction
+  have h_le := hpq_ineq t (le_of_lt ht_pos) ht_le_1
+  linarith
+
+/-- Co-coercivity of L-smooth gradients (Baillon-Haddad theorem).
+
+    For L-smooth f: ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
+
+    With y = x* where ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ (1/L)‖∇f(x)‖²
+
+    Equivalently: ‖∇f(x)‖² ≤ L⟨∇f(x), x - x*⟩ -/
+theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
+    (hSmooth : IsLSmooth f L) (hConvex : ConvexOn ℝ Set.univ f)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    ‖gradient f x‖^2 ≤ L * @inner ℝ E _ (gradient f x) (x - x_star) := by
+  -- The proof uses the tilted function technique combining:
+  -- 1. L-smooth descent: f(x - (1/L)g) ≤ f(x) - (1/2L)‖g‖²
+  -- 2. First-order optimality for the tilted function h(z) = f(z) - ⟨g, z⟩
+  -- Adding the two bounds gives (1/L)‖g‖² ≤ ⟨g, x - x*⟩
+  have hDiff : Differentiable ℝ f := hSmooth.1
+  let g := gradient f x
+
+  -- Step 1: x* minimizes f (since ∇f(x*) = 0 and f is convex)
+  have h_xstar_min : ∀ y, f x_star ≤ f y := convex_first_order_optimality f hConvex hDiff x_star hMin
+
+  -- Step 2: Apply lsmooth_fundamental_ineq to get descent at x
+  have h_fund_f := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x (x - (1 / L) • g)
+  have h_descent_f : f (x - (1 / L) • g) ≤ f x - (1 / (2 * L)) * ‖g‖^2 := by
+    have h_diff : (x - (1 / L) • g) - x = -((1 / L) • g) := by simp [sub_eq_add_neg, add_comm]
+    have h_inner : @inner ℝ E _ g ((x - (1 / L) • g) - x) = -(1 / L) * ‖g‖^2 := by
+      rw [h_diff]
+      simp only [inner_neg_right, inner_smul_right, real_inner_self_eq_norm_sq]
+      ring
+    have h_norm : ‖(x - (1 / L) • g) - x‖^2 = (1 / L)^2 * ‖g‖^2 := by
+      rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/L > 0)]
+      ring
+    calc f (x - (1 / L) • g) ≤ f x + @inner ℝ E _ g ((x - (1 / L) • g) - x) +
+                                 (L / 2) * ‖(x - (1 / L) • g) - x‖^2 := h_fund_f
+      _ = f x + (-(1 / L) * ‖g‖^2) + (L / 2) * ((1 / L)^2 * ‖g‖^2) := by rw [h_inner, h_norm]
+      _ = f x - (1 / (2 * L)) * ‖g‖^2 := by field_simp; ring
+
+  -- Bound A: (1/2L)‖g‖² ≤ f(x) - f(x*)
+  have h_bound_A : (1 / (2 * L)) * ‖g‖^2 ≤ f x - f x_star := by
+    have := h_xstar_min (x - (1 / L) • g)
+    linarith
+
+  -- Step 3: Apply fundamental ineq at x_star
+  have h_fund_xstar := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x_star (x_star + (1 / L) • g)
+  have h_fund_xstar_bound : f (x_star + (1 / L) • g) ≤ f x_star + (1 / (2 * L)) * ‖g‖^2 := by
+    have h_diff : (x_star + (1 / L) • g) - x_star = (1 / L) • g := by abel
+    have h_inner : @inner ℝ E _ (gradient f x_star) ((x_star + (1 / L) • g) - x_star) = 0 := by
+      rw [hMin, inner_zero_left]
+    have h_norm : ‖(x_star + (1 / L) • g) - x_star‖^2 = (1 / L)^2 * ‖g‖^2 := by
+      rw [h_diff, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/L > 0)]
+      ring
+    calc f (x_star + (1 / L) • g) ≤ f x_star + @inner ℝ E _ (gradient f x_star)
+          ((x_star + (1 / L) • g) - x_star) + (L / 2) * ‖(x_star + (1 / L) • g) - x_star‖^2 := h_fund_xstar
+      _ = f x_star + 0 + (L / 2) * ((1 / L)^2 * ‖g‖^2) := by rw [h_inner, h_norm]
+      _ = f x_star + (1 / (2 * L)) * ‖g‖^2 := by field_simp; ring
+
+  -- Step 4: Tilted function h(z) = f(z) - ⟨g, z⟩ is convex
+  have h_convex : ConvexOn ℝ Set.univ (fun z => f z - @inner ℝ E _ g z) := by
+    have h_linear_concave : ConcaveOn ℝ Set.univ (fun z => @inner ℝ E _ g z) := by
+      constructor
+      · exact convex_univ
+      · intro z _ w _ a b ha hb hab
+        simp only [inner_add_right, inner_smul_right, smul_eq_mul]
+        linarith
+    exact hConvex.sub h_linear_concave
+
+  -- ∇h(x) = 0
+  have h_grad_h_x : gradient (fun z => f z - @inner ℝ E _ g z) x = 0 := by
+    have hf_diff : DifferentiableAt ℝ f x := hDiff x
+    have hg_diff : DifferentiableAt ℝ (fun z => @inner ℝ E _ g z) x :=
+      (innerSL (𝕜 := ℝ) g).differentiableAt
+    -- The gradient of z ↦ ⟨g, z⟩ is g
+    have hg_grad : HasGradientAt (fun z => @inner ℝ E _ g z) g x := by
+      rw [hasGradientAt_iff_hasFDerivAt]
+      have h1 := (innerSL (𝕜 := ℝ) g).hasFDerivAt (x := x)
+      simp only [InnerProductSpace.toDual] at h1 ⊢
+      convert h1 using 1
+    -- HasGradientAt (f - inner g) (g - g) x
+    have hf_grad : HasGradientAt f g x := hf_diff.hasGradientAt
+    have h_sub : HasGradientAt (fun z => f z - @inner ℝ E _ g z) (g - g) x := by
+      have h1 := hasGradientAt_iff_hasFDerivAt.mp hf_grad
+      have h2 := hasGradientAt_iff_hasFDerivAt.mp hg_grad
+      have h3 := h1.sub h2
+      rw [hasGradientAt_iff_hasFDerivAt]
+      convert h3 using 1
+      simp only [map_sub]
+    rw [sub_self] at h_sub
+    exact h_sub.gradient
+
+  -- h is differentiable
+  have h_diff_h : Differentiable ℝ (fun z => f z - @inner ℝ E _ g z) := by
+    intro z
+    exact (hDiff z).sub (innerSL (𝕜 := ℝ) g).differentiableAt
+
+  -- x minimizes h via first-order optimality
+  have h_x_min_h : ∀ y, (f x - @inner ℝ E _ g x) ≤ (f y - @inner ℝ E _ g y) :=
+    convex_first_order_optimality (fun z => f z - @inner ℝ E _ g z) h_convex h_diff_h x h_grad_h_x
+
+  -- h(x) ≤ h(x_star + (1/L)g)
+  have h_hx_le := h_x_min_h (x_star + (1 / L) • g)
+
+  -- Expand ⟨g, x_star + (1/L)g⟩
+  have h_inner_xstar'_g : @inner ℝ E _ g (x_star + (1 / L) • g) =
+      @inner ℝ E _ g x_star + (1 / L) * ‖g‖^2 := by
+    simp only [inner_add_right, inner_smul_right, real_inner_self_eq_norm_sq]
+
+  -- Bound B: (1/2L)‖g‖² ≤ f(x_star) - f(x) + ⟨g, x - x_star⟩
+  have h_bound_B : (1 / (2 * L)) * ‖g‖^2 ≤ f x_star - f x + @inner ℝ E _ g (x - x_star) := by
+    -- From h(x) ≤ h(x_star + (1/L)g):
+    -- f(x) - ⟨g, x⟩ ≤ f(x_star + (1/L)g) - ⟨g, x_star + (1/L)g⟩
+    --              ≤ [f(x_star) + (1/2L)‖g‖²] - [⟨g, x_star⟩ + (1/L)‖g‖²]
+    --              = f(x_star) - ⟨g, x_star⟩ - (1/2L)‖g‖²
+    -- Rearranging: (1/2L)‖g‖² ≤ f(x_star) - f(x) + ⟨g, x⟩ - ⟨g, x_star⟩
+    --                        = f(x_star) - f(x) + ⟨g, x - x_star⟩
+    have h4 : @inner ℝ E _ g (x - x_star) = @inner ℝ E _ g x - @inner ℝ E _ g x_star :=
+      inner_sub_right g x x_star
+    -- Substitute step3 into step1
+    have step1' : f x - @inner ℝ E _ g x ≤ f (x_star + (1 / L) • g) -
+        (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) := by
+      rw [← h_inner_xstar'_g]
+      exact h_hx_le
+    -- Combine with step2
+    have step2' : f (x_star + (1 / L) • g) - (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) ≤
+        f x_star + (1 / (2 * L)) * ‖g‖^2 - (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) := by
+      linarith [h_fund_xstar_bound]
+    -- Chain inequalities
+    have step3' : f x - @inner ℝ E _ g x ≤
+        f x_star - @inner ℝ E _ g x_star - (1 / (2 * L)) * ‖g‖^2 := by
+      have := le_trans step1' step2'
+      have eq1 : f x_star + (1 / (2 * L)) * ‖g‖^2 - (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) =
+          f x_star - @inner ℝ E _ g x_star - (1 / (2 * L)) * ‖g‖^2 := by ring
+      linarith
+    -- Rearrange
+    have step4 : (1 / (2 * L)) * ‖g‖^2 ≤ f x_star - f x + @inner ℝ E _ g x - @inner ℝ E _ g x_star := by
+      linarith
+    linarith
+
+  -- Add bounds A and B: (1/L)‖g‖² ≤ ⟨g, x - x*⟩
+  have h_combined : (1 / L) * ‖g‖^2 ≤ @inner ℝ E _ g (x - x_star) := by
+    have h_add := add_le_add h_bound_A h_bound_B
+    -- h_add: (1/(2L))‖g‖² + (1/(2L))‖g‖² ≤ (f x - f x_star) + (f x_star - f x + ⟨g, x - x_star⟩)
+    -- LHS = (1/L)‖g‖², RHS = ⟨g, x - x_star⟩
+    have lhs_eq : (1 / (2 * L)) * ‖g‖^2 + (1 / (2 * L)) * ‖g‖^2 = (1 / L) * ‖g‖^2 := by field_simp; ring
+    have rhs_eq : (f x - f x_star) + (f x_star - f x + @inner ℝ E _ g (x - x_star)) =
+        @inner ℝ E _ g (x - x_star) := by ring
+    linarith
+
+  -- Multiply by L
+  calc ‖g‖^2 = L * ((1 / L) * ‖g‖^2) := by field_simp
+    _ ≤ L * @inner ℝ E _ g (x - x_star) := by
+        apply mul_le_mul_of_nonneg_left h_combined (le_of_lt hL)
 
 /-- One step of gradient descent with learning rate η. -/
 noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
