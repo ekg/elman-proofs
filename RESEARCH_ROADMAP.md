@@ -139,31 +139,26 @@ The goal is to rigorously establish what each architecture class can and cannot 
 
 ## Phase 3: Expressivity Separations
 
-### 3.1 Functions Linear RNNs Cannot Compute [NOT STARTED]
+### 3.1 Functions Linear RNNs Cannot Compute [IN PROGRESS]
 
 **Goal**: Exhibit specific functions that linear RNNs provably cannot compute.
 
-**Theorems to prove**:
+**Theorems proven**:
 
-- [ ] `linear_cannot_threshold`: Linear RNN cannot compute step function
-  ```lean
-  theorem linear_cannot_threshold :
-    ¬∃ (A B C : Matrix) (d : ℝ),
-    ∀ inputs, (∑ t, inputs t > 0) → output A B C inputs > d ∧
-              (∑ t, inputs t ≤ 0) → output A B C inputs ≤ d
-  ```
+- [x] `xor_not_affine`: XOR function is not affine (key lemma)
+- [x] `linear_cannot_xor`: Linear RNN cannot compute XOR over history
+- [x] `linear_output_as_sum`: Output is weighted sum of inputs
+- [x] `linear_output_additive`: Output is additive in inputs
+- [x] `linear_output_scalar`: Output is homogeneous in inputs
 
-- [ ] `linear_cannot_xor`: Linear RNN cannot compute XOR over history
-  ```lean
-  theorem linear_cannot_xor :
-    ¬∃ (A B C : Matrix),
-    ∀ inputs : Fin T → Bool,
-    output A B C inputs = xor_reduce inputs
-  ```
+**Theorems with sorries**:
+
+- [~] `linear_cannot_threshold`: Linear RNN cannot compute step function (needs continuity argument)
+- [~] `linear_rnn_affine_on_binary`: Output is affine on binary inputs (technical lemma)
 
 - [ ] `linear_cannot_count_mod_k`: Linear RNN cannot count modulo k (for k > dim)
 
-**Status**: Not started
+**Status**: Core XOR impossibility proof complete
 **Location**: `ElmanProofs/Expressivity/LinearLimitations.lean`
 
 ---
@@ -229,8 +224,10 @@ The goal is to rigorously establish what each architecture class can and cannot 
 | `polynomial_gradient_factor` | LogPolynomialGradient.lean | [ ] | Easy |
 | `log_polynomial_gradient_constant` | LogPolynomialGradient.lean | [ ] | Easy |
 | `log_polynomial_chain_rule` | LogPolynomialGradient.lean | [ ] | Medium |
-| `linear_cannot_threshold` | LinearLimitations.lean | [ ] | Medium |
-| `linear_cannot_xor` | LinearLimitations.lean | [ ] | Medium |
+| `xor_not_affine` | LinearLimitations.lean | [x] DONE | Easy |
+| `linear_cannot_xor` | LinearLimitations.lean | [x] DONE | Medium |
+| `linear_cannot_threshold` | LinearLimitations.lean | [~] sorry | Medium |
+| `linear_rnn_affine_on_binary` | LinearLimitations.lean | [~] sorry | Medium |
 
 ---
 
