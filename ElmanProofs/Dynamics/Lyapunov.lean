@@ -7,6 +7,7 @@ Authors: Elman Ablation Ladder Team
 import Mathlib.Analysis.Normed.Group.Basic
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Topology.Order.Basic
+import Mathlib.Topology.Order.MonotoneConvergence
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Topology.Sequences
@@ -232,7 +233,83 @@ lemma subseq_limit_eq_equilibrium [CompactSpace X]
   have hV_eq : V y = V (sys.step y) := by
     -- This requires showing that V(traj(φ n)) and V(traj(φ n + 1)) have the same limit
     -- which follows from both being subsequences of an antitone bounded sequence
-    sorry
+
+    -- Define the trajectory
+    let traj : ℕ → X := fun n => sys.step^[n] x
+
+    -- V along trajectory is antitone (non-increasing)
+    have h_antitone : Antitone (V ∘ traj) := by
+      intro m n hmn
+      simp only [Function.comp_apply]
+      -- V(traj n) = V(step^[n-m](traj m)) ≤ V(traj m) by Lyapunov property
+      have h_iter : traj n = sys.step^[n - m] (traj m) := by
+        simp only [traj]
+        rw [← Function.iterate_add_apply]
+        congr 1
+        omega
+      rw [h_iter]
+      exact lyapunov_iterate_nonincreasing sys x₀ V hV.toIsLyapunovFunction (traj m) (n - m)
+
+    -- V along trajectory is bounded below by 0
+    have h_bdd_below : BddBelow (Set.range (V ∘ traj)) := by
+      use 0
+      intro z hz
+      simp only [Set.mem_range, Function.comp_apply] at hz
+      obtain ⟨n, rfl⟩ := hz
+      exact hV.nonneg _
+
+    -- The antitone bounded sequence converges to its infimum
+    have h_tendsto_inf : Filter.Tendsto (V ∘ traj) Filter.atTop (nhds (⨅ n, V (traj n))) :=
+      tendsto_atTop_ciInf h_antitone h_bdd_below
+
+    -- Set L = lim V(traj(n))
+    let L := ⨅ n, V (traj n)
+
+    -- Key: V(traj(φ n)) → L (subsequence of convergent sequence)
+    have h_subseq_tendsto : Filter.Tendsto (fun n => V (traj (φ n))) Filter.atTop (nhds L) :=
+      h_tendsto_inf.comp (hφ_mono.tendsto_atTop)
+
+    -- By continuity of V at y: V(traj(φ n)) → V(y)
+    have h_V_y : Filter.Tendsto (fun n => V (traj (φ n))) Filter.atTop (nhds (V y)) :=
+      hV_cont.continuousAt.tendsto.comp hφ_tendsto
+
+    -- Therefore V(y) = L
+    have hVy_eq_L : V y = L := tendsto_nhds_unique h_V_y h_subseq_tendsto
+
+    -- Now show V(step(y)) = L
+    -- First: traj(φ n + 1) = step(traj(φ n))
+    have h_shift : ∀ n, traj (φ n + 1) = sys.step (traj (φ n)) := fun n => by
+      simp only [traj, Function.iterate_succ_apply']
+
+    -- step(traj(φ n)) → step(y) by continuity of step
+    have h_step_tendsto : Filter.Tendsto (fun n => sys.step (traj (φ n))) Filter.atTop (nhds (sys.step y)) :=
+      hstep_cont.continuousAt.tendsto.comp hφ_tendsto
+
+    -- V(step(traj(φ n))) → V(step(y)) by continuity of V
+    have h_V_step_y : Filter.Tendsto (fun n => V (sys.step (traj (φ n)))) Filter.atTop (nhds (V (sys.step y))) :=
+      hV_cont.continuousAt.tendsto.comp h_step_tendsto
+
+    -- V(traj(φ n + 1)) = V(step(traj(φ n)))
+    have h_V_shift : ∀ n, V (traj (φ n + 1)) = V (sys.step (traj (φ n))) := fun n => by rw [h_shift]
+
+    -- V(traj(φ n + 1)) → L (subsequence)
+    -- Need: φ n + 1 is also strictly increasing and tends to infinity
+    have h_shift_mono : StrictMono (fun n => φ n + 1) := fun a b hab =>
+      Nat.add_lt_add_right (hφ_mono hab) 1
+
+    have h_subseq_shift_tendsto : Filter.Tendsto (fun n => V (traj (φ n + 1))) Filter.atTop (nhds L) :=
+      h_tendsto_inf.comp (h_shift_mono.tendsto_atTop)
+
+    -- Using h_V_shift, rewrite h_subseq_shift_tendsto
+    have h_V_step_to_L : Filter.Tendsto (fun n => V (sys.step (traj (φ n)))) Filter.atTop (nhds L) := by
+      simp only [← h_V_shift]
+      exact h_subseq_shift_tendsto
+
+    -- By uniqueness of limits: V(step(y)) = L
+    have hV_step_eq_L : V (sys.step y) = L := tendsto_nhds_unique h_V_step_y h_V_step_to_L
+
+    -- Conclude: V(y) = L = V(step(y))
+    rw [hVy_eq_L, hV_step_eq_L]
   by_contra h_ne
   have : V (sys.step y) < V y := hV.strict_decrease y h_ne
   rw [hV_eq] at this
@@ -272,8 +349,39 @@ theorem strict_lyapunov_implies_asymptotic [CompactSpace X]
   obtain ⟨ε, hε, h_inf⟩ := h_not
   -- Construct strictly increasing sequence staying outside ε-ball
   have h_build : ∃ ψ : ℕ → ℕ, StrictMono ψ ∧ ∀ k, ε ≤ dist (traj (ψ k)) x₀ := by
-    -- Standard construction: ψ 0 = first n with dist ≥ ε, ψ (k+1) = first n > ψ k with dist ≥ ε
-    sorry
+    -- For each N, there exists n ≥ N with dist ≥ ε
+    have h_exists : ∀ N, ∃ n, N ≤ n ∧ ε ≤ dist (traj n) x₀ := by
+      intro N
+      obtain ⟨n, hn_ge, hn_dist⟩ := h_inf N
+      exact ⟨n, hn_ge, hn_dist⟩
+    -- Use Classical.choose to define f
+    let f : ℕ → ℕ := fun N => Classical.choose (h_exists N)
+    have hf : ∀ N, N ≤ f N ∧ ε ≤ dist (traj (f N)) x₀ := fun N => Classical.choose_spec (h_exists N)
+    -- Define ψ iteratively: ψ 0 = f 0, ψ (k+1) = f (ψ k + 1)
+    let ψ : ℕ → ℕ := fun k => k.rec (f 0) (fun _ prev => f (prev + 1))
+    use ψ
+    constructor
+    · -- StrictMono ψ: show ψ a < ψ b for a < b
+      intro a b hab
+      induction b with
+      | zero => exact absurd hab (Nat.not_lt_zero a)
+      | succ b ih =>
+        have h_ψ_succ : ψ (b + 1) = f (ψ b + 1) := rfl
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hab with h_lt | h_eq
+        · -- a < b: use induction hypothesis
+          have h_ind := ih h_lt
+          have h_le : ψ b + 1 ≤ f (ψ b + 1) := (hf (ψ b + 1)).1
+          rw [h_ψ_succ]
+          omega
+        · -- a = b: need ψ b < f (ψ b + 1)
+          rw [h_eq, h_ψ_succ]
+          have h_le : ψ b + 1 ≤ f (ψ b + 1) := (hf (ψ b + 1)).1
+          omega
+    · -- ∀ k, ε ≤ dist (traj (ψ k)) x₀
+      intro k
+      induction k with
+      | zero => exact (hf 0).2
+      | succ k _ => exact (hf (ψ k + 1)).2
   obtain ⟨ψ, hψ_mono, hψ_dist⟩ := h_build
   -- Extract convergent subsequence by compactness
   have := isCompact_univ.tendsto_subseq (fun n => Set.mem_univ ((traj ∘ ψ) n))

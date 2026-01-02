@@ -9,6 +9,7 @@ import Mathlib.LinearAlgebra.Matrix.ToLin
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Normed.Algebra.Spectrum
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.Analysis.Matrix.Normed
 
 /-!
 # Spectral Radius and RNN Stability
@@ -195,27 +196,169 @@ theorem powers_tendsto_zero (A : Matrix (Fin n) (Fin n) ℝ)
     rw [Real.sqrt_sq (abs_nonneg _)] at h
     exact h
 
-  -- Step 4: For the geometric bound on powers, we need submultiplicativity
-  -- This is complex, so we document the approach and provide a partial proof
+  -- Step 4: Submultiplicativity of Frobenius norm via Cauchy-Schwarz
+  have h_submul : ∀ (M N : Matrix (Fin n) (Fin n) ℝ), frobNorm (M * N) ≤ frobNorm M * frobNorm N := by
+    intro M N
+    simp only [frobNorm]
+    -- Goal: √(∑ i, ∑ j, (M * N)_{i,j}²) ≤ √(∑ i, ∑ k, M_{i,k}²) * √(∑ k, ∑ j, N_{k,j}²)
+    -- By Cauchy-Schwarz: (∑_k M_{i,k} * N_{k,j})² ≤ (∑_k M_{i,k}²) * (∑_k N_{k,j}²)
 
-  -- The key insight is: for large enough k, A^k has small entries
-  -- because ‖A^k‖ decays geometrically with rate r < 1
+    -- Submultiplicativity via Mathlib's frobenius_norm_mul
+    -- Our frobNorm M = ‖M‖ using Frobenius norm instance
+    letI := Matrix.frobeniusSeminormedAddCommGroup (α := ℝ) (m := Fin n) (n := Fin n)
+    have h_frobNorm_eq : ∀ P : Matrix (Fin n) (Fin n) ℝ, frobNorm P = ‖P‖ := by
+      intro P
+      simp only [frobNorm]
+      rw [Matrix.frobenius_norm_def]
+      -- Need: √(∑ i, ∑ j, P i j ^ 2) = (∑ i, ∑ j, ‖P i j‖ ^ 2) ^ (1 / 2)
+      have h_sum_eq : ∑ i : Fin n, ∑ j : Fin n, (P i j)^2 =
+                      ∑ i : Fin n, ∑ j : Fin n, ‖P i j‖^(2 : ℝ) := by
+        apply Finset.sum_congr rfl; intro i _
+        apply Finset.sum_congr rfl; intro j _
+        rw [Real.norm_eq_abs]
+        -- P i j ^ 2 = |P i j| ^ 2 because |x|^2 = x^2
+        rw [(sq_abs (P i j)).symm]
+        -- Now need: |P i j| ^ 2 = |P i j| ^ (2 : ℝ)
+        rw [← Real.rpow_natCast |P i j| 2]
+        simp only [Nat.cast_ofNat]
+      rw [h_sum_eq]
+      -- Now: √x = x^(1/2) for x ≥ 0
+      have h_sum_nonneg : 0 ≤ ∑ i : Fin n, ∑ j : Fin n, ‖P i j‖^(2 : ℝ) := by
+        apply Finset.sum_nonneg; intro i _
+        apply Finset.sum_nonneg; intro j _
+        apply Real.rpow_nonneg (norm_nonneg _)
+      rw [Real.sqrt_eq_rpow, one_div]
+    -- Now use: frobNorm (M * N) ≤ frobNorm M * frobNorm N
+    simp only [frobNorm] at h_frobNorm_eq ⊢
+    have h1 := h_frobNorm_eq (M * N)
+    have h2 := h_frobNorm_eq M
+    have h3 := h_frobNorm_eq N
+    rw [h1, h2, h3]
+    exact Matrix.frobenius_norm_mul M N
 
-  -- Formal completion requires:
-  -- - Submultiplicativity: ‖A^k‖ ≤ ‖A‖^k (for submultiplicative norms)
-  -- - The Frobenius norm is submultiplicative
-  -- - Choose N such that r^N < ε / n (to bound each entry)
+  -- Step 5: Bound on powers of A^(K+1) for m ≥ 1
+  have h_pow_bound : ∀ m, 1 ≤ m → frobNorm ((A^(K+1))^m) ≤ (frobNorm (A^(K+1)))^m := by
+    intro m hm
+    induction m with
+    | zero => omega
+    | succ m ih =>
+      match m with
+      | 0 =>
+        -- m+1 = 1, so goal is frobNorm((A^(K+1))^1) ≤ frobNorm(A^(K+1))^1
+        simp only [zero_add, pow_one, le_refl]
+      | m' + 1 =>
+        have h_m_ge : 1 ≤ m' + 1 := Nat.one_le_iff_ne_zero.mpr (Nat.succ_ne_zero m')
+        calc frobNorm ((A ^ (K + 1)) ^ (m' + 1 + 1))
+            = frobNorm ((A ^ (K + 1)) ^ (m' + 1) * (A ^ (K + 1))) := by rw [pow_succ]
+          _ ≤ frobNorm ((A ^ (K + 1)) ^ (m' + 1)) * frobNorm (A ^ (K + 1)) := h_submul _ _
+          _ ≤ (frobNorm (A ^ (K + 1))) ^ (m' + 1) * frobNorm (A ^ (K + 1)) := by
+              apply mul_le_mul_of_nonneg_right (ih h_m_ge) (Real.sqrt_nonneg _)
+          _ = (frobNorm (A ^ (K + 1))) ^ (m' + 1 + 1) := by ring
 
-  -- For now, we use existence of such N from geometric series convergence:
-  -- Since r < 1, r^k → 0, so ∃ N such that r^N < ε / (n * frobNorm(A))
+  -- Step 6: Let C = max of frobNorm(A^j) for j = 0, ..., K
+  let C := Finset.sup' (Finset.range (K + 1)) ⟨0, Finset.mem_range.mpr (Nat.zero_lt_succ K)⟩
+    (fun j => frobNorm (A ^ j))
+  have hC_nonneg : 0 ≤ C := by
+    have h_mem : 0 ∈ Finset.range (K + 1) := Finset.mem_range.mpr (Nat.zero_lt_succ K)
+    have h_val_nonneg : 0 ≤ frobNorm (A ^ 0) := by simp only [pow_zero, frobNorm]; exact Real.sqrt_nonneg _
+    exact le_trans h_val_nonneg (Finset.le_sup' (fun j => frobNorm (A ^ j)) h_mem)
 
-  -- The full proof requires careful handling of:
-  -- 1. Submultiplicativity of Frobenius norm
-  -- 2. Decomposition A^k = A^(mK) · A^j for k = mK + j
-  -- 3. Bound ‖A^(mK)‖ ≤ ‖A^K‖^m
-  -- 4. Overall bound C · r^k where C depends on max{‖A^j‖ : j < K}
+  -- Step 7: For any k, bound frobNorm(A^k) ≤ frobNorm(A^(K+1))^(k/(K+1)) * C
+  have h_decomp_bound : ∀ k, frobNorm (A^k) ≤ (frobNorm (A^(K+1)))^(k / (K+1)) * C := by
+    intro k
+    set m := k / (K + 1) with hm_def
+    set j := k % (K + 1) with hj_def
+    have h_k_eq : k = (K + 1) * m + j := (Nat.div_add_mod k (K + 1)).symm
+    have hj_lt : j < K + 1 := Nat.mod_lt k (Nat.zero_lt_succ K)
+    have h_pow_eq : A^k = (A^(K+1))^m * A^j := by rw [h_k_eq, pow_add, pow_mul]
+    rw [h_pow_eq]
+    have hj_mem : j ∈ Finset.range (K + 1) := Finset.mem_range.mpr hj_lt
+    have hj_le_C : frobNorm (A ^ j) ≤ C := Finset.le_sup' (fun i => frobNorm (A ^ i)) hj_mem
+    match m with
+    | 0 =>
+      simp only [pow_zero, Matrix.one_mul, one_mul]
+      exact hj_le_C
+    | m' + 1 =>
+      have hm_pos : 1 ≤ m' + 1 := Nat.one_le_iff_ne_zero.mpr (Nat.succ_ne_zero m')
+      calc frobNorm ((A ^ (K + 1)) ^ (m' + 1) * A ^ j)
+          ≤ frobNorm ((A ^ (K + 1)) ^ (m' + 1)) * frobNorm (A ^ j) := h_submul _ _
+        _ ≤ (frobNorm (A ^ (K + 1))) ^ (m' + 1) * frobNorm (A ^ j) := by
+            apply mul_le_mul_of_nonneg_right (h_pow_bound (m' + 1) hm_pos) (Real.sqrt_nonneg _)
+        _ ≤ (frobNorm (A ^ (K + 1))) ^ (m' + 1) * C := by
+            apply mul_le_mul_of_nonneg_left hj_le_C (pow_nonneg (Real.sqrt_nonneg _) _)
 
-  sorry
+  -- Step 8: Case split on frobNorm(A^(K+1)) = 0
+  by_cases h_frob_zero : frobNorm (A^(K+1)) = 0
+  · -- frobNorm(A^(K+1)) = 0 means A^(K+1) = 0
+    have h_zero : A^(K+1) = 0 := by
+      ext i j
+      have := h_entry_bound (A^(K+1)) i j
+      rw [h_frob_zero] at this
+      exact abs_eq_zero.mp (le_antisymm this (abs_nonneg _))
+    use K + 1
+    intro k hk i j
+    have h_decomp : k = (K + 1) + (k - (K + 1)) := (Nat.add_sub_cancel' hk).symm
+    rw [h_decomp, pow_add, h_zero, Matrix.zero_mul]
+    simp only [Matrix.zero_apply, abs_zero]
+    exact hε
+
+  · -- frobNorm(A^(K+1)) > 0 but < 1
+    have h_frob_pos : 0 < frobNorm (A^(K+1)) := (Real.sqrt_nonneg _).lt_of_ne' h_frob_zero
+    have h_frob_lt_one : frobNorm (A^(K+1)) < 1 := by
+      rcases h_frob_bound.eq_or_lt with h_eq | h_lt
+      · exfalso
+        have h_r_eq_one : r = 1 := by simp only [r]; rw [h_eq, Real.one_rpow]
+        linarith
+      · exact h_lt
+
+    -- C > 0 (since it includes frobNorm(1) = √n > 0)
+    have hC_pos : 0 < C := by
+      have h_mem : 0 ∈ Finset.range (K + 1) := Finset.mem_range.mpr (Nat.zero_lt_succ K)
+      have h_frob_one_pos : 0 < frobNorm (A ^ 0) := by
+        simp only [pow_zero, frobNorm]
+        apply Real.sqrt_pos.mpr
+        have h_sum : ∑ i : Fin n, ∑ j : Fin n, ((1 : Matrix (Fin n) (Fin n) ℝ) i j)^2 = n := by
+          simp only [Matrix.one_apply]
+          -- Sum is ∑ i, ∑ j, (if i = j then 1 else 0)^2 = ∑ i, 1 = n
+          have h_inner : ∀ i : Fin n, ∑ j : Fin n, (if i = j then (1 : ℝ) else 0)^2 = 1 := by
+            intro i
+            rw [Fintype.sum_eq_single i]
+            · simp
+            · intro j hij; simp [Ne.symm hij]
+          simp only [h_inner, Finset.sum_const, Finset.card_fin, nsmul_eq_mul, mul_one]
+        rw [h_sum]
+        exact Nat.cast_pos.mpr (NeZero.pos n)
+      exact lt_of_lt_of_le h_frob_one_pos (Finset.le_sup' (fun j => frobNorm (A ^ j)) h_mem)
+
+    -- frobNorm(A^(K+1))^m → 0 as m → ∞
+    have h_tendsto : Filter.Tendsto (fun m => (frobNorm (A^(K+1)))^m) Filter.atTop (nhds 0) :=
+      tendsto_pow_atTop_nhds_zero_of_lt_one (Real.sqrt_nonneg _) h_frob_lt_one
+    rw [Metric.tendsto_atTop] at h_tendsto
+    obtain ⟨M, hM⟩ := h_tendsto (ε / C) (div_pos hε hC_pos)
+
+    use (K + 1) * M
+    intro k hk i j
+
+    have h_div_ge : M ≤ k / (K + 1) := by
+      rw [Nat.le_div_iff_mul_le (Nat.zero_lt_succ K)]
+      rw [mul_comm]
+      exact hk
+
+    have h_pow_le : (frobNorm (A^(K+1)))^(k / (K + 1)) ≤ (frobNorm (A^(K+1)))^M :=
+      pow_le_pow_of_le_one (Real.sqrt_nonneg _) (le_of_lt h_frob_lt_one) h_div_ge
+
+    have h_pow_bound' : (frobNorm (A^(K+1)))^M < ε / C := by
+      have h_dist := hM M le_rfl
+      simp only [Real.dist_eq, sub_zero] at h_dist
+      have h_nonneg : 0 ≤ (frobNorm (A^(K+1)))^M := pow_nonneg (Real.sqrt_nonneg _) M
+      rwa [abs_of_nonneg h_nonneg] at h_dist
+
+    calc |(A^k) i j|
+        ≤ frobNorm (A^k) := h_entry_bound (A^k) i j
+      _ ≤ (frobNorm (A^(K+1)))^(k / (K + 1)) * C := h_decomp_bound k
+      _ ≤ (frobNorm (A^(K+1)))^M * C := mul_le_mul_of_nonneg_right h_pow_le (le_of_lt hC_pos)
+      _ < (ε / C) * C := mul_lt_mul_of_pos_right h_pow_bound' hC_pos
+      _ = ε := div_mul_cancel₀ ε (ne_of_gt hC_pos)
 
 /-- Spectral radius of diagonal matrix is max of absolute diagonal entries.
 
@@ -496,12 +639,78 @@ theorem diagonal_spectral_radius (d : Fin n → ℝ) :
       -- Since we prove m ≤ iInf in the lower bound, and the terms approach m,
       -- the equality follows. We use antisymmetry with the lower bound.
 
-      -- Simpler approach: show that the iInf of any sequence bounded below by m
-      -- that converges to m equals m. This is a general fact about infima.
+      -- Key: show that n^(1/(2(k+1))) → 1 as k → ∞
+      -- Then term(k) ≤ n^(1/(2(k+1))) * m → m
+      -- Since iInf ≤ term(k) for all k and term(k) → m from above, iInf ≤ m
 
-      -- For now, we note that this requires Filter.Tendsto machinery and
-      -- leave as sorry, documenting the full mathematical argument above.
-      sorry
+      -- Step 1: The exponent 1/(2*(k+1)) → 0 as k → ∞
+      have h_exp_tendsto : Filter.Tendsto (fun k : ℕ => 1 / (2 * (↑k + 1) : ℝ)) Filter.atTop (nhds 0) := by
+        have h1 : Filter.Tendsto (fun k : ℕ => (2 * (↑k + 1) : ℝ)) Filter.atTop Filter.atTop := by
+          have h_nat : Filter.Tendsto (fun k : ℕ => (k : ℝ)) Filter.atTop Filter.atTop :=
+            tendsto_natCast_atTop_atTop
+          have h_add : Filter.Tendsto (fun k : ℕ => (↑k + 1 : ℝ)) Filter.atTop Filter.atTop :=
+            h_nat.atTop_add tendsto_const_nhds
+          exact Filter.Tendsto.const_mul_atTop (by norm_num : (0 : ℝ) < 2) h_add
+        have h2 : Filter.Tendsto (fun k : ℕ => (2 * (↑k + 1) : ℝ)⁻¹) Filter.atTop (nhds 0) :=
+          tendsto_inv_atTop_zero.comp h1
+        simp only [one_div] at h2 ⊢
+        exact h2
+
+      -- Step 2: n^y → n^0 = 1 as y → 0, by continuity of a^· at 0 when a > 0
+      have h_n_pos : (0 : ℝ) < n := Nat.cast_pos.mpr (NeZero.pos n)
+      have h_rpow_tendsto : Filter.Tendsto (fun k : ℕ => (n : ℝ)^(1 / (2 * (↑k + 1) : ℝ)))
+          Filter.atTop (nhds 1) := by
+        -- Continuity of a^· at 0 (for a > 0)
+        have h_cont : ContinuousAt (fun y : ℝ => (n : ℝ) ^ y) 0 :=
+          Real.continuousAt_const_rpow (ne_of_gt h_n_pos) (b := 0)
+        have h_at_zero : (n : ℝ) ^ (0 : ℝ) = 1 := Real.rpow_zero n
+        -- Compose with h_exp_tendsto: ℕ → ℝ with limit 0
+        have h_comp := h_cont.tendsto.comp h_exp_tendsto
+        rwa [h_at_zero] at h_comp
+
+      -- Step 3: term(k) ≤ n^(1/(2(k+1))) * m → m as k → ∞
+      have h_term_tendsto_m : Filter.Tendsto
+          (fun k : ℕ => (n : ℝ)^(1 / (2 * (↑k + 1) : ℝ)) * m) Filter.atTop (nhds m) := by
+        have h_eq : (1 : ℝ) * m = m := one_mul m
+        have h1 := h_rpow_tendsto.mul_const m
+        simp only [one_mul] at h1
+        exact h1
+
+      -- Step 4: For any ε > 0, eventually term(k) < m + ε
+      have h_eventually : ∀ ε > 0, ∃ K : ℕ,
+          (frobNorm ((Matrix.diagonal d)^(K+1)))^(1 / (K+1 : ℝ)) < m + ε := by
+        intro ε hε
+        rw [Metric.tendsto_atTop] at h_term_tendsto_m
+        obtain ⟨N, hN⟩ := h_term_tendsto_m ε hε
+        use N
+        have h_bound := h_term_bound N
+        have h_dist := hN N le_rfl
+        simp only [Real.dist_eq] at h_dist
+        have h_close : (n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) * m < m + ε := by
+          have h_ge : m ≤ (n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) * m := by
+            have h_one_le : 1 ≤ (n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) := by
+              apply Real.one_le_rpow
+              · exact Nat.one_le_cast.mpr (NeZero.one_le)
+              · apply div_nonneg; norm_num; positivity
+            calc m = 1 * m := (one_mul m).symm
+                 _ ≤ (n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) * m := by
+                   apply mul_le_mul_of_nonneg_right h_one_le (le_of_lt h_m_pos)
+          have h_abs_eq : |(n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) * m - m| =
+                          (n : ℝ)^(1 / (2 * (↑N + 1) : ℝ)) * m - m := by
+            rw [abs_of_nonneg (sub_nonneg.mpr h_ge)]
+          rw [h_abs_eq] at h_dist
+          linarith
+        exact lt_of_le_of_lt h_bound h_close
+
+      -- Step 5: iInf ≤ m follows from: ∀ ε > 0, iInf < m + ε
+      rw [le_iff_forall_pos_lt_add]
+      intro ε hε
+      obtain ⟨K, hK⟩ := h_eventually ε hε
+      have h_bdd : BddBelow (Set.range (fun k : ℕ =>
+          (frobNorm ((Matrix.diagonal d)^(k+1)))^(1 / (k+1 : ℝ)))) := by
+        use 0; intro x hx; obtain ⟨k, rfl⟩ := hx
+        apply Real.rpow_nonneg (Real.sqrt_nonneg _)
+      exact lt_of_le_of_lt (ciInf_le h_bdd K) hK
 
   · -- Lower bound: m ≤ iInf
     -- For any k, term(k) ≥ m because the p-norm is always ≥ max element

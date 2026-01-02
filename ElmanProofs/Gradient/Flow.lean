@@ -1826,6 +1826,124 @@ theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (h
 
   convert h_final using 2 <;> simp only [g, d]
 
+/-- Interpolation condition for smooth convex functions.
+
+    For L-smooth convex f with minimizer x* (where ∇f(x*) = 0):
+    f(x) - f(x*) + (1/2L)‖∇f(x)‖² ≤ ⟨∇f(x), x - x*⟩
+
+    Equivalently: f(x) - f(x*) ≤ ⟨∇f(x), x - x*⟩ - (1/2L)‖∇f(x)‖²
+
+    This is tighter than plain convexity and is key for the O(1/k) convergence proof.
+-/
+lemma smooth_convex_interpolation (f : E → ℝ) (L : ℝ) (hL : 0 < L)
+    (hSmooth : IsLSmooth f L) (hConvex : ConvexOn ℝ Set.univ f)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    f x - f x_star + (1 / (2 * L)) * ‖gradient f x‖^2 ≤
+      @inner ℝ E _ (gradient f x) (x - x_star) := by
+  -- This follows from combining bounds proved in lsmooth_cocoercivity:
+  -- Bound A: (1/2L)‖g‖² ≤ f(x) - f(x*)   (from minimality of x*)
+  -- Bound B: (1/2L)‖g‖² ≤ f(x*) - f(x) + ⟨g, x - x*⟩   (from tilted function technique)
+  -- Adding A to the rearranged form of B gives the result.
+  have hDiff : Differentiable ℝ f := hSmooth.1
+  let g := gradient f x
+
+  -- Step 1: x* minimizes f (since ∇f(x*) = 0 and f is convex)
+  have h_xstar_min : ∀ y, f x_star ≤ f y := convex_first_order_optimality f hConvex hDiff x_star hMin
+
+  -- Step 2: Bound A - from descent lemma and minimality
+  -- f(x - (1/L)∇f(x)) ≤ f(x) - (1/2L)‖∇f(x)‖²
+  -- f(x*) ≤ f(x - (1/L)∇f(x))
+  -- Therefore: (1/2L)‖∇f(x)‖² ≤ f(x) - f(x*)
+  have h_fund := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x (x - (1 / L) • g)
+  have h_descent : f (x - (1 / L) • g) ≤ f x - (1 / (2 * L)) * ‖g‖^2 := by
+    have h_diff : (x - (1 / L) • g) - x = -((1 / L) • g) := by simp [sub_eq_add_neg, add_comm]
+    have h_inner : @inner ℝ E _ g ((x - (1 / L) • g) - x) = -(1 / L) * ‖g‖^2 := by
+      rw [h_diff]
+      simp only [inner_neg_right, inner_smul_right, real_inner_self_eq_norm_sq]
+      ring
+    have h_norm : ‖(x - (1 / L) • g) - x‖^2 = (1 / L)^2 * ‖g‖^2 := by
+      rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/L > 0)]
+      ring
+    calc f (x - (1 / L) • g) ≤ f x + @inner ℝ E _ g ((x - (1 / L) • g) - x) +
+                                 (L / 2) * ‖(x - (1 / L) • g) - x‖^2 := h_fund
+      _ = f x + (-(1 / L) * ‖g‖^2) + (L / 2) * ((1 / L)^2 * ‖g‖^2) := by rw [h_inner, h_norm]
+      _ = f x - (1 / (2 * L)) * ‖g‖^2 := by field_simp; ring
+  have h_bound_A : (1 / (2 * L)) * ‖g‖^2 ≤ f x - f x_star := by
+    have := h_xstar_min (x - (1 / L) • g)
+    linarith
+
+  -- Step 3: Bound B - from tilted function technique
+  -- The tilted function h(z) = f(z) - ⟨g, z⟩ is convex and has minimum at x
+  -- This gives: (1/2L)‖g‖² ≤ f(x*) - f(x) + ⟨g, x - x*⟩
+  have h_linear_concave : ConcaveOn ℝ Set.univ (fun z => @inner ℝ E _ g z) := by
+    constructor
+    · exact convex_univ
+    · intro z _ w _ a b ha hb hab
+      simp only [inner_add_right, inner_smul_right, smul_eq_mul]
+      linarith
+  have h_convex_tilt : ConvexOn ℝ Set.univ (fun z => f z - @inner ℝ E _ g z) :=
+    hConvex.sub h_linear_concave
+  have h_grad_tilt_x : gradient (fun z => f z - @inner ℝ E _ g z) x = 0 := by
+    have hf_diff : DifferentiableAt ℝ f x := hDiff x
+    have hg_diff : DifferentiableAt ℝ (fun z => @inner ℝ E _ g z) x :=
+      (innerSL (𝕜 := ℝ) g).differentiableAt
+    have hg_grad : HasGradientAt (fun z => @inner ℝ E _ g z) g x := by
+      rw [hasGradientAt_iff_hasFDerivAt]
+      have h1 := (innerSL (𝕜 := ℝ) g).hasFDerivAt (x := x)
+      simp only [InnerProductSpace.toDual] at h1 ⊢
+      convert h1 using 1
+    have hf_grad : HasGradientAt f g x := hf_diff.hasGradientAt
+    have h_sub : HasGradientAt (fun z => f z - @inner ℝ E _ g z) (g - g) x := by
+      have h1 := hasGradientAt_iff_hasFDerivAt.mp hf_grad
+      have h2 := hasGradientAt_iff_hasFDerivAt.mp hg_grad
+      have h3 := h1.sub h2
+      rw [hasGradientAt_iff_hasFDerivAt]
+      convert h3 using 1
+      simp only [map_sub]
+    rw [sub_self] at h_sub
+    exact h_sub.gradient
+  have h_diff_tilt : Differentiable ℝ (fun z => f z - @inner ℝ E _ g z) := by
+    intro z
+    exact (hDiff z).sub (innerSL (𝕜 := ℝ) g).differentiableAt
+  have h_x_min_tilt : ∀ y, (f x - @inner ℝ E _ g x) ≤ (f y - @inner ℝ E _ g y) :=
+    convex_first_order_optimality (fun z => f z - @inner ℝ E _ g z) h_convex_tilt h_diff_tilt x h_grad_tilt_x
+  -- Apply at x* + (1/L)g
+  have h_fund_xstar := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x_star (x_star + (1 / L) • g)
+  have h_fund_xstar_bound : f (x_star + (1 / L) • g) ≤ f x_star + (1 / (2 * L)) * ‖g‖^2 := by
+    have h_diff_pt : (x_star + (1 / L) • g) - x_star = (1 / L) • g := by abel
+    have h_inner_pt : @inner ℝ E _ (gradient f x_star) ((x_star + (1 / L) • g) - x_star) = 0 := by
+      rw [hMin, inner_zero_left]
+    have h_norm_pt : ‖(x_star + (1 / L) • g) - x_star‖^2 = (1 / L)^2 * ‖g‖^2 := by
+      rw [h_diff_pt, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/L > 0)]
+      ring
+    calc f (x_star + (1 / L) • g) ≤ f x_star + @inner ℝ E _ (gradient f x_star)
+          ((x_star + (1 / L) • g) - x_star) + (L / 2) * ‖(x_star + (1 / L) • g) - x_star‖^2 := h_fund_xstar
+      _ = f x_star + 0 + (L / 2) * ((1 / L)^2 * ‖g‖^2) := by rw [h_inner_pt, h_norm_pt]
+      _ = f x_star + (1 / (2 * L)) * ‖g‖^2 := by field_simp; ring
+  have h_inner_xstar_g : @inner ℝ E _ g (x_star + (1 / L) • g) =
+      @inner ℝ E _ g x_star + (1 / L) * ‖g‖^2 := by
+    simp only [inner_add_right, inner_smul_right, real_inner_self_eq_norm_sq]
+  have h_tilt_bound := h_x_min_tilt (x_star + (1 / L) • g)
+  have h_bound_B : (1 / (2 * L)) * ‖g‖^2 ≤ f x_star - f x + @inner ℝ E _ g (x - x_star) := by
+    have step1 : f x - @inner ℝ E _ g x ≤ f (x_star + (1 / L) • g) -
+        @inner ℝ E _ g (x_star + (1 / L) • g) := h_tilt_bound
+    have step2 : f (x_star + (1 / L) • g) - @inner ℝ E _ g (x_star + (1 / L) • g) ≤
+        (f x_star + (1 / (2 * L)) * ‖g‖^2) - (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) := by
+      rw [h_inner_xstar_g]
+      linarith [h_fund_xstar_bound]
+    have step3 : (f x_star + (1 / (2 * L)) * ‖g‖^2) - (@inner ℝ E _ g x_star + (1 / L) * ‖g‖^2) =
+        f x_star - @inner ℝ E _ g x_star - (1 / (2 * L)) * ‖g‖^2 := by field_simp; ring
+    have step4 : f x - @inner ℝ E _ g x ≤ f x_star - @inner ℝ E _ g x_star - (1 / (2 * L)) * ‖g‖^2 := by
+      linarith
+    have h4 : @inner ℝ E _ g (x - x_star) = @inner ℝ E _ g x - @inner ℝ E _ g x_star :=
+      inner_sub_right g x x_star
+    linarith
+
+  -- Step 4: Combine bounds to get the interpolation inequality
+  -- From h_bound_B: (1/2L)‖g‖² ≤ f(x*) - f(x) + ⟨g, x - x*⟩
+  -- Rearranging: f(x) - f(x*) + (1/2L)‖g‖² ≤ ⟨g, x - x*⟩
+  linarith
+
 /-- One step of gradient descent with learning rate η. -/
 noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
   x - η • gradient f x
@@ -1834,6 +1952,69 @@ noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
 noncomputable def gradientDescentIterates (f : E → ℝ) (η : ℝ) (x₀ : E) : ℕ → E
   | 0 => x₀
   | n + 1 => gradientDescentStep f η (gradientDescentIterates f η x₀ n)
+
+/-- The descent lemma: one step decreases function value.
+
+The proof follows from L-smoothness:
+1. By L-smoothness: f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
+2. With y = x - η∇f(x), we have y - x = -η∇f(x)
+3. So ⟨∇f(x), y-x⟩ = -η‖∇f(x)‖²
+4. And ‖y-x‖² = η²‖∇f(x)‖²
+5. Thus: f(y) ≤ f(x) - η‖∇f(x)‖² + (Lη²/2)‖∇f(x)‖²
+6. Since η ≤ 1/L, we have (Lη²/2) ≤ η/2
+7. Therefore: f(y) ≤ f(x) - (η/2)‖∇f(x)‖²
+
+The key insight is that L-smoothness provides a second-order bound on function values,
+which allows us to show descent over a single gradient step.
+-/
+theorem descent_lemma (f : E → ℝ) (L : ℝ) (hL : 0 < L)
+    (hSmooth : IsLSmooth f L) (x : E) (η : ℝ) (hη : 0 < η) (hηL : η ≤ 1 / L) :
+    f (gradientDescentStep f η x) ≤ f x - (η / 2) * ‖gradient f x‖^2 := by
+  -- Define y = x - η∇f(x) (the gradient descent step)
+  let y := x - η • gradient f x
+  let g := gradient f x
+  -- Step 1: Apply the fundamental inequality for L-smooth functions
+  have h_fund := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x y
+  -- Step 2: Compute y - x = -(η • ∇f(x))
+  have h_diff : y - x = -(η • g) := by simp only [y, g]; abel
+  -- Step 3: Compute ⟨∇f(x), y - x⟩ = -η‖∇f(x)‖²
+  have h_inner : @inner ℝ E _ g (y - x) = -η * ‖g‖^2 := by
+    rw [h_diff, inner_neg_right, inner_smul_right]
+    rw [real_inner_self_eq_norm_sq]
+    ring
+  -- Step 4: Compute ‖y - x‖² = η²‖∇f(x)‖²
+  have h_norm_sq : ‖y - x‖^2 = η^2 * ‖g‖^2 := by
+    rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs]
+    have : |η|^2 = η^2 := sq_abs η
+    rw [mul_pow, this]
+  -- Step 5: Substitute into the fundamental inequality
+  -- f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
+  --      = f(x) - η‖∇f(x)‖² + (L/2)η²‖∇f(x)‖²
+  --      = f(x) + (-η + Lη²/2)‖∇f(x)‖²
+  calc f y ≤ f x + @inner ℝ E _ g (y - x) + (L / 2) * ‖y - x‖^2 := h_fund
+    _ = f x + (-η * ‖g‖^2) + (L / 2) * (η^2 * ‖g‖^2) := by rw [h_inner, h_norm_sq]
+    _ = f x + (-η + L * η^2 / 2) * ‖g‖^2 := by ring
+    _ ≤ f x + (-η / 2) * ‖g‖^2 := by {
+        -- Need: -η + L*η²/2 ≤ -η/2
+        -- i.e., L*η²/2 ≤ η/2
+        -- i.e., L*η ≤ 1
+        -- which follows from η ≤ 1/L
+        have h_Lη : L * η ≤ 1 := by
+          calc L * η = η * L := mul_comm L η
+            _ ≤ (1 / L) * L := mul_le_mul_of_nonneg_right hηL (le_of_lt hL)
+            _ = 1 := div_mul_cancel₀ 1 (ne_of_gt hL)
+        have h_coeff : -η + L * η^2 / 2 ≤ -η / 2 := by
+          have h1 : L * η^2 / 2 ≤ η / 2 := by
+            have : L * η^2 ≤ η := by
+              calc L * η^2 = (L * η) * η := by ring
+                _ ≤ 1 * η := mul_le_mul_of_nonneg_right h_Lη (le_of_lt hη)
+                _ = η := one_mul η
+            linarith
+          linarith
+        have h_g_sq_nonneg : 0 ≤ ‖g‖^2 := sq_nonneg _
+        nlinarith [sq_nonneg ‖g‖]
+      }
+    _ = f x - (η / 2) * ‖g‖^2 := by ring
 
 /-- Convergence rate for smooth convex functions.
     After k iterations: f(x_k) - f(x*) ≤ ‖x₀ - x*‖² / (2ηk) -/
@@ -1901,13 +2082,256 @@ theorem convex_convergence_rate (f : E → ℝ) (L : ℝ) (hL : 0 < L)
   -- Since f(x_k) - f(x*) ≤ (1/k)∑(f(x_i) - f(x*)) (minimum ≤ average):
   -- 2ηk(f(x_k) - f(x*)) ≤ ‖x_0 - x*‖² + 2η(f(x_0) - f(x*))
   --
-  -- Note: This gives a slightly weaker bound than claimed. The exact bound
-  -- f(x_k) - f(x*) ≤ ‖x_0 - x*‖²/(2ηk) requires showing the last iterate
-  -- satisfies the average bound, which holds for convex objectives.
-  --
-  -- TODO: Complete with induction and Finset.sum machinery
+  -- Using the smooth convex interpolation lemma gives the factor of 2.
 
-  sorry
+  have hDiff : Differentiable ℝ f := hSmooth.1
+
+  -- Step 1: Derive ∇f(x*) = 0 from the fact that x* is a global minimizer
+  -- For differentiable f, if x* minimizes f, then ∇f(x*) = 0
+  have hGradZero : gradient f x_star = 0 := by
+    by_contra h
+    -- If ∇f(x*) ≠ 0, moving in direction -∇f(x*) decreases f, contradiction
+    let g := gradient f x_star
+    have hg_ne : g ≠ 0 := h
+    have h_norm_pos : ‖g‖ > 0 := norm_pos_iff.mpr hg_ne
+    -- Consider f(x* - t·g) for small t > 0
+    -- Directional derivative at x* in direction -g is ⟨∇f(x*), -g⟩ = -‖g‖² < 0
+    have hf_grad : HasGradientAt f g x_star := (hDiff x_star).hasGradientAt
+    have hf_deriv : HasFDerivAt f (innerSL (𝕜 := ℝ) g) x_star := hf_grad.hasFDerivAt
+    -- Use the definition of derivative with a smaller ε to ensure error is dominated
+    -- We want: |f(x* - t·g) - f(x*) - ⟨g, -t·g⟩| ≤ (‖g‖²/2) · |t| · ‖g‖
+    -- i.e., |f(x* - t·g) - f(x*) + t·‖g‖²| ≤ (t·‖g‖³)/2
+    -- This gives: f(x* - t·g) - f(x*) ≤ -t·‖g‖² + t·‖g‖³/2 = -t·‖g‖²·(1 - ‖g‖/2)
+    -- For this to be negative, we need t > 0 and 1 - ‖g‖/2 > 0, i.e., ‖g‖ < 2
+    -- To handle ‖g‖ ≥ 2, we use a smaller ε in the isLittleO bound
+    rw [HasFDerivAt, hasFDerivAtFilter_iff_isLittleO, Asymptotics.isLittleO_iff] at hf_deriv
+    -- Choose c = ‖g‖/2 so the error bound becomes (‖g‖/2) · ‖h‖ ≤ (‖g‖/2) · t · ‖g‖
+    specialize hf_deriv (by linarith : (0 : ℝ) < ‖g‖ / 2)
+    rw [Filter.eventually_iff_exists_mem] at hf_deriv
+    obtain ⟨s, hs_mem, hs_bound⟩ := hf_deriv
+    rw [Metric.mem_nhds_iff] at hs_mem
+    obtain ⟨ε, hε_pos, hε_ball⟩ := hs_mem
+    -- Choose t small enough that t·g ∈ ball and t < 1
+    let t := min (ε / (2 * ‖g‖)) (1 / 2)
+    have ht_pos : t > 0 := by
+      simp only [t, lt_min_iff]
+      constructor
+      · positivity
+      · linarith
+    have ht_le_half : t ≤ 1/2 := min_le_right _ _
+    have h_tg_small : ‖t • g‖ < ε := by
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos ht_pos]
+      have h1 : t ≤ ε / (2 * ‖g‖) := min_le_left _ _
+      calc t * ‖g‖ ≤ (ε / (2 * ‖g‖)) * ‖g‖ := by apply mul_le_mul_of_nonneg_right h1 (le_of_lt h_norm_pos)
+        _ = ε / 2 := by field_simp
+        _ < ε := by linarith
+    have h_in_s : x_star - t • g ∈ s := by
+      apply hε_ball
+      simp only [Metric.mem_ball, dist_eq_norm]
+      have h_eq : (x_star - t • g) - x_star = -(t • g) := by abel
+      rw [h_eq, norm_neg]
+      exact h_tg_small
+    have hs_bound' := hs_bound (x_star - t • g) h_in_s
+    simp only [innerSL_apply_apply] at hs_bound'
+    -- hs_bound: ‖f(x* - t·g) - f(x*) - ⟨g, (x* - t·g) - x*⟩‖ < (‖g‖/2) * ‖(x* - t·g) - x*‖
+    have h_diff_eq : (x_star - t • g) - x_star = -(t • g) := by abel
+    have h_inner : @inner ℝ E _ g ((x_star - t • g) - x_star) = -t * ‖g‖^2 := by
+      rw [h_diff_eq, inner_neg_right, inner_smul_right, real_inner_self_eq_norm_sq]
+      ring
+    have h_norm_diff : ‖(x_star - t • g) - x_star‖ = t * ‖g‖ := by
+      rw [h_diff_eq, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_pos ht_pos]
+    rw [h_inner, h_norm_diff] at hs_bound'
+    -- hs_bound': ‖f(x* - t·g) - f(x*) - (-t * ‖g‖²)‖ < (‖g‖/2) * (t * ‖g‖)
+    -- i.e., |f(x* - t·g) - f(x*) + t·‖g‖²| < t·‖g‖²/2
+    have h_rhs_eq : ‖g‖ / 2 * (t * ‖g‖) = t * ‖g‖^2 / 2 := by ring
+    rw [h_rhs_eq] at hs_bound'
+    -- From absolute value bound (note: isLittleO_iff gives ≤, not <):
+    -- ‖f(x* - t·g) - f(x*) + t·‖g‖²‖ ≤ t·‖g‖²/2
+    have h_from_abs := abs_le.mp hs_bound'
+    -- h_from_abs gives bounds on f(x* - t·g) - f(x*) - (-t * ‖g‖²)
+    -- which equals f(x* - t·g) - f(x*) + t * ‖g‖²
+    have h_upper : f (x_star - t • g) - f x_star + t * ‖g‖^2 ≤ t * ‖g‖^2 / 2 := by
+      have h := h_from_abs.2
+      -- h : f (x_star - t • g) - f x_star - -t * ‖g‖^2 ≤ t * ‖g‖^2 / 2
+      -- Need: f (x_star - t • g) - f x_star + t * ‖g‖^2 ≤ t * ‖g‖^2 / 2
+      have h_eq : f (x_star - t • g) - f x_star - -t * ‖g‖^2 =
+          f (x_star - t • g) - f x_star + t * ‖g‖^2 := by ring
+      rw [h_eq] at h
+      exact h
+    have h_neg : f (x_star - t • g) < f x_star := by
+      have : f (x_star - t • g) - f x_star ≤ t * ‖g‖^2 / 2 - t * ‖g‖^2 := by linarith
+      have h_calc : t * ‖g‖^2 / 2 - t * ‖g‖^2 = -t * ‖g‖^2 / 2 := by ring
+      have h_neg_val : -t * ‖g‖^2 / 2 < 0 := by
+        have := mul_pos ht_pos (sq_pos_of_pos h_norm_pos)
+        linarith
+      linarith
+    exact absurd h_neg (not_lt.mpr (hMin (x_star - t • g)))
+
+  -- Step 2: Per-step distance contraction bound
+  -- ‖x_{k+1} - x*‖² ≤ ‖x_k - x*‖² - 2η(f(x_k) - f(x*))
+  have per_step_bound : ∀ x : E,
+      ‖gradientDescentStep f η x - x_star‖^2 ≤ ‖x - x_star‖^2 - 2 * η * (f x - f x_star) := by
+    intro x
+    let g := gradient f x
+    let y := gradientDescentStep f η x
+    -- y = x - η·g
+    have hy : y = x - η • g := rfl
+    -- ‖y - x*‖² = ‖(x - x*) - η·g‖²
+    have h_diff : y - x_star = (x - x_star) - η • g := by simp only [hy]; abel
+    -- Expand using ‖a - b‖² = ‖a‖² - 2⟨a,b⟩ + ‖b‖²
+    have h_expand : ‖y - x_star‖^2 = ‖x - x_star‖^2 - 2 * η * @inner ℝ E _ g (x - x_star) + η^2 * ‖g‖^2 := by
+      rw [h_diff, norm_sub_sq_real]
+      have h1 : ‖η • g‖^2 = η^2 * ‖g‖^2 := by
+        rw [norm_smul, Real.norm_eq_abs, mul_pow, sq_abs]
+      have h2 : @inner ℝ E _ (x - x_star) (η • g) = η * @inner ℝ E _ (x - x_star) g := by
+        rw [inner_smul_right]
+      rw [h1, h2, real_inner_comm]
+      ring
+    -- From smooth_convex_interpolation:
+    -- f(x) - f(x*) + (1/2L)‖g‖² ≤ ⟨g, x - x*⟩
+    have h_interp := smooth_convex_interpolation f L hL hSmooth hConvex x x_star hGradZero
+    -- Multiply by 2η:
+    -- 2η(f(x) - f(x*)) + (η/L)‖g‖² ≤ 2η⟨g, x - x*⟩
+    have h_interp_scaled : 2 * η * (f x - f x_star) + (η / L) * ‖g‖^2 ≤
+        2 * η * @inner ℝ E _ g (x - x_star) := by
+      have h1 : 2 * η * (f x - f x_star + (1 / (2 * L)) * ‖g‖^2) ≤
+          2 * η * @inner ℝ E _ g (x - x_star) := by
+        apply mul_le_mul_of_nonneg_left h_interp
+        linarith
+      have h2 : 2 * η * (f x - f x_star + (1 / (2 * L)) * ‖g‖^2) =
+          2 * η * (f x - f x_star) + (η / L) * ‖g‖^2 := by
+        have hL_ne : L ≠ 0 := ne_of_gt hL
+        field_simp
+      linarith
+    -- From h_expand:
+    -- ‖y - x*‖² = ‖x - x*‖² - 2η⟨g, x - x*⟩ + η²‖g‖²
+    -- Using h_interp_scaled:
+    -- -2η⟨g, x - x*⟩ ≤ -2η(f(x) - f(x*)) - (η/L)‖g‖²
+    -- So: ‖y - x*‖² ≤ ‖x - x*‖² - 2η(f(x) - f(x*)) - (η/L)‖g‖² + η²‖g‖²
+    --              = ‖x - x*‖² - 2η(f(x) - f(x*)) + η(η - 1/L)‖g‖²
+    -- Since η ≤ 1/L, we have η - 1/L ≤ 0, so η(η - 1/L)‖g‖² ≤ 0
+    have h_coeff_neg : η * (η - 1/L) ≤ 0 := by
+      have h1 : η - 1/L ≤ 0 := by linarith
+      exact mul_nonpos_of_nonneg_of_nonpos (le_of_lt hη) h1
+    have h_grad_term : η^2 * ‖g‖^2 - (η / L) * ‖g‖^2 ≤ 0 := by
+      have h1 : η^2 * ‖g‖^2 - (η / L) * ‖g‖^2 = η * (η - 1/L) * ‖g‖^2 := by
+        have hL_ne : L ≠ 0 := ne_of_gt hL
+        have h : η / L = η * (1/L) := by ring
+        rw [h]
+        ring
+      rw [h1]
+      exact mul_nonpos_of_nonpos_of_nonneg h_coeff_neg (sq_nonneg _)
+    calc ‖y - x_star‖^2 = ‖x - x_star‖^2 - 2 * η * @inner ℝ E _ g (x - x_star) + η^2 * ‖g‖^2 := h_expand
+      _ ≤ ‖x - x_star‖^2 - (2 * η * (f x - f x_star) + (η / L) * ‖g‖^2) + η^2 * ‖g‖^2 := by linarith [h_interp_scaled]
+      _ = ‖x - x_star‖^2 - 2 * η * (f x - f x_star) + (η^2 * ‖g‖^2 - (η / L) * ‖g‖^2) := by ring
+      _ ≤ ‖x - x_star‖^2 - 2 * η * (f x - f x_star) + 0 := by linarith [h_grad_term]
+      _ = ‖x - x_star‖^2 - 2 * η * (f x - f x_star) := by ring
+
+  -- Step 3: Descent property: f(x_{i+1}) ≤ f(x_i)
+  have descent : ∀ i : ℕ, f (gradientDescentIterates f η x₀ (i + 1)) ≤ f (gradientDescentIterates f η x₀ i) := by
+    intro i
+    let x_i := gradientDescentIterates f η x₀ i
+    have h_descent := descent_lemma f L hL hSmooth x_i η hη hηL
+    have h_nonneg : 0 ≤ (η / 2) * ‖gradient f x_i‖^2 := by positivity
+    -- gradientDescentIterates f η x₀ (i + 1) = gradientDescentStep f η (gradientDescentIterates f η x₀ i) = gradientDescentStep f η x_i
+    have h_eq : gradientDescentIterates f η x₀ (i + 1) = gradientDescentStep f η x_i := rfl
+    rw [h_eq]
+    linarith
+
+  -- Step 4: Sum the per-step bounds via induction
+  -- We prove: 2η · ∑_{i=0}^{k-1} (f(x_i) - f(x*)) ≤ ‖x_0 - x*‖²
+  have sum_bound : ∀ n : ℕ, 2 * η * (Finset.range n).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) ≤
+      ‖x₀ - x_star‖^2 - ‖gradientDescentIterates f η x₀ n - x_star‖^2 := by
+    intro n
+    induction n with
+    | zero =>
+      simp only [Finset.range_zero, Finset.sum_empty, mul_zero, gradientDescentIterates]
+      linarith [sq_nonneg ‖x₀ - x_star‖]
+    | succ n ih =>
+      -- Sum from 0 to n = Sum from 0 to n-1 + (f(x_n) - f(x*))
+      rw [Finset.sum_range_succ]
+      let x_n := gradientDescentIterates f η x₀ n
+      let x_n1 := gradientDescentIterates f η x₀ (n + 1)
+      -- From per_step_bound: ‖x_{n+1} - x*‖² ≤ ‖x_n - x*‖² - 2η(f(x_n) - f(x*))
+      have h_step := per_step_bound x_n
+      -- x_{n+1} = gradientDescentStep f η x_n
+      have h_eq : x_n1 = gradientDescentStep f η x_n := rfl
+      rw [← h_eq] at h_step
+      -- ih: 2η · ∑_{i=0}^{n-1} (f(x_i) - f(x*)) ≤ ‖x_0 - x*‖² - ‖x_n - x*‖²
+      -- h_step: ‖x_{n+1} - x*‖² ≤ ‖x_n - x*‖² - 2η(f(x_n) - f(x*))
+      -- Rearranging h_step: 2η(f(x_n) - f(x*)) ≤ ‖x_n - x*‖² - ‖x_{n+1} - x*‖²
+      have h_step' : 2 * η * (f x_n - f x_star) ≤ ‖x_n - x_star‖^2 - ‖x_n1 - x_star‖^2 := by
+        linarith
+      -- Add ih and h_step'
+      calc 2 * η * ((Finset.range n).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) +
+              (f x_n - f x_star))
+          = 2 * η * (Finset.range n).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) +
+            2 * η * (f x_n - f x_star) := by ring
+        _ ≤ (‖x₀ - x_star‖^2 - ‖x_n - x_star‖^2) + (‖x_n - x_star‖^2 - ‖x_n1 - x_star‖^2) := by linarith [ih, h_step']
+        _ = ‖x₀ - x_star‖^2 - ‖x_n1 - x_star‖^2 := by ring
+
+  -- Step 5: Since f is decreasing, f(x_k) ≤ f(x_i) for all i < k
+  -- So k · (f(x_k) - f(x*)) ≤ ∑_{i=0}^{k-1} (f(x_i) - f(x*))
+  have sum_lower_bound : (k : ℝ) * (f (gradientDescentIterates f η x₀ k) - f x_star) ≤
+      (Finset.range k).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) := by
+    have h_mono : ∀ i ∈ Finset.range k, f (gradientDescentIterates f η x₀ k) ≤ f (gradientDescentIterates f η x₀ i) := by
+      intro i hi
+      rw [Finset.mem_range] at hi
+      -- f(x_k) ≤ f(x_i) for i < k by repeated application of descent
+      have : ∀ j m : ℕ, j ≤ m → f (gradientDescentIterates f η x₀ m) ≤ f (gradientDescentIterates f η x₀ j) := by
+        intro j m hjm
+        induction m with
+        | zero => simp only [Nat.le_zero] at hjm; rw [hjm]
+        | succ m ih =>
+          by_cases hj : j ≤ m
+          · calc f (gradientDescentIterates f η x₀ (m + 1)) ≤ f (gradientDescentIterates f η x₀ m) := descent m
+              _ ≤ f (gradientDescentIterates f η x₀ j) := ih hj
+          · push_neg at hj
+            have : j = m + 1 := by omega
+            rw [this]
+      exact this i k (le_of_lt hi)
+    have h_term_bound : ∀ i ∈ Finset.range k,
+        f (gradientDescentIterates f η x₀ k) - f x_star ≤ f (gradientDescentIterates f η x₀ i) - f x_star := by
+      intro i hi
+      linarith [h_mono i hi]
+    calc (k : ℝ) * (f (gradientDescentIterates f η x₀ k) - f x_star)
+        = (Finset.range k).sum (fun _ => f (gradientDescentIterates f η x₀ k) - f x_star) := by
+          simp only [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+      _ ≤ (Finset.range k).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) := by
+          apply Finset.sum_le_sum h_term_bound
+
+  -- Step 6: Combine to get the final bound
+  have h_sum := sum_bound k
+  have h_lower := sum_lower_bound
+  -- From h_sum: 2η · ∑(f(x_i) - f(x*)) ≤ ‖x_0 - x*‖²
+  have h_sum' : 2 * η * (Finset.range k).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) ≤
+      ‖x₀ - x_star‖^2 := by
+    have h_nonneg : 0 ≤ ‖gradientDescentIterates f η x₀ k - x_star‖^2 := sq_nonneg _
+    linarith
+  -- From h_lower and h_sum': 2ηk(f(x_k) - f(x*)) ≤ ‖x_0 - x*‖²
+  have h_combined : 2 * η * k * (f (gradientDescentIterates f η x₀ k) - f x_star) ≤ ‖x₀ - x_star‖^2 := by
+    calc 2 * η * k * (f (gradientDescentIterates f η x₀ k) - f x_star)
+        = 2 * η * (k * (f (gradientDescentIterates f η x₀ k) - f x_star)) := by ring
+      _ ≤ 2 * η * (Finset.range k).sum (fun i => f (gradientDescentIterates f η x₀ i) - f x_star) := by
+          apply mul_le_mul_of_nonneg_left h_lower; linarith
+      _ ≤ ‖x₀ - x_star‖^2 := h_sum'
+  -- Divide by 2ηk > 0
+  have hk_pos : (k : ℝ) > 0 := by exact Nat.cast_pos.mpr hk
+  have h_denom_pos : 2 * η * k > 0 := by positivity
+  -- f(x_k) - f(x*) ≤ ‖x_0 - x*‖² / (2ηk)
+  have h_final : f (gradientDescentIterates f η x₀ k) - f x_star ≤ ‖x₀ - x_star‖^2 / (2 * η * k) := by
+    -- From h_combined: (2 * η * k) * (f(x_k) - f(x*)) ≤ ‖x₀ - x*‖²
+    -- Dividing by (2 * η * k) > 0: f(x_k) - f(x*) ≤ ‖x₀ - x*‖² / (2 * η * k)
+    have h1 : (2 * η * k) * (f (gradientDescentIterates f η x₀ k) - f x_star) ≤ ‖x₀ - x_star‖^2 := h_combined
+    have h2 : f (gradientDescentIterates f η x₀ k) - f x_star ≤
+        ‖x₀ - x_star‖^2 / (2 * η * k) := by
+      have h3 : f (gradientDescentIterates f η x₀ k) - f x_star =
+          ((2 * η * k) * (f (gradientDescentIterates f η x₀ k) - f x_star)) / (2 * η * k) := by
+        field_simp
+      rw [h3]
+      exact div_le_div_of_nonneg_right h1 (le_of_lt h_denom_pos)
+    exact h2
+  exact h_final
 
 /-- Linear convergence for strongly convex smooth functions.
     After k iterations: ‖x_k - x*‖² ≤ (1 - μ/L)^k ‖x₀ - x*‖²
@@ -2132,68 +2556,5 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
           linarith
         }
       _ = (1 - μ / L)^(k + 1) * ‖x₀ - x_star‖^2 := by ring
-
-/-- The descent lemma: one step decreases function value.
-
-The proof follows from L-smoothness:
-1. By L-smoothness: f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖²
-2. With y = x - η∇f(x), we have y - x = -η∇f(x)
-3. So ⟨∇f(x), y-x⟩ = -η‖∇f(x)‖²
-4. And ‖y-x‖² = η²‖∇f(x)‖²
-5. Thus: f(y) ≤ f(x) - η‖∇f(x)‖² + (Lη²/2)‖∇f(x)‖²
-6. Since η ≤ 1/L, we have (Lη²/2) ≤ η/2
-7. Therefore: f(y) ≤ f(x) - (η/2)‖∇f(x)‖²
-
-The key insight is that L-smoothness provides a second-order bound on function values,
-which allows us to show descent over a single gradient step.
--/
-theorem descent_lemma (f : E → ℝ) (L : ℝ) (hL : 0 < L)
-    (hSmooth : IsLSmooth f L) (x : E) (η : ℝ) (hη : 0 < η) (hηL : η ≤ 1 / L) :
-    f (gradientDescentStep f η x) ≤ f x - (η / 2) * ‖gradient f x‖^2 := by
-  -- Define y = x - η∇f(x) (the gradient descent step)
-  let y := x - η • gradient f x
-  let g := gradient f x
-  -- Step 1: Apply the fundamental inequality for L-smooth functions
-  have h_fund := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth x y
-  -- Step 2: Compute y - x = -(η • ∇f(x))
-  have h_diff : y - x = -(η • g) := by simp only [y, g]; abel
-  -- Step 3: Compute ⟨∇f(x), y - x⟩ = -η‖∇f(x)‖²
-  have h_inner : @inner ℝ E _ g (y - x) = -η * ‖g‖^2 := by
-    rw [h_diff, inner_neg_right, inner_smul_right]
-    rw [real_inner_self_eq_norm_sq]
-    ring
-  -- Step 4: Compute ‖y - x‖² = η²‖∇f(x)‖²
-  have h_norm_sq : ‖y - x‖^2 = η^2 * ‖g‖^2 := by
-    rw [h_diff, norm_neg, norm_smul, Real.norm_eq_abs]
-    have : |η|^2 = η^2 := sq_abs η
-    rw [mul_pow, this]
-  -- Step 5: Substitute into the fundamental inequality
-  -- f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
-  --      = f(x) - η‖∇f(x)‖² + (L/2)η²‖∇f(x)‖²
-  --      = f(x) + (-η + Lη²/2)‖∇f(x)‖²
-  calc f y ≤ f x + @inner ℝ E _ g (y - x) + (L / 2) * ‖y - x‖^2 := h_fund
-    _ = f x + (-η * ‖g‖^2) + (L / 2) * (η^2 * ‖g‖^2) := by rw [h_inner, h_norm_sq]
-    _ = f x + (-η + L * η^2 / 2) * ‖g‖^2 := by ring
-    _ ≤ f x + (-η / 2) * ‖g‖^2 := by {
-        -- Need: -η + L*η²/2 ≤ -η/2
-        -- i.e., L*η²/2 ≤ η/2
-        -- i.e., L*η ≤ 1
-        -- which follows from η ≤ 1/L
-        have h_Lη : L * η ≤ 1 := by
-          calc L * η = η * L := mul_comm L η
-            _ ≤ (1 / L) * L := mul_le_mul_of_nonneg_right hηL (le_of_lt hL)
-            _ = 1 := div_mul_cancel₀ 1 (ne_of_gt hL)
-        have h_coeff : -η + L * η^2 / 2 ≤ -η / 2 := by
-          have h1 : L * η^2 / 2 ≤ η / 2 := by
-            have : L * η^2 ≤ η := by
-              calc L * η^2 = (L * η) * η := by ring
-                _ ≤ 1 * η := mul_le_mul_of_nonneg_right h_Lη (le_of_lt hη)
-                _ = η := one_mul η
-            linarith
-          linarith
-        have h_g_sq_nonneg : 0 ≤ ‖g‖^2 := sq_nonneg _
-        nlinarith [sq_nonneg ‖g‖]
-      }
-    _ = f x - (η / 2) * ‖g‖^2 := by ring
 
 end Gradient
