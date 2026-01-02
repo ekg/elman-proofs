@@ -624,64 +624,7 @@ theorem strong_convex_gradient_monotonicity (f : E → ℝ) (μ : ℝ) (hμ : 0 
     _ ≥ (μ / 2) * ‖x - x_star‖^2 + (μ / 2) * ‖x - x_star‖^2 := by linarith [h_func_lb]
     _ = μ * ‖x - x_star‖^2 := by ring
 
-/-- Interpolation condition for strongly convex AND smooth functions.
-
-    For μ-strongly convex and L-smooth f with ∇f(x*) = 0:
-    ⟨∇f(x), x - x*⟩ ≥ (μL)/(μ+L) ‖x - x*‖² + 1/(μ+L) ‖∇f(x)‖²
-
-    This is stronger than using strong convexity or smoothness alone.
-    It's the key to achieving the optimal (1 - μ/L) contraction rate.
--/
-theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (hμ : 0 < μ)
-    (hSmooth : IsLSmooth f L) (hStrong : IsStronglyConvex f μ)
-    (x x_star : E) (hMin : gradient f x_star = 0) :
-    @inner ℝ E _ (gradient f x) (x - x_star) ≥
-      (μ * L) / (μ + L) * ‖x - x_star‖^2 + 1 / (μ + L) * ‖gradient f x‖^2 := by
-  -- This is the interpolation condition for functions that are BOTH strongly convex
-  -- AND smooth. It provides a tighter bound than either alone.
-  --
-  -- **Available ingredients**:
-  -- 1. Strong convexity (gradient monotonicity): ⟨∇f(x) - ∇f(y), x - y⟩ ≥ μ‖x - y‖²
-  -- 2. Co-coercivity (from L-smoothness): ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (1/L)‖∇f(x) - ∇f(y)‖²
-  --
-  -- **The interpolation condition**:
-  -- ⟨∇f(x) - ∇f(y), x - y⟩ ≥ (μL)/(μ+L)‖x - y‖² + 1/(μ+L)‖∇f(x) - ∇f(y)‖²
-  --
-  -- **Proof strategy**:
-  -- The key is to use BOTH conditions simultaneously in an optimal way.
-  --
-  -- Consider the auxiliary function: h(x) = f(x) - (μ/2)‖x‖²
-  -- Since f is μ-strongly convex, h is convex.
-  -- Since f is L-smooth, h is (L-μ)-smooth.
-  -- Apply co-coercivity to h at the optimum.
-  --
-  -- Alternatively, use the proximal operator characterization:
-  -- For the proximal of f at x with parameter 1/L:
-  -- prox_{f/L}(x) = argmin_z [f(z) + (L/2)‖z - x‖²]
-  --
-  -- **Simplified proof when y = x* (∇f(x*) = 0)**:
-  -- Let g = ∇f(x). We need:
-  -- ⟨g, x - x*⟩ ≥ (μL)/(μ+L)‖x - x*‖² + 1/(μ+L)‖g‖²
-  --
-  -- From strong convexity at x*: ⟨g, x - x*⟩ ≥ μ‖x - x*‖² (using ∇f(x*) = 0)
-  -- From co-coercivity: ⟨g, x - x*⟩ ≥ (1/L)‖g‖² (using ∇f(x*) = 0)
-  --
-  -- The weighted combination uses both:
-  -- (μ+L)⟨g, x - x*⟩ = L⟨g, x - x*⟩ + μ⟨g, x - x*⟩
-  --                   ≥ L·μ‖x - x*‖² + μ·(1/L)‖g‖²
-  --                   = μL‖x - x*‖² + (μ/L)‖g‖²
-  --
-  -- This gives: ⟨g, x - x*⟩ ≥ (μL)/(μ+L)‖x - x*‖² + μ/(L(μ+L))‖g‖²
-  --
-  -- The coefficient μ/(L(μ+L)) is weaker than 1/(μ+L) when μ < L (typical case).
-  -- The sharper bound requires the full interpolation argument using:
-  -- - The Fenchel conjugate f* which is (1/μ)-smooth and (1/L)-strongly convex
-  -- - Or the "operator splitting" viewpoint
-  --
-  -- For our purposes in the convergence theorem, the weaker bound suffices
-  -- since we only need ⟨g, x - x*⟩ ≥ c₁‖x - x*‖² + c₂‖g‖² for some c₁, c₂ > 0.
-
-  sorry
+-- strong_smooth_interpolation is defined below after lsmooth_cocoercivity
 
 /-- Fundamental inequality for L-smooth functions:
     f(y) ≤ f(x) + ⟨∇f(x), y - x⟩ + (L/2)‖y - x‖²
@@ -1255,6 +1198,634 @@ theorem lsmooth_cocoercivity (f : E → ℝ) (L : ℝ) (hL : 0 < L)
     _ ≤ L * @inner ℝ E _ g (x - x_star) := by
         apply mul_le_mul_of_nonneg_left h_combined (le_of_lt hL)
 
+/-- Interpolation condition for strongly convex AND smooth functions.
+
+    For μ-strongly convex and L-smooth f with ∇f(x*) = 0:
+    ⟨∇f(x), x - x*⟩ ≥ (μL)/(μ+L) ‖x - x*‖² + 1/(μ+L) ‖∇f(x)‖²
+
+    This is stronger than using strong convexity or smoothness alone.
+    It's the key to achieving the optimal (1 - μ/L) contraction rate.
+
+    **Proof**: Uses the auxiliary function h(x) = f(x) - (μ/2)‖x - x*‖² which is
+    convex and (L-μ)-smooth. Applying cocoercivity to h gives the bound. -/
+theorem strong_smooth_interpolation (f : E → ℝ) (L μ : ℝ) (hL : 0 < L) (hμ : 0 < μ)
+    (hSmooth : IsLSmooth f L) (hStrong : IsStronglyConvex f μ)
+    (x x_star : E) (hMin : gradient f x_star = 0) :
+    @inner ℝ E _ (gradient f x) (x - x_star) ≥
+      (μ * L) / (μ + L) * ‖x - x_star‖^2 + 1 / (μ + L) * ‖gradient f x‖^2 := by
+  have hDiff : Differentiable ℝ f := hSmooth.1
+
+  -- Let g = ∇f(x) and d = x - x*
+  let g := gradient f x
+  let d := x - x_star
+
+  -- Strong convexity implies convexity
+  have hConvex : ConvexOn ℝ Set.univ f :=
+    stronglyConvex_implies_convexOn f μ (le_of_lt hμ) hStrong
+
+  -- From strong convexity: ⟨g, d⟩ ≥ μ‖d‖²
+  have h_strong : @inner ℝ E _ g d ≥ μ * ‖d‖^2 := by
+    have := strong_convex_gradient_monotonicity f μ hμ hStrong hDiff x x_star hMin
+    convert this using 2 <;> rfl
+
+  -- From cocoercivity: ‖g‖² ≤ L⟨g, d⟩
+  have h_cocoer : ‖g‖^2 ≤ L * @inner ℝ E _ g d := by
+    have := lsmooth_cocoercivity f L hL hSmooth hConvex x x_star hMin
+    convert this using 2 <;> rfl
+
+  have h_sum_pos : 0 < μ + L := by linarith
+
+  -- The key bound comes from the auxiliary function h(x) = f(x) - (μ/2)‖x - x*‖²
+  -- which is convex and (L-μ)-smooth.
+  -- Cocoercivity for h gives: ‖∇h(x)‖² ≤ (L-μ)⟨∇h(x), x - x*⟩
+  -- where ∇h(x) = ∇f(x) - μ(x - x*) = g - μd
+  --
+  -- Expanding: ‖g - μd‖² ≤ (L-μ)⟨g - μd, d⟩
+  -- After algebra: ‖g‖² + μL‖d‖² ≤ (L+μ)⟨g, d⟩
+
+  have h_aux_cocoer : ‖g - μ • d‖^2 ≤ (L - μ) * @inner ℝ E _ (g - μ • d) d := by
+    -- First handle d = 0 case (when x = x*)
+    by_cases hd_zero : d = 0
+    · -- When d = 0, we have x = x*, so g = ∇f(x*) = 0 by hMin
+      have hg_zero : g = 0 := by simp only [g, d] at hd_zero ⊢; simp [sub_eq_zero.mp hd_zero, hMin]
+      simp only [hd_zero, hg_zero, smul_zero, sub_zero, norm_zero, sq, mul_zero,
+                 inner_zero_right, mul_zero, le_refl]
+    -- Now assume d ≠ 0
+    -- Case split: L = μ vs L ≠ μ
+    by_cases hLμ : L = μ
+    · -- Case L = μ: RHS = 0, need LHS ≤ 0, which holds since LHS ≥ 0 means LHS = 0
+      -- Actually we just need ‖g - μd‖² ≤ 0 which is true iff ‖g - μd‖² = 0
+      -- But wait, we're showing ≤, and RHS = 0, so we need LHS ≤ 0
+      -- Since LHS = ‖g - μd‖² ≥ 0 always, we need LHS = 0
+      -- This is NOT generally true for L = μ case!
+      -- Actually the RHS is 0, and LHS ≥ 0, so we need LHS ≤ 0
+      -- The only way this works is if LHS = 0.
+      -- For L = μ, the bound is tight only at the optimum.
+      -- Let's reconsider: we can use that ‖g - μd‖² ≥ 0 and show RHS ≥ LHS
+      -- When L = μ, RHS = 0, so we need ‖g - μd‖² ≤ 0, forcing equality.
+      -- This requires g = μd, which is the gradient condition at optimum.
+      -- But x is arbitrary! So this case needs the strong condition.
+      -- Actually, for L = μ (condition number 1), f(x) = (μ/2)‖x - x*‖² + const
+      -- So ∇f(x) = μ(x - x*) = μd, hence g = μd, hence g - μd = 0.
+      have h_grad_eq : g = μ • d := by
+        -- When L = μ, the gradient is forced to be exactly linear
+        -- From L-smooth: ‖∇f(x) - ∇f(x*)‖ ≤ μ‖x - x*‖ (using hLμ : L = μ)
+        -- From strong convexity gradient monotonicity: ⟨∇f(x) - ∇f(x*), x - x*⟩ ≥ μ‖x - x*‖²
+        -- With ∇f(x*) = 0: ‖g‖ ≤ μ‖d‖ and ⟨g, d⟩ ≥ μ‖d‖²
+        -- Cauchy-Schwarz: ⟨g, d⟩ ≤ ‖g‖ · ‖d‖ ≤ μ‖d‖²
+        -- So ⟨g, d⟩ = μ‖d‖² and ‖g‖ = μ‖d‖, forcing g = μd
+        have hg_bound : ‖g‖ ≤ μ * ‖d‖ := by
+          have := hSmooth.2 x x_star
+          simp only [g, d, hMin, sub_zero] at this
+          rw [hLμ] at this
+          exact this
+        have h_inner_eq : @inner ℝ E _ g d = μ * ‖d‖^2 := by
+          -- From h_strong: ⟨g, d⟩ ≥ μ‖d‖²
+          -- From Cauchy-Schwarz and hg_bound: ⟨g, d⟩ ≤ ‖g‖·‖d‖ ≤ μ‖d‖²
+          have h_upper : @inner ℝ E _ g d ≤ μ * ‖d‖^2 := by
+            calc @inner ℝ E _ g d ≤ ‖g‖ * ‖d‖ := real_inner_le_norm g d
+              _ ≤ μ * ‖d‖ * ‖d‖ := by apply mul_le_mul_of_nonneg_right hg_bound (norm_nonneg d)
+              _ = μ * ‖d‖^2 := by ring
+          linarith [h_strong]
+        -- Equality in Cauchy-Schwarz means g and d are parallel: g = c • d for some c
+        -- Combined with ⟨g, d⟩ = μ‖d‖², if d ≠ 0 then c = μ
+        by_cases hd_case : d = 0
+        · -- d = 0 contradicts hd_zero
+          exact absurd hd_case hd_zero
+        · -- d ≠ 0: prove g = μ • d
+          have hd_pos' : ‖d‖ > 0 := norm_pos_iff.mpr hd_case
+          -- From equality in Cauchy-Schwarz: g = (⟨g,d⟩/‖d‖²) • d
+          have h_cs_eq : @inner ℝ E _ g d = ‖g‖ * ‖d‖ := by
+            -- ⟨g, d⟩ = μ‖d‖² and ‖g‖ ≤ μ‖d‖
+            -- Cauchy-Schwarz: ⟨g, d⟩ ≤ ‖g‖ · ‖d‖
+            -- If ⟨g, d⟩ < ‖g‖ · ‖d‖ then ⟨g, d⟩ < μ‖d‖ · ‖d‖ = μ‖d‖²
+            -- But ⟨g, d⟩ = μ‖d‖², contradiction
+            have h1 : @inner ℝ E _ g d ≤ ‖g‖ * ‖d‖ := real_inner_le_norm g d
+            have h2 : ‖g‖ * ‖d‖ ≤ μ * ‖d‖ * ‖d‖ := by
+              apply mul_le_mul_of_nonneg_right hg_bound (norm_nonneg d)
+            have h3 : μ * ‖d‖ * ‖d‖ = μ * ‖d‖^2 := by ring
+            rw [h_inner_eq]
+            by_contra h_ne
+            have h_lt : μ * ‖d‖^2 < ‖g‖ * ‖d‖ := by
+              push_neg at h_ne
+              rcases (ne_iff_lt_or_gt.mp h_ne) with h_lt | h_gt
+              · exact h_lt
+              · linarith [h1]
+            have : μ * ‖d‖^2 < μ * ‖d‖^2 := by
+              calc μ * ‖d‖^2 < ‖g‖ * ‖d‖ := h_lt
+                _ ≤ μ * ‖d‖ * ‖d‖ := h2
+                _ = μ * ‖d‖^2 := h3
+            linarith
+          -- Now g is parallel to d with positive coefficient
+          have h_norm_eq : ‖g‖ = μ * ‖d‖ := by
+            have h1 : @inner ℝ E _ g d = ‖g‖ * ‖d‖ := h_cs_eq
+            rw [h_inner_eq] at h1
+            have h2 : μ * ‖d‖^2 = ‖g‖ * ‖d‖ := h1
+            have h3 : μ * ‖d‖^2 / ‖d‖ = ‖g‖ * ‖d‖ / ‖d‖ := by rw [h2]
+            simp only [sq, mul_div_assoc, div_self (ne_of_gt hd_pos'), mul_one] at h3
+            linarith
+          -- g and μ•d have same norm and same inner product with d
+          -- This means g = μ•d (parallel with same magnitude and direction)
+          have h_same_inner : @inner ℝ E _ g d = @inner ℝ E _ (μ • d) d := by
+            rw [h_inner_eq, inner_smul_left, real_inner_self_eq_norm_sq]
+            simp only [conj_trivial]
+          have h_same_norm : ‖g‖ = ‖μ • d‖ := by
+            rw [h_norm_eq, norm_smul, Real.norm_eq_abs, abs_of_pos hμ]
+          -- The difference g - μ•d has norm 0
+          have h_diff_zero : ‖g - μ • d‖ = 0 := by
+            have h1 : ‖g - μ • d‖^2 = ‖g‖^2 - 2 * @inner ℝ E _ g (μ • d) + ‖μ • d‖^2 := by
+              rw [sub_eq_add_neg, norm_add_sq_real]
+              simp only [norm_neg, inner_neg_right]
+              ring
+            have h2 : @inner ℝ E _ g (μ • d) = μ * @inner ℝ E _ g d := by
+              simp only [inner_smul_right, conj_trivial]
+            rw [h2, h_inner_eq, h_same_norm] at h1
+            simp only [norm_smul, Real.norm_eq_abs, abs_of_pos hμ] at h1
+            have h3 : (μ * ‖d‖)^2 - 2 * (μ * (μ * ‖d‖^2)) + (μ * ‖d‖)^2 = 0 := by ring
+            have h4 : ‖g - μ • d‖^2 = 0 := by linarith [h1, h3]
+            have h5 : ‖g - μ • d‖^2 = ‖g - μ • d‖ * ‖g - μ • d‖ := sq _
+            rw [h5] at h4
+            exact mul_self_eq_zero.mp h4
+          exact sub_eq_zero.mp (norm_eq_zero.mp h_diff_zero)
+      rw [h_grad_eq, sub_self]
+      simp only [norm_zero, sq, mul_zero, inner_zero_left, mul_zero, le_refl]
+    · -- Case L ≠ μ: Need to show L > μ first
+      have hL_ge_μ : L ≥ μ := by
+        -- Use L-smooth upper bound and μ-strong convex lower bound at x*
+        -- Upper: f(y) ≤ f(x*) + ⟨∇f(x*), y-x*⟩ + (L/2)‖y-x*‖² = f(x*) + (L/2)‖y-x*‖²
+        -- Lower (from x* minimality): f(y) ≥ f(x*)
+        -- Combined: 0 ≤ (L/2)‖y-x*‖² for all y, which is always true.
+        -- We need a tighter lower bound from strong convexity.
+        --
+        -- Actually, use the gradient bounds we already have:
+        -- h_cocoer: ‖g‖² ≤ L⟨g, d⟩  and  h_strong: ⟨g, d⟩ ≥ μ‖d‖²
+        -- If d ≠ 0 and g ≠ 0:
+        --   From h_strong and Cauchy-Schwarz: μ‖d‖² ≤ ⟨g,d⟩ ≤ ‖g‖·‖d‖, so μ‖d‖ ≤ ‖g‖
+        --   From h_cocoer and Cauchy-Schwarz: ‖g‖² ≤ L⟨g,d⟩ ≤ L‖g‖·‖d‖, so ‖g‖ ≤ L‖d‖
+        --   Combined: μ‖d‖ ≤ ‖g‖ ≤ L‖d‖, hence μ ≤ L
+        -- We know d ≠ 0 from hd_zero above
+        have hd : d ≠ 0 := hd_zero
+        have hd_pos : ‖d‖ > 0 := norm_pos_iff.mpr hd
+        -- From h_strong: μ‖d‖² ≤ ⟨g, d⟩
+        -- From Cauchy-Schwarz: ⟨g, d⟩ ≤ ‖g‖ · ‖d‖
+        have h1 : μ * ‖d‖^2 ≤ ‖g‖ * ‖d‖ := by
+          calc μ * ‖d‖^2 ≤ @inner ℝ E _ g d := h_strong
+            _ ≤ ‖g‖ * ‖d‖ := real_inner_le_norm g d
+        -- Divide by ‖d‖ > 0: μ * ‖d‖ ≤ ‖g‖
+        have h2 : μ * ‖d‖ ≤ ‖g‖ := by
+          have hd_ne : ‖d‖ ≠ 0 := ne_of_gt hd_pos
+          have h1' : μ * ‖d‖^2 / ‖d‖ ≤ ‖g‖ * ‖d‖ / ‖d‖ :=
+            div_le_div_of_nonneg_right h1 (le_of_lt hd_pos)
+          simp only [sq, mul_div_assoc, div_self hd_ne, mul_one] at h1'
+          linarith
+        -- From h_cocoer: ‖g‖² ≤ L⟨g, d⟩ ≤ L‖g‖·‖d‖
+        by_cases hg : g = 0
+        · -- If g = 0, then from h_strong: 0 ≥ μ‖d‖² > 0, contradiction with d ≠ 0
+          simp only [hg, inner_zero_left] at h_strong
+          have : μ * ‖d‖^2 > 0 := mul_pos hμ (sq_pos_of_pos hd_pos)
+          linarith
+        · -- g ≠ 0
+          have hg_pos : ‖g‖ > 0 := norm_pos_iff.mpr hg
+          have hg_ne : ‖g‖ ≠ 0 := ne_of_gt hg_pos
+          have h3 : ‖g‖^2 ≤ L * (‖g‖ * ‖d‖) := by
+            calc ‖g‖^2 ≤ L * @inner ℝ E _ g d := h_cocoer
+              _ ≤ L * (‖g‖ * ‖d‖) := by
+                  apply mul_le_mul_of_nonneg_left (real_inner_le_norm g d) (le_of_lt hL)
+          -- ‖g‖² ≤ L·‖g‖·‖d‖, divide by ‖g‖ > 0
+          have h4 : ‖g‖ ≤ L * ‖d‖ := by
+            -- ‖g‖² ≤ L * ‖g‖ * ‖d‖, so ‖g‖ ≤ L * ‖d‖ (dividing by ‖g‖ > 0)
+            have h3' : ‖g‖ * ‖g‖ ≤ L * (‖g‖ * ‖d‖) := by
+              simp only [sq] at h3; exact h3
+            have key : ‖g‖ ≤ L * ‖d‖ := by
+              by_contra h_neg
+              push_neg at h_neg
+              -- h_neg : L * ‖d‖ < ‖g‖
+              -- Then L * (‖g‖ * ‖d‖) < ‖g‖ * ‖g‖, contradicting h3'
+              have : L * (‖g‖ * ‖d‖) = ‖g‖ * (L * ‖d‖) := by ring
+              rw [this] at h3'
+              have h4' : ‖g‖ * (L * ‖d‖) < ‖g‖ * ‖g‖ := by
+                apply mul_lt_mul_of_pos_left h_neg hg_pos
+              linarith
+            exact key
+          -- Combine: μ·‖d‖ ≤ ‖g‖ ≤ L·‖d‖, so μ ≤ L
+          have h5 : μ * ‖d‖ ≤ L * ‖d‖ := le_trans h2 h4
+          have h6 : (μ * ‖d‖) / ‖d‖ ≤ (L * ‖d‖) / ‖d‖ :=
+            div_le_div_of_nonneg_right h5 (le_of_lt hd_pos)
+          simp only [mul_div_assoc, div_self (ne_of_gt hd_pos), mul_one] at h6
+          linarith
+      have hL_gt_μ : L > μ := lt_of_le_of_ne hL_ge_μ (Ne.symm hLμ)
+
+      -- Define auxiliary function h(z) = f(z) - (μ/2)‖z - x*‖²
+      let h := fun z : E => f z - (μ / 2) * ‖z - x_star‖^2
+
+      -- The key insight: for the auxiliary function h:
+      -- 1. ∇h(z) = ∇f(z) - μ(z - x*), so ∇h(x) = g - μd
+      -- 2. ∇h(x*) = ∇f(x*) - 0 = 0
+      -- 3. h is convex (from μ-strong convexity of f)
+      -- 4. h is (L-μ)-smooth (from L-smoothness of f)
+      --
+      -- Applying lsmooth_cocoercivity to h gives:
+      -- ‖∇h(x)‖² ≤ (L-μ)⟨∇h(x), x - x*⟩
+      -- which is: ‖g - μd‖² ≤ (L-μ)⟨g - μd, d⟩
+
+      -- h is differentiable
+      have h_diff : Differentiable ℝ h := by
+        intro z
+        apply DifferentiableAt.sub (hDiff z)
+        apply DifferentiableAt.const_mul
+        have h1 : DifferentiableAt ℝ (fun w => w - x_star) z :=
+          differentiableAt_id.sub (differentiableAt_const x_star)
+        exact h1.norm_sq (𝕜 := ℝ)
+
+      -- ∇h(z) = ∇f(z) - μ(z - x*)
+      have h_grad : ∀ z, gradient h z = gradient f z - μ • (z - x_star) := by
+        intro z
+        -- Differentiability facts
+        have h_shift_diff : DifferentiableAt ℝ (fun w => w - x_star) z :=
+          differentiableAt_id.sub (differentiableAt_const _)
+        have h_norm_sq_diff : DifferentiableAt ℝ (fun w => ‖w - x_star‖^2) z :=
+          h_shift_diff.norm_sq (𝕜 := ℝ)
+        have h_scaled_diff : DifferentiableAt ℝ (fun w => (μ / 2) * ‖w - x_star‖^2) z :=
+          (differentiableAt_const _).mul h_norm_sq_diff
+        -- Key fact: gradient of (μ/2)‖w - x*‖² is μ(w - x*)
+        -- fderiv ℝ (fun w => ‖w - x*‖²) z = 2 • innerSL ℝ (z - x*)
+        -- So gradient = (toDual ℝ E).symm(2 • innerSL ℝ (z - x*)) = 2(z - x*)
+        -- And gradient of (μ/2)‖w - x*‖² = (μ/2) * 2(z - x*) = μ(z - x*)
+        have h_grad_norm_sq : gradient (fun w => ‖w - x_star‖^2) z = (2 : ℝ) • (z - x_star) := by
+          simp only [gradient]
+          have hfd : HasFDerivAt (fun w : E => w - x_star) (ContinuousLinearMap.id ℝ E) z := by
+            have hsub := (hasFDerivAt_id (𝕜 := ℝ) z).sub (hasFDerivAt_const (𝕜 := ℝ) x_star z)
+            simp only [ContinuousLinearMap.sub_apply, ContinuousLinearMap.id_apply,
+                       ContinuousLinearMap.zero_apply, sub_zero] at hsub
+            exact hsub
+          have h_comp : (innerSL ℝ (z - x_star : E)).comp (ContinuousLinearMap.id ℝ E) =
+              innerSL ℝ (z - x_star) := by ext; simp
+          have hfd_norm : HasFDerivAt (fun w => ‖w - x_star‖^2) (2 • innerSL ℝ (z - x_star)) z := by
+            have := hfd.norm_sq
+            simp only [h_comp] at this
+            exact this
+          rw [hfd_norm.fderiv]
+          -- (toDual ℝ E).symm (2 • innerSL ℝ (z - x*)) = 2 • (z - x*)
+          -- Convert ℕ-smul to ℝ-smul
+          rw [← Nat.cast_smul_eq_nsmul ℝ (2 : ℕ) (innerSL ℝ (z - x_star))]
+          rw [LinearIsometryEquiv.map_smul]
+          congr 1
+          -- innerSL ℝ v = toDual ℝ E v, so symm gives v back
+          have : innerSL ℝ (z - x_star) = InnerProductSpace.toDual ℝ E (z - x_star) := rfl
+          rw [this, LinearIsometryEquiv.symm_apply_apply]
+        -- First prove HasGradientAt for the scaled norm squared term
+        have h_grad_scaled_at : HasGradientAt (fun w => (μ / 2) * ‖w - x_star‖^2) (μ • (z - x_star)) z := by
+          -- Build from HasFDerivAt
+          have hfd : HasFDerivAt (fun w : E => w - x_star) (ContinuousLinearMap.id ℝ E) z := by
+            have hsub := (hasFDerivAt_id (𝕜 := ℝ) z).sub (hasFDerivAt_const (𝕜 := ℝ) x_star z)
+            simp only [ContinuousLinearMap.sub_apply, ContinuousLinearMap.id_apply,
+                       ContinuousLinearMap.zero_apply, sub_zero] at hsub
+            exact hsub
+          have h_comp : (innerSL ℝ (z - x_star : E)).comp (ContinuousLinearMap.id ℝ E) =
+              innerSL ℝ (z - x_star) := by ext; simp
+          have hfd_norm : HasFDerivAt (fun w => ‖w - x_star‖^2) (2 • innerSL ℝ (z - x_star)) z := by
+            have := hfd.norm_sq
+            simp only [h_comp] at this
+            exact this
+          -- (μ/2) * ‖w - x*‖² has derivative (μ/2) • (2 • innerSL ℝ (z - x*)) = μ • innerSL ℝ (z - x*)
+          have hfd_scaled : HasFDerivAt (fun w => (μ / 2) * ‖w - x_star‖^2)
+              ((μ / 2) • (2 • innerSL ℝ (z - x_star))) z := by
+            have hconst : HasFDerivAt (fun _ : E => μ / 2) 0 z := hasFDerivAt_const (𝕜 := ℝ) _ _
+            have hmul := hconst.mul hfd_norm
+            -- hmul has type: HasFDerivAt ((fun x ↦ μ/2) * (fun w ↦ ‖w - x*‖²)) (... + ‖z-x*‖² • 0) z
+            -- Simplify: ‖z-x*‖² • 0 = 0, and (fun x ↦ c) * g = fun x ↦ c * g x
+            simp only [smul_zero, add_zero] at hmul
+            convert hmul using 2
+          -- Simplify (μ/2) • (2 • innerSL) = μ • innerSL
+          -- Note: 2 • is nsmul (ℕ), so first convert to ℝ-smul
+          have h_smul_simp : (μ / 2) • (2 • innerSL ℝ (z - x_star)) = μ • innerSL ℝ (z - x_star) := by
+            rw [← Nat.cast_smul_eq_nsmul ℝ (2 : ℕ) (innerSL ℝ (z - x_star))]
+            rw [smul_smul]; congr 1; ring
+          rw [h_smul_simp] at hfd_scaled
+          -- Convert to HasGradientAt: need to show (toDual ℝ E).symm (μ • innerSL ℝ (z - x*)) = μ • (z - x*)
+          rw [hasFDerivAt_iff_hasGradientAt] at hfd_scaled
+          convert hfd_scaled using 1
+          rw [LinearIsometryEquiv.map_smul]
+          congr 1
+          have : innerSL ℝ (z - x_star) = InnerProductSpace.toDual ℝ E (z - x_star) := rfl
+          rw [this, LinearIsometryEquiv.symm_apply_apply]
+        have h_grad_scaled : gradient (fun w => (μ / 2) * ‖w - x_star‖^2) z = μ • (z - x_star) :=
+          h_grad_scaled_at.gradient
+        -- Now combine: h = f - (μ/2)‖·-x*‖², so gradient h = gradient f - gradient((μ/2)‖·-x*‖²)
+        have h_grad_h_at : HasGradientAt h (gradient f z - μ • (z - x_star)) z := by
+          have hf_at := (hDiff z).hasGradientAt
+          -- Use HasFDerivAt.sub then convert back to HasGradientAt
+          have h_fderiv_f := hf_at.hasFDerivAt
+          have h_fderiv_scaled := h_grad_scaled_at.hasFDerivAt
+          have h_fderiv_sub := h_fderiv_f.sub h_fderiv_scaled
+          -- h_fderiv_sub : HasFDerivAt (f - (μ/2)*‖·-x*‖²) (toDual(∇f z) - toDual(μ(z-x*))) z
+          rw [hasFDerivAt_iff_hasGradientAt] at h_fderiv_sub
+          convert h_fderiv_sub using 1
+          rw [LinearIsometryEquiv.map_sub, LinearIsometryEquiv.symm_apply_apply,
+              LinearIsometryEquiv.symm_apply_apply]
+        simp only [h]
+        exact h_grad_h_at.gradient
+
+      -- ∇h(x*) = 0
+      have h_grad_xstar : gradient h x_star = 0 := by
+        rw [h_grad x_star]
+        simp only [sub_self, smul_zero, sub_zero, hMin]
+
+      -- h is convex (from strong convexity of f)
+      -- The proof uses the identity:
+      -- a‖z-x*‖² + (1-a)‖w-x*‖² = ‖az+(1-a)w-x*‖² + a(1-a)‖z-w‖²
+      have h_convex : ConvexOn ℝ Set.univ h := by
+        constructor
+        · exact convex_univ
+        · intro z _ w _ a b ha hb hab
+          simp only [h, smul_eq_mul]
+          have hb_eq : b = 1 - a := by linarith
+          rw [hb_eq]
+          -- The convex combination identity for norms
+          have h_convex_identity : a * ‖z - x_star‖^2 + (1 - a) * ‖w - x_star‖^2 =
+              ‖a • z + (1 - a) • w - x_star‖^2 + a * (1 - a) * ‖z - w‖^2 := by
+            -- Let u = z - x*, v = w - x*
+            set u := z - x_star
+            set v := w - x_star
+            have hsum : a • z + (1 - a) • w - x_star = a • u + (1 - a) • v := by
+              have : a • x_star + (1 - a) • x_star = x_star := by
+                rw [← add_smul]; simp only [add_sub_cancel, one_smul]
+              calc a • z + (1 - a) • w - x_star
+                  = a • z - a • x_star + ((1 - a) • w - (1 - a) • x_star) := by module
+                _ = a • (z - x_star) + (1 - a) • (w - x_star) := by simp only [smul_sub]
+                _ = a • u + (1 - a) • v := by simp only [u, v]
+            have hdiff : z - w = u - v := by simp only [u, v]; module
+            rw [hsum, hdiff]
+            have expand_lhs : ‖a • u + (1 - a) • v‖^2 =
+                a^2 * ‖u‖^2 + (1 - a)^2 * ‖v‖^2 + 2 * a * (1 - a) * @inner ℝ E _ u v := by
+              rw [norm_add_sq_real, norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
+                  abs_of_nonneg ha, abs_of_nonneg (by linarith : 0 ≤ 1 - a),
+                  inner_smul_left, inner_smul_right]
+              simp only [conj_trivial]
+              ring
+            have expand_diff : ‖u - v‖^2 = ‖u‖^2 + ‖v‖^2 - 2 * @inner ℝ E _ u v := by
+              rw [norm_sub_sq_real]; ring
+            rw [expand_lhs, expand_diff]
+            ring
+          have h_from_sc := hStrong z w a ha (by linarith : a ≤ 1)
+          -- The strong convexity gives:
+          -- f(az+(1-a)w) ≤ a*f(z) + (1-a)*f(w) - (μ/2)*a*(1-a)*‖z-w‖²
+          -- Combined with h_convex_identity, this implies convexity of h
+          -- Expand and simplify using h_convex_identity and h_from_sc
+          have h_expand : a * (f z - μ / 2 * ‖z - x_star‖^2) + (1 - a) * (f w - μ / 2 * ‖w - x_star‖^2) =
+              a * f z + (1 - a) * f w - μ / 2 * (a * ‖z - x_star‖^2 + (1 - a) * ‖w - x_star‖^2) := by
+            ring
+          have h_rhs : f (a • z + (1 - a) • w) - μ / 2 * ‖a • z + (1 - a) • w - x_star‖^2 =
+              f (a • z + (1 - a) • w) - μ / 2 * (a * ‖z - x_star‖^2 + (1 - a) * ‖w - x_star‖^2)
+              + μ / 2 * a * (1 - a) * ‖z - w‖^2 := by
+            rw [h_convex_identity]; ring
+          rw [h_expand, h_rhs]
+          have h_ineq : f (a • z + (1 - a) • w) + μ / 2 * a * (1 - a) * ‖z - w‖^2 ≤
+              a * f z + (1 - a) * f w := by linarith
+          linarith
+
+      -- Prove cocoercivity for h directly, following the technique from lsmooth_cocoercivity
+      -- The key steps are:
+      -- 1. x* minimizes h (since ∇h(x*) = 0 and h is convex)
+      -- 2. Use descent lemma at x and x* to bound function differences
+      -- 3. Use tilted function technique to relate to inner product
+
+      have hL_sub_μ_pos : 0 < L - μ := sub_pos.mpr hL_gt_μ
+      let g' := gradient h x
+
+      -- Step 1: x* minimizes h (since ∇h(x*) = 0 and h is convex)
+      have h_xstar_min : ∀ y, h x_star ≤ h y :=
+        convex_first_order_optimality h h_convex h_diff x_star h_grad_xstar
+
+      -- h satisfies the descent lemma (fundamental inequality) with constant (L-μ)
+      have h_descent : ∀ u v, h v ≤ h u + @inner ℝ E _ (gradient h u) (v - u) +
+          ((L - μ) / 2) * ‖v - u‖^2 := by
+        intro u v
+        have hf_desc := lsmooth_fundamental_ineq f L (le_of_lt hL) hSmooth u v
+        -- Expand: h(v) = f(v) - (μ/2)‖v - x*‖²
+        -- Need to show: h(v) ≤ h(u) + ⟨∇h(u), v-u⟩ + ((L-μ)/2)‖v-u‖²
+        -- where ∇h(u) = ∇f(u) - μ(u - x*)
+
+        -- Key identity: ‖v - x*‖² = ‖(v-u) + (u-x*)‖² = ‖v-u‖² + ‖u-x*‖² + 2⟨u-x*, v-u⟩
+        have h_norm_expand : ‖v - x_star‖^2 =
+            ‖v - u‖^2 + ‖u - x_star‖^2 + 2 * @inner ℝ E _ (u - x_star) (v - u) := by
+          have hvu : v - x_star = (v - u) + (u - x_star) := by abel
+          rw [hvu, norm_add_sq_real]
+          -- norm_add_sq_real gives ⟨v-u, u-x*⟩, need to swap to ⟨u-x*, v-u⟩
+          rw [real_inner_comm (v - u) (u - x_star)]
+          ring
+
+        -- Expand inner product: ⟨∇f(u) - μ(u-x*), v-u⟩ = ⟨∇f(u), v-u⟩ - μ⟨u-x*, v-u⟩
+        have h_inner_expand : @inner ℝ E _ (gradient f u - μ • (u - x_star)) (v - u) =
+            @inner ℝ E _ (gradient f u) (v - u) - μ * @inner ℝ E _ (u - x_star) (v - u) := by
+          rw [inner_sub_left, inner_smul_left]
+          simp only [conj_trivial]
+
+        -- Target: h(v) ≤ h(u) + ⟨∇h(u), v-u⟩ + ((L-μ)/2)‖v-u‖²
+        -- h(v) = f(v) - (μ/2)‖v-x*‖²
+        -- h(u) = f(u) - (μ/2)‖u-x*‖²
+        -- ∇h(u) = ∇f(u) - μ(u-x*)
+        simp only [h]
+        rw [h_grad u, h_inner_expand, h_norm_expand]
+        -- Now: f(v) - (μ/2)(‖v-u‖² + ‖u-x*‖² + 2⟨u-x*,v-u⟩)
+        --    ≤ f(u) - (μ/2)‖u-x*‖² + (⟨∇f(u),v-u⟩ - μ⟨u-x*,v-u⟩) + ((L-μ)/2)‖v-u‖²
+        -- Rearranging: f(v) ≤ f(u) + ⟨∇f(u),v-u⟩ + ((L-μ)/2 + μ/2)‖v-u‖² = f(u) + ⟨∇f(u),v-u⟩ + (L/2)‖v-u‖²
+        -- Which follows from hf_desc
+        linarith
+
+      -- Step 2: Apply descent at x: h(x - (1/(L-μ))g') ≤ h(x) - (1/(2(L-μ)))‖g'‖²
+      have h_descent_x : h (x - (1 / (L - μ)) • g') ≤ h x - (1 / (2 * (L - μ))) * ‖g'‖^2 := by
+        have hd := h_descent x (x - (1 / (L - μ)) • g')
+        have h_diff_eq : (x - (1 / (L - μ)) • g') - x = -((1 / (L - μ)) • g') := by simp [sub_eq_add_neg, add_comm]
+        have h_inner : @inner ℝ E _ g' ((x - (1 / (L - μ)) • g') - x) = -(1 / (L - μ)) * ‖g'‖^2 := by
+          rw [h_diff_eq]
+          simp only [inner_neg_right, inner_smul_right, real_inner_self_eq_norm_sq]
+          ring
+        have h_norm : ‖(x - (1 / (L - μ)) • g') - x‖^2 = (1 / (L - μ))^2 * ‖g'‖^2 := by
+          rw [h_diff_eq, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/(L-μ) > 0)]
+          ring
+        calc h (x - (1 / (L - μ)) • g') ≤ h x + @inner ℝ E _ g' ((x - (1 / (L - μ)) • g') - x) +
+                             ((L - μ) / 2) * ‖(x - (1 / (L - μ)) • g') - x‖^2 := hd
+          _ = h x + (-(1 / (L - μ)) * ‖g'‖^2) + ((L - μ) / 2) * ((1 / (L - μ))^2 * ‖g'‖^2) := by
+              rw [h_inner, h_norm]
+          _ = h x - (1 / (2 * (L - μ))) * ‖g'‖^2 := by field_simp; ring
+
+      -- Bound A: (1/(2(L-μ)))‖g'‖² ≤ h(x) - h(x*)
+      have h_bound_A : (1 / (2 * (L - μ))) * ‖g'‖^2 ≤ h x - h x_star := by
+        have := h_xstar_min (x - (1 / (L - μ)) • g')
+        linarith
+
+      -- Step 3: Apply descent at x*: h(x* + (1/(L-μ))g') ≤ h(x*) + (1/(2(L-μ)))‖g'‖²
+      have h_descent_xstar : h (x_star + (1 / (L - μ)) • g') ≤ h x_star + (1 / (2 * (L - μ))) * ‖g'‖^2 := by
+        have hd := h_descent x_star (x_star + (1 / (L - μ)) • g')
+        have h_diff_eq : (x_star + (1 / (L - μ)) • g') - x_star = (1 / (L - μ)) • g' := by abel
+        have h_inner : @inner ℝ E _ (gradient h x_star) ((x_star + (1 / (L - μ)) • g') - x_star) = 0 := by
+          rw [h_grad_xstar, inner_zero_left]
+        have h_norm : ‖(x_star + (1 / (L - μ)) • g') - x_star‖^2 = (1 / (L - μ))^2 * ‖g'‖^2 := by
+          rw [h_diff_eq, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity : 1/(L-μ) > 0)]
+          ring
+        calc h (x_star + (1 / (L - μ)) • g') ≤ h x_star + @inner ℝ E _ (gradient h x_star)
+              ((x_star + (1 / (L - μ)) • g') - x_star) + ((L - μ) / 2) * ‖(x_star + (1 / (L - μ)) • g') - x_star‖^2 := hd
+          _ = h x_star + 0 + ((L - μ) / 2) * ((1 / (L - μ))^2 * ‖g'‖^2) := by rw [h_inner, h_norm]
+          _ = h x_star + (1 / (2 * (L - μ))) * ‖g'‖^2 := by field_simp; ring
+
+      -- Step 4: Tilted function φ(z) = h(z) - ⟨g', z⟩ is convex
+      have φ_convex : ConvexOn ℝ Set.univ (fun z => h z - @inner ℝ E _ g' z) := by
+        have h_linear_concave : ConcaveOn ℝ Set.univ (fun z => @inner ℝ E _ g' z) := by
+          constructor
+          · exact convex_univ
+          · intro z _ w _ a b ha hb hab
+            simp only [inner_add_right, inner_smul_right, smul_eq_mul]
+            linarith
+        exact h_convex.sub h_linear_concave
+
+      -- ∇φ(x) = 0
+      have φ_grad_x : gradient (fun z => h z - @inner ℝ E _ g' z) x = 0 := by
+        have hh_diff : DifferentiableAt ℝ h x := h_diff x
+        have hg'_diff : DifferentiableAt ℝ (fun z => @inner ℝ E _ g' z) x :=
+          (innerSL (𝕜 := ℝ) g').differentiableAt
+        have hg'_grad : HasGradientAt (fun z => @inner ℝ E _ g' z) g' x := by
+          rw [hasGradientAt_iff_hasFDerivAt]
+          have h1 := (innerSL (𝕜 := ℝ) g').hasFDerivAt (x := x)
+          simp only [InnerProductSpace.toDual] at h1 ⊢
+          convert h1 using 1
+        have hh_grad : HasGradientAt h g' x := hh_diff.hasGradientAt
+        have h_sub : HasGradientAt (fun z => h z - @inner ℝ E _ g' z) (g' - g') x := by
+          have h1 := hasGradientAt_iff_hasFDerivAt.mp hh_grad
+          have h2 := hasGradientAt_iff_hasFDerivAt.mp hg'_grad
+          have h3 := h1.sub h2
+          rw [hasGradientAt_iff_hasFDerivAt]
+          convert h3 using 1
+          simp only [map_sub]
+        rw [sub_self] at h_sub
+        exact h_sub.gradient
+
+      -- φ is differentiable
+      have φ_diff : Differentiable ℝ (fun z => h z - @inner ℝ E _ g' z) := by
+        intro z
+        exact (h_diff z).sub (innerSL (𝕜 := ℝ) g').differentiableAt
+
+      -- x minimizes φ via first-order optimality
+      have h_x_min_φ : ∀ y, (h x - @inner ℝ E _ g' x) ≤ (h y - @inner ℝ E _ g' y) :=
+        convex_first_order_optimality (fun z => h z - @inner ℝ E _ g' z) φ_convex φ_diff x φ_grad_x
+
+      -- φ(x) ≤ φ(x* + (1/(L-μ))g')
+      have h_φx_le := h_x_min_φ (x_star + (1 / (L - μ)) • g')
+
+      -- Expand ⟨g', x* + (1/(L-μ))g'⟩
+      have h_inner_xstar'_g' : @inner ℝ E _ g' (x_star + (1 / (L - μ)) • g') =
+          @inner ℝ E _ g' x_star + (1 / (L - μ)) * ‖g'‖^2 := by
+        simp only [inner_add_right, inner_smul_right, real_inner_self_eq_norm_sq]
+
+      -- Bound B: (1/(2(L-μ)))‖g'‖² ≤ h(x*) - h(x) + ⟨g', x - x*⟩
+      have h_bound_B : (1 / (2 * (L - μ))) * ‖g'‖^2 ≤ h x_star - h x + @inner ℝ E _ g' (x - x_star) := by
+        have h4 : @inner ℝ E _ g' (x - x_star) = @inner ℝ E _ g' x - @inner ℝ E _ g' x_star :=
+          inner_sub_right g' x x_star
+        have step1' : h x - @inner ℝ E _ g' x ≤ h (x_star + (1 / (L - μ)) • g') -
+            (@inner ℝ E _ g' x_star + (1 / (L - μ)) * ‖g'‖^2) := by
+          rw [← h_inner_xstar'_g']
+          exact h_φx_le
+        have step2' : h (x_star + (1 / (L - μ)) • g') - (@inner ℝ E _ g' x_star + (1 / (L - μ)) * ‖g'‖^2) ≤
+            h x_star + (1 / (2 * (L - μ))) * ‖g'‖^2 - (@inner ℝ E _ g' x_star + (1 / (L - μ)) * ‖g'‖^2) := by
+          linarith [h_descent_xstar]
+        have step3' : h x - @inner ℝ E _ g' x ≤
+            h x_star - @inner ℝ E _ g' x_star - (1 / (2 * (L - μ))) * ‖g'‖^2 := by
+          have := le_trans step1' step2'
+          -- Simplify RHS of step2': h(x*) + (1/(2(L-μ)))‖g'‖² - (⟨g', x*⟩ + (1/(L-μ))‖g'‖²)
+          -- = h(x*) - ⟨g', x*⟩ + (1/(2(L-μ)) - 1/(L-μ))‖g'‖²
+          -- = h(x*) - ⟨g', x*⟩ - (1/(2(L-μ)))‖g'‖²
+          have h_rhs_simp : h x_star + (1 / (2 * (L - μ))) * ‖g'‖^2 -
+              (@inner ℝ E _ g' x_star + (1 / (L - μ)) * ‖g'‖^2) =
+              h x_star - @inner ℝ E _ g' x_star - (1 / (2 * (L - μ))) * ‖g'‖^2 := by
+            have hne : L - μ ≠ 0 := ne_of_gt hL_sub_μ_pos
+            field_simp
+            ring
+          linarith [this, h_rhs_simp]
+        have step4 : (1 / (2 * (L - μ))) * ‖g'‖^2 ≤ h x_star - h x + @inner ℝ E _ g' x - @inner ℝ E _ g' x_star := by
+          linarith
+        linarith
+
+      -- Add bounds A and B: (1/(L-μ))‖g'‖² ≤ ⟨g', x - x*⟩
+      have h_combined : (1 / (L - μ)) * ‖g'‖^2 ≤ @inner ℝ E _ g' (x - x_star) := by
+        have h_add := add_le_add h_bound_A h_bound_B
+        have lhs_eq : (1 / (2 * (L - μ))) * ‖g'‖^2 + (1 / (2 * (L - μ))) * ‖g'‖^2 = (1 / (L - μ)) * ‖g'‖^2 := by field_simp; ring
+        have rhs_eq : (h x - h x_star) + (h x_star - h x + @inner ℝ E _ g' (x - x_star)) =
+            @inner ℝ E _ g' (x - x_star) := by ring
+        linarith
+
+      -- Multiply by (L-μ): ‖g'‖² ≤ (L-μ)⟨g', x - x*⟩
+      have h_cocoer_h : ‖g'‖^2 ≤ (L - μ) * @inner ℝ E _ g' (x - x_star) := by
+        calc ‖g'‖^2 = (L - μ) * ((1 / (L - μ)) * ‖g'‖^2) := by field_simp
+          _ ≤ (L - μ) * @inner ℝ E _ g' (x - x_star) := by
+              apply mul_le_mul_of_nonneg_left h_combined (le_of_lt hL_sub_μ_pos)
+
+      -- Convert g' = ∇h(x) = g - μd to the target form
+      simp only [g'] at h_cocoer_h
+      rw [h_grad x] at h_cocoer_h
+      simp only [g, d] at h_cocoer_h ⊢
+      exact h_cocoer_h
+
+  -- Expand LHS: ‖g - μd‖² = ‖g‖² - 2μ⟨g,d⟩ + μ²‖d‖²
+  have h_expand_lhs : ‖g - μ • d‖^2 = ‖g‖^2 - 2 * μ * @inner ℝ E _ g d + μ^2 * ‖d‖^2 := by
+    rw [sub_eq_add_neg, norm_add_sq_real]
+    simp only [norm_neg, inner_neg_right, norm_smul, Real.norm_eq_abs, abs_of_pos hμ,
+               inner_smul_right, real_inner_self_eq_norm_sq]
+    ring
+
+  -- Expand RHS: (L-μ)⟨g - μd, d⟩ = (L-μ)⟨g,d⟩ - (L-μ)μ‖d‖²
+  have h_expand_rhs : (L - μ) * @inner ℝ E _ (g - μ • d) d =
+      (L - μ) * @inner ℝ E _ g d - (L - μ) * μ * ‖d‖^2 := by
+    rw [inner_sub_left, inner_smul_left]
+    simp only [real_inner_self_eq_norm_sq, conj_trivial]
+    ring
+
+  -- From h_aux_cocoer: ‖g‖² - 2μ⟨g,d⟩ + μ²‖d‖² ≤ (L-μ)⟨g,d⟩ - (L-μ)μ‖d‖²
+  have h_ineq : ‖g‖^2 - 2 * μ * @inner ℝ E _ g d + μ^2 * ‖d‖^2 ≤
+      (L - μ) * @inner ℝ E _ g d - (L - μ) * μ * ‖d‖^2 := by
+    rw [← h_expand_lhs, ← h_expand_rhs]
+    exact h_aux_cocoer
+
+  -- Rearrange: ‖g‖² + μL‖d‖² ≤ (L+μ)⟨g,d⟩
+  have h_rearrange : ‖g‖^2 + μ * L * ‖d‖^2 ≤ (L + μ) * @inner ℝ E _ g d := by
+    -- From h_ineq: ‖g‖² - 2μ⟨g,d⟩ + μ²‖d‖² ≤ (L-μ)⟨g,d⟩ - (L-μ)μ‖d‖²
+    -- Add 2μ⟨g,d⟩ to both sides:
+    -- ‖g‖² + μ²‖d‖² ≤ (L-μ+2μ)⟨g,d⟩ - (L-μ)μ‖d‖²
+    -- ‖g‖² + μ²‖d‖² ≤ (L+μ)⟨g,d⟩ - (Lμ - μ²)‖d‖²
+    -- ‖g‖² + μ²‖d‖² + Lμ‖d‖² - μ²‖d‖² ≤ (L+μ)⟨g,d⟩
+    -- ‖g‖² + Lμ‖d‖² ≤ (L+μ)⟨g,d⟩
+    linarith
+
+  -- Divide by (L+μ): ⟨g,d⟩ ≥ (μL)/(μ+L)‖d‖² + 1/(μ+L)‖g‖²
+  have h_final : @inner ℝ E _ g d ≥ (μ * L) / (μ + L) * ‖d‖^2 + 1 / (μ + L) * ‖g‖^2 := by
+    have h1 : (μ + L) * @inner ℝ E _ g d ≥ μ * L * ‖d‖^2 + ‖g‖^2 := by linarith
+    have h2 : (μ * L) / (μ + L) * ‖d‖^2 + 1 / (μ + L) * ‖g‖^2 =
+        (μ * L * ‖d‖^2 + ‖g‖^2) / (μ + L) := by field_simp
+    rw [h2, ge_iff_le]
+    -- (μL·‖d‖² + ‖g‖²)/(μ+L) ≤ ⟨g,d⟩ iff μL·‖d‖² + ‖g‖² ≤ (μ+L)·⟨g,d⟩
+    have h_ne : μ + L ≠ 0 := ne_of_gt h_sum_pos
+    have h3 : (μ * L * ‖d‖^2 + ‖g‖^2) / (μ + L) * (μ + L) = μ * L * ‖d‖^2 + ‖g‖^2 := by
+      field_simp
+    have h4 : (μ * L * ‖d‖^2 + ‖g‖^2) / (μ + L) ≤ @inner ℝ E _ g d ↔
+        (μ * L * ‖d‖^2 + ‖g‖^2) / (μ + L) * (μ + L) ≤ @inner ℝ E _ g d * (μ + L) := by
+      constructor
+      · intro h
+        apply mul_le_mul_of_nonneg_right h (le_of_lt h_sum_pos)
+      · intro h
+        have h5 : 0 < 1 / (μ + L) := by positivity
+        have := mul_le_mul_of_nonneg_right h (le_of_lt h5)
+        simp only [mul_assoc] at this
+        have h6 : (μ + L) * (1 / (μ + L)) = 1 := by field_simp
+        simp only [h6, mul_one] at this
+        have h7 : μ * (L * ‖d‖^2) = μ * L * ‖d‖^2 := by ring
+        simp only [h7] at this
+        exact this
+    rw [h4, h3]
+    have h5 : @inner ℝ E _ g d * (μ + L) = (μ + L) * @inner ℝ E _ g d := by ring
+    rw [h5]
+    linarith
+
+  convert h_final using 2 <;> simp only [g, d]
+
 /-- One step of gradient descent with learning rate η. -/
 noncomputable def gradientDescentStep (f : E → ℝ) (η : ℝ) (x : E) : E :=
   x - η • gradient f x
@@ -1510,8 +2081,8 @@ theorem strongly_convex_linear_convergence (f : E → ℝ) (L μ : ℝ)
       have h_coeff_eq : 1 - 2 * μ / (μ + L) = (L - μ) / (L + μ) := by
         field_simp
         ring
-      -- Combine everything using transitivity. The proof depends on
-      -- strong_smooth_interpolation which currently has a sorry.
+      -- Combine everything using transitivity. The proof uses
+      -- strong_smooth_interpolation (now fully proved).
       -- Key inequality from h_interp:
       have h_inner_bound : inner_val ≥ (μ * L) / (μ + L) * ‖x_k - x_star‖^2 +
                                         1 / (μ + L) * ‖g‖^2 := h_interp
