@@ -94,32 +94,48 @@ Key theorems proven:
 
 **File**: `ElmanProofs/Expressivity/ExpressivityGradientTradeoff.lean`
 
-Formalizes the TWO-LAYER analysis of why h-dependence gives Elman higher expressivity:
+Formalizes TWO INDEPENDENT DIMENSIONS for RNN architecture evaluation:
 
-| Layer | Elman | Mamba2 |
-|-------|-------|--------|
-| Layer 1: Update function | Nonlinear in h (tanh) | Linear in h |
-| Layer 2: Gradient structure | Depends on h | Independent of h |
+#### Learning Efficiency: Gradient Condition Number κ
+The ratio of max/min gradient magnitude. Lower κ = more stable training.
 
-Key theorems proven:
-- `linear_preserves_structure`: Linear maps preserve affine relationships (limits expressivity)
-- `elman_breaks_linear_structure`: tanh is bounded, breaks linear structure (enables expressivity)
-- `tanh_one_gt_hundredth`: tanh(1) > 1/100 (numerical bound via exp bounds)
-- `tanh_compresses_ratio`: tanh(100)/tanh(1) < 100 (compression = expressivity)
-- `residual_is_state_dependent`: Residual h + f(h) preserves h-dependence
-- `residual_gradient_lower_bound`: Residual gradient ≥ 1 (no vanishing!)
-- `residual_gradient_upper_bound`: Residual gradient ≤ 2 (bounded)
-- `sigmoid_pos`, `sigmoid_lt_one`: Sigmoid bounds for gating analysis
-- `minimal_gate_gradient_structure`: x-dependent gating provides h-independent component
-- `residual_elman_optimal`: Residual Elman achieves best combined score (6)
-- `implementation_recommendation`: Formal recommendation for Residual Elman
+| Architecture | Gradient Bounds | κ (Condition Number) |
+|--------------|-----------------|---------------------|
+| Stock Elman | [0, 1] | ∞ (can vanish) |
+| Residual Elman | [1, 2] | 2 |
+| Linear RNN | constant | 1 (but limited expressivity) |
 
-Architecture comparison with combined scores:
-- Linear RNN: 5 (gradient 4 + expressivity 1)
-- Selective SSM: 5 (gradient 3 + expressivity 2)
-- Stock Elman: 5 (gradient 2 + expressivity 3)
-- **Residual Elman: 6** (gradient 3 + expressivity 3) ← Best!
-- Gated RNN: 4 (gradient 1 + expressivity 3)
+Key theorems:
+- `stock_elman_gradient_bounds`: Gradient factor ∈ [0, 1]
+- `residual_elman_gradient_bounds_full`: 1 ≤ 1 + tanh'(x) ≤ 2
+- `residual_finite_condition_number`: κ = 2 for residual
+- `stock_infinite_condition_number`: κ = ∞ for stock Elman
+
+#### Expressivity: Structural Property
+Can the architecture break linear structure?
+
+| Architecture | Expressivity Class |
+|--------------|-------------------|
+| Linear RNN | Linear (limited to n-dim subspace) |
+| Stock Elman | Nonlinear (breaks linear structure) |
+| Residual Elman | Nonlinear (same as stock!) |
+
+Key theorems:
+- `LinearExpressivity`, `NonlinearExpressivity`: Formal definitions
+- `nonlinear_implies_not_linear`: Structural separation
+- `tanh_compresses_ratio`: tanh(100)/tanh(1) < 100 (compression proves nonlinearity)
+- `tanh_one_gt_hundredth`: tanh(1) > 1/100 (via exp bounds)
+
+#### Summary Theorem
+- `residual_elman_optimal_tradeoff`: Residual achieves κ=2 AND nonlinear expressivity
+
+#### Experimental Validation (batch=256)
+| Model | Tok/s | Loss | Analysis |
+|-------|-------|------|----------|
+| X-Gated Elman | 166k | 1.89 | κ~2, nonlinear |
+| Mamba2 | 96k | 1.84 | κ=1, linear in h |
+
+X-Gated is 1.73x FASTER. h-dependence in gates hurts; h-dependence in core computation helps.
 
 ### Proof Chain (All Complete)
 
