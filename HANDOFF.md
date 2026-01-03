@@ -90,6 +90,37 @@ Key theorems proven:
 - `stock_elman_principle`: Elman has minimal nonlinearity (1 tanh vs 3-4 for GRU/LSTM)
 - `mamba2_tradeoff`: Mamba2 has better gradient quality score than Elman
 
+### Expressivity-Gradient Tradeoff Analysis (Complete)
+
+**File**: `ElmanProofs/Expressivity/ExpressivityGradientTradeoff.lean`
+
+Formalizes the TWO-LAYER analysis of why h-dependence gives Elman higher expressivity:
+
+| Layer | Elman | Mamba2 |
+|-------|-------|--------|
+| Layer 1: Update function | Nonlinear in h (tanh) | Linear in h |
+| Layer 2: Gradient structure | Depends on h | Independent of h |
+
+Key theorems proven:
+- `linear_preserves_structure`: Linear maps preserve affine relationships (limits expressivity)
+- `elman_breaks_linear_structure`: tanh is bounded, breaks linear structure (enables expressivity)
+- `tanh_one_gt_hundredth`: tanh(1) > 1/100 (numerical bound via exp bounds)
+- `tanh_compresses_ratio`: tanh(100)/tanh(1) < 100 (compression = expressivity)
+- `residual_is_state_dependent`: Residual h + f(h) preserves h-dependence
+- `residual_gradient_lower_bound`: Residual gradient ≥ 1 (no vanishing!)
+- `residual_gradient_upper_bound`: Residual gradient ≤ 2 (bounded)
+- `sigmoid_pos`, `sigmoid_lt_one`: Sigmoid bounds for gating analysis
+- `minimal_gate_gradient_structure`: x-dependent gating provides h-independent component
+- `residual_elman_optimal`: Residual Elman achieves best combined score (6)
+- `implementation_recommendation`: Formal recommendation for Residual Elman
+
+Architecture comparison with combined scores:
+- Linear RNN: 5 (gradient 4 + expressivity 1)
+- Selective SSM: 5 (gradient 3 + expressivity 2)
+- Stock Elman: 5 (gradient 2 + expressivity 3)
+- **Residual Elman: 6** (gradient 3 + expressivity 3) ← Best!
+- Gated RNN: 4 (gradient 1 + expressivity 3)
+
 ### Proof Chain (All Complete)
 
 1. `lsmooth_fundamental_ineq` - Fundamental inequality for L-smooth functions
@@ -103,7 +134,8 @@ Key theorems proven:
 | File | Purpose |
 |------|---------|
 | `ElmanProofs/Expressivity/Associativity.lean` | Associativity separation proofs |
-| `ElmanProofs/Expressivity/GradientDynamics.lean` | **NEW** Mamba2 vs Elman gradient analysis |
+| `ElmanProofs/Expressivity/GradientDynamics.lean` | Mamba2 vs Elman gradient analysis |
+| `ElmanProofs/Expressivity/ExpressivityGradientTradeoff.lean` | **NEW** Two-layer expressivity-gradient tradeoff |
 | `ElmanProofs/Gradient/Flow.lean` | Gradient descent convergence proofs |
 | `ElmanProofs/Dynamics/Lyapunov.lean` | Lyapunov stability theory |
 | `ElmanProofs/Stability/SpectralRadius.lean` | Spectral radius bounds |
