@@ -457,13 +457,159 @@ theorem polynomial_rnn_not_associative (α : ℝ) (hα : α ≠ 1) (hα_pos : 0 
       Real.rpow |w * Real.rpow |w * h + x₁| α + x₂| α =
       Real.rpow |w' * h + x'| α := by
   -- Counterexample: w = 1, x₁ = 1, x₂ = 1
+  -- LHS = ||h + 1|^α + 1|^α
   use 1, 1, 1
   intro ⟨w', x', h_eq⟩
-  -- The proof requires detailed rpow calculations with absolute values.
-  -- The structure is verified in the docstring above.
-  -- Technical issues with Lean 4 rpow notation make this tedious to formalize;
-  -- the core mathematical argument is sound.
-  sorry
+  have hα_ne : α ≠ 0 := ne_of_gt hα_pos
+
+  -- Step 1: From h = 0, derive |x'| = 2
+  have h_at_0 := h_eq 0
+  simp only [one_mul, zero_add, mul_zero] at h_at_0
+  -- LHS at 0: | |1|^α + 1 |^α = |1 + 1|^α = 2^α
+  have h_lhs_0 : (|(1 : ℝ)|.rpow α + 1).rpow α = (2 : ℝ).rpow α := by
+    simp only [abs_one, Real.one_rpow]
+    norm_num
+  -- h_at_0 is now: | |1|^α + 1 |^α = |x'|^α
+  -- The outer abs is positive since |1|^α + 1 > 0
+  have h_inner_pos : |(1:ℝ)|.rpow α + 1 > 0 := by
+    have h1 : (0:ℝ) < |(1:ℝ)|.rpow α := Real.rpow_pos_of_pos (by simp : (0:ℝ) < |(1:ℝ)|) α
+    linarith
+  rw [abs_of_pos h_inner_pos] at h_at_0
+  rw [h_lhs_0] at h_at_0
+  -- RHS at 0: |x'|^α = 2^α, so |x'| = 2
+  have h_abs_x' : |x'| = 2 := by
+    have h1 : |x'| ^ α = (2 : ℝ) ^ α := h_at_0.symm
+    rwa [Real.rpow_left_inj (abs_nonneg _) (by linarith : (0:ℝ) ≤ 2) hα_ne] at h1
+
+  -- Step 2: From h = -1, derive |x' - w'| = 1
+  have h_at_neg1 := h_eq (-1)
+  simp only [one_mul, mul_neg_one, neg_add_cancel, abs_zero] at h_at_neg1
+  have h_zero_rpow : (0 : ℝ).rpow α = 0 := Real.zero_rpow hα_ne
+  have h_one_rpow : (1 : ℝ).rpow α = 1 := Real.one_rpow α
+  simp only [h_zero_rpow, zero_add, abs_one, h_one_rpow] at h_at_neg1
+  -- After simplification: h_at_neg1 : 1 = |-w' + x'|.rpow α
+  have h_abs_diff : |x' - w'| = 1 := by
+    have h1 : |-w' + x'|.rpow α = 1 := h_at_neg1.symm
+    have h2 : -w' + x' = x' - w' := by ring
+    rw [h2] at h1
+    have h_abs_nn : (0 : ℝ) ≤ |x' - w'| := abs_nonneg _
+    have h_one_nn : (0 : ℝ) ≤ 1 := by linarith
+    -- |x' - w'|^α = 1^α, so |x' - w'| = 1
+    have h3 : |x' - w'| ^ α = (1 : ℝ) ^ α := by
+      show |x' - w'|.rpow α = (1 : ℝ).rpow α
+      rw [h1, h_one_rpow]
+    exact (Real.rpow_left_inj h_abs_nn h_one_nn hα_ne).mp h3
+
+  -- Step 3: From h = 1, derive |w' + x'| = 2^α + 1
+  have h_at_1 := h_eq 1
+  simp only [one_mul] at h_at_1
+  -- LHS at 1: | |1+1|^α + 1 |^α = (2^α + 1)^α (since 2^α + 1 > 0)
+  have h2pos : (2 : ℝ).rpow α > 0 := Real.rpow_pos_of_pos (by linarith : (0:ℝ) < 2) α
+  have h_lhs_1 : (|(1 : ℝ) + 1|.rpow α + 1).rpow α = ((2 : ℝ).rpow α + 1).rpow α := by
+    norm_num
+  have h_inner_1_pos : |(1 : ℝ) + 1|.rpow α + 1 > 0 := by
+    have : |(1 : ℝ) + 1|.rpow α > 0 := Real.rpow_pos_of_pos (by norm_num) α
+    linarith
+  rw [abs_of_pos h_inner_1_pos] at h_at_1
+  rw [h_lhs_1] at h_at_1
+  -- RHS at 1: |w' + x'|.rpow α = (2.rpow α + 1).rpow α, so |w' + x'| = 2.rpow α + 1
+  have h_abs_sum : |w' + x'| = (2 : ℝ).rpow α + 1 := by
+    -- h_at_1 : ((2 : ℝ).rpow α + 1).rpow α = |w' * 1 + x'|.rpow α
+    simp only [mul_one] at h_at_1
+    have h_rhs_pos : (2 : ℝ).rpow α + 1 > 0 := by linarith
+    have h_rhs_nn : (0 : ℝ) ≤ (2 : ℝ).rpow α + 1 := by linarith
+    -- |w' + x'|^α = (2^α + 1)^α, so |w' + x'| = 2^α + 1
+    exact (Real.rpow_left_inj (abs_nonneg _) h_rhs_nn hα_ne).mp h_at_1.symm
+
+  -- Step 4: Case analysis on x' and derive contradiction
+  -- From |x'| = 2: x' = 2 or x' = -2
+  -- From |x' - w'| = 1: w' = x' - 1 or w' = x' + 1
+  -- This gives (w', x') ∈ {(1,2), (3,2), (-3,-2), (-1,-2)}
+  -- So |w' + x'| ∈ {3, 5}
+  have h_sum_cases : |w' + x'| = 3 ∨ |w' + x'| = 5 := by
+    have hx' : x' = 2 ∨ x' = -2 := by
+      rw [abs_eq (by linarith : (0:ℝ) ≤ 2)] at h_abs_x'
+      exact h_abs_x'
+    have hw' : w' = x' - 1 ∨ w' = x' + 1 := by
+      have h : |x' - w'| = 1 := h_abs_diff
+      rw [abs_eq (by linarith : (0:ℝ) ≤ 1)] at h
+      cases h with
+      | inl h => left; linarith
+      | inr h => right; linarith
+    rcases hx' with rfl | rfl <;> rcases hw' with rfl | rfl <;> norm_num
+
+  -- Step 5: From |w' + x'| = 2^α + 1 and |w' + x'| ∈ {3, 5}, get 2^α ∈ {2, 4}
+  have h_2α_cases : (2 : ℝ).rpow α = 2 ∨ (2 : ℝ).rpow α = 4 := by
+    cases h_sum_cases with
+    | inl h => left; rw [h] at h_abs_sum; linarith
+    | inr h => right; rw [h] at h_abs_sum; linarith
+
+  -- Step 6: 2^α = 2 implies α = 1, contradiction with hα
+  -- Step 7: 2^α = 4 implies α = 2, check h = 2 for contradiction
+  cases h_2α_cases with
+  | inl h_eq2 =>
+    -- 2^α = 2 = 2^1 implies α = 1
+    have : α = 1 := by
+      have h1 : (2 : ℝ) ^ α = (2 : ℝ) ^ (1 : ℝ) := by
+        show (2 : ℝ).rpow α = (2 : ℝ).rpow 1
+        rw [h_eq2]; simp
+      exact (Real.rpow_right_inj (by linarith : (0:ℝ) < 2) (by linarith : (2:ℝ) ≠ 1)).mp h1
+    exact hα this
+  | inr h_eq4 =>
+    -- 2^α = 4 = 2^2 implies α = 2
+    have hα_eq_2 : α = 2 := by
+      have h1 : (2 : ℝ) ^ α = (2 : ℝ) ^ (2 : ℝ) := by
+        show (2 : ℝ).rpow α = (2 : ℝ).rpow 2
+        rw [h_eq4]; norm_num
+      exact (Real.rpow_right_inj (by linarith : (0:ℝ) < 2) (by linarith : (2:ℝ) ≠ 1)).mp h1
+    -- With α = 2, check h = 2 for contradiction
+    -- LHS at h = 2: ||2+1|^2 + 1|^2 = |9+1|^2 = 100
+    -- RHS: |w'·2 + x'|^2
+    -- From |w' + x'| = 5 (since 2^2 + 1 = 5), we have (w', x') ∈ {(3,2), (-3,-2)}
+    -- For both: |w'·2 + x'|^2 = 64 ≠ 100
+    have h_at_2 := h_eq 2
+    simp only [one_mul] at h_at_2
+    rw [hα_eq_2] at h_at_2
+    -- Compute LHS at h = 2 with α = 2
+    have h_lhs_2 : (|(2 : ℝ) + 1|.rpow 2 + 1).rpow 2 = 100 := by
+      norm_num
+    have h_inner_2_pos : |(2 : ℝ) + 1|.rpow 2 + 1 > 0 := by
+      have h1 : |(2 : ℝ) + 1| = 3 := by norm_num
+      have h2 : (3 : ℝ).rpow 2 = 9 := by norm_num
+      rw [h1, h2]; linarith
+    rw [abs_of_pos h_inner_2_pos] at h_at_2
+    rw [h_lhs_2] at h_at_2
+    -- From h_abs_sum with α = 2: |w' + x'| = 4 + 1 = 5
+    rw [hα_eq_2] at h_abs_sum
+    have h_abs_sum_5 : |w' + x'| = 5 := by
+      have h1 : (2 : ℝ).rpow 2 = 4 := by norm_num
+      rw [h1] at h_abs_sum
+      linarith
+    -- The cases giving |w' + x'| = 5 are (w', x') ∈ {(3, 2), (-3, -2)}
+    -- For both, |w'·2 + x'| = 8, so |w'·2 + x'|^2 = 64
+    have h_rhs_eq_64 : |w' * 2 + x'|.rpow 2 = 64 := by
+      have hx' : x' = 2 ∨ x' = -2 := by
+        rw [abs_eq (by linarith : (0:ℝ) ≤ 2)] at h_abs_x'
+        exact h_abs_x'
+      have hw' : w' = x' - 1 ∨ w' = x' + 1 := by
+        have h : |x' - w'| = 1 := h_abs_diff
+        rw [abs_eq (by linarith : (0:ℝ) ≤ 1)] at h
+        cases h with
+        | inl h => left; linarith
+        | inr h => right; linarith
+      -- Check which cases give |w' + x'| = 5
+      rcases hx' with rfl | rfl <;> rcases hw' with rfl | rfl
+      · -- (w', x') = (1, 2): |w' + x'| = |3| = 3 ≠ 5
+        norm_num at h_abs_sum_5
+      · -- (w', x') = (3, 2): |3*2 + 2| = |8| = 8, 8^2 = 64
+        norm_num
+      · -- (w', x') = (-3, -2): |(-3)*2 + (-2)| = |-8| = 8, 8^2 = 64
+        norm_num
+      · -- (w', x') = (-1, -2): |w' + x'| = |-3| = 3 ≠ 5
+        norm_num at h_abs_sum_5
+    -- Now we have 100 = 64, contradiction
+    rw [h_rhs_eq_64] at h_at_2
+    norm_num at h_at_2
 
 /-! ## The Computational Consequence
 

@@ -140,10 +140,54 @@ theorem tanh_deriv_lt_one_of_ne_zero (x : ℝ) (hx : x ≠ 0) : |deriv Real.tanh
 
 /-- tanh(x) → 1 as x → +∞.
     Proof: tanh(x) = (e^x - e^{-x})/(e^x + e^{-x}) = (1 - e^{-2x})/(1 + e^{-2x}) → 1
-    as e^{-2x} → 0 when x → ∞.
-    Note: Technical sorry for filter API complexities; the mathematical argument is sound. -/
+    as e^{-2x} → 0 when x → ∞. -/
 theorem tendsto_tanh_atTop : Filter.Tendsto Real.tanh Filter.atTop (nhds 1) := by
-  sorry
+  -- Strategy: show tanh = (1 - e^{-2x})/(1 + e^{-2x}) and use that e^{-2x} → 0
+  -- First, e^{-2x} → 0 as x → ∞
+  have h_exp_neg2 : Filter.Tendsto (fun x => Real.exp (-(2 * x))) Filter.atTop (nhds 0) := by
+    rw [Real.tendsto_exp_comp_nhds_zero]
+    -- Need: -(2*x) → -∞ as x → ∞
+    have h1 : Filter.Tendsto (fun x : ℝ => 2 * x) Filter.atTop Filter.atTop :=
+      Filter.Tendsto.const_mul_atTop (by norm_num : (0 : ℝ) < 2) Filter.tendsto_id
+    exact Filter.tendsto_neg_atTop_atBot.comp h1
+  -- (1 - e^{-2x}) → 1 and (1 + e^{-2x}) → 1
+  have h_num : Filter.Tendsto (fun x => 1 - Real.exp (-(2 * x))) Filter.atTop (nhds 1) := by
+    convert (tendsto_const_nhds (x := (1 : ℝ))).sub h_exp_neg2 using 1
+    simp
+  have h_denom : Filter.Tendsto (fun x => 1 + Real.exp (-(2 * x))) Filter.atTop (nhds 1) := by
+    convert (tendsto_const_nhds (x := (1 : ℝ))).add h_exp_neg2 using 1
+    simp
+  -- So the ratio → 1/1 = 1
+  have h_ratio : Filter.Tendsto (fun x => (1 - Real.exp (-(2 * x))) / (1 + Real.exp (-(2 * x))))
+      Filter.atTop (nhds 1) := by
+    convert h_num.div h_denom (by norm_num : (1 : ℝ) ≠ 0) using 1
+    simp
+  -- Now show tanh equals this expression
+  -- Goal: tanh x = (1 - e^{-2x})/(1 + e^{-2x})
+  refine h_ratio.congr (fun x => ?_)
+  -- tanh = sinh/cosh where sinh = (e^x - e^{-x})/2, cosh = (e^x + e^{-x})/2
+  rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq, Real.cosh_eq]
+  have h_exp_pos : 0 < Real.exp x := Real.exp_pos x
+  have h_exp_neg : Real.exp (-x) = (Real.exp x)⁻¹ := Real.exp_neg x
+  have hne : Real.exp x ≠ 0 := ne_of_gt h_exp_pos
+  -- Compute exp(-(2*x)) in terms of exp(x)^{-2}
+  have h_exp_neg_2x : Real.exp (-(2*x)) = (Real.exp x)⁻¹ * (Real.exp x)⁻¹ := by
+    have h1 : -(2*x) = (-x) + (-x) := by ring
+    simp only [h1, Real.exp_add, Real.exp_neg]
+  have h_cosh_ne : Real.exp x + (Real.exp x)⁻¹ ≠ 0 := by
+    have h2 : 0 < (Real.exp x)⁻¹ := inv_pos.mpr h_exp_pos
+    linarith
+  have h_denom_ne : 1 + Real.exp (-(2*x)) ≠ 0 := by
+    have := Real.exp_pos (-(2*x))
+    linarith
+  -- Transform from (1 - e^{-2x})/(1 + e^{-2x}) to sinh/cosh
+  symm
+  rw [h_exp_neg]
+  calc (Real.exp x - (Real.exp x)⁻¹) / 2 / ((Real.exp x + (Real.exp x)⁻¹) / 2)
+      = (Real.exp x - (Real.exp x)⁻¹) / (Real.exp x + (Real.exp x)⁻¹) := by field_simp
+    _ = (1 - (Real.exp x)⁻¹ * (Real.exp x)⁻¹) / (1 + (Real.exp x)⁻¹ * (Real.exp x)⁻¹) := by
+        field_simp [hne, h_cosh_ne]
+    _ = (1 - Real.exp (-(2*x))) / (1 + Real.exp (-(2*x))) := by rw [h_exp_neg_2x]
 
 /-- For any ε > 0, there exists c > 0 such that |x| > c implies |tanh'(x)| < ε.
     This is the saturation property: tanh derivative vanishes at infinity.

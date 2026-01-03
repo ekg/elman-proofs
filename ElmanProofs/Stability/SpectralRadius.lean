@@ -75,8 +75,7 @@ noncomputable def frobNorm (M : Matrix (Fin n) (Fin n) ℝ) : ℝ :=
     Taking k = 0 gives ‖A^1‖^{1/1} = ‖A‖ = frobNorm A.
     Since the infimum is ≤ any element in the set, ρ(A) ≤ frobNorm A.
 
-    **Implementation Note**: Currently uses sorry due to elaboration timeout.
-    The proof strategy is: ciInf_le h_bdd 0 where h_bdd shows 0 is a lower bound.
+    The proof uses ciInf_le with h_bdd showing 0 is a lower bound.
 -/
 theorem spectral_radius_le_frobNorm (A : Matrix (Fin n) (Fin n) ℝ) :
     spectralRadius A ≤ frobNorm A := by
