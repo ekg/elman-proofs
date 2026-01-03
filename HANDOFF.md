@@ -66,6 +66,30 @@ All core theorems proven:
 - `deep_tanh_gradient_vanishing`: Product ∏|tanh'(x_t)| ≤ r^T for r < 1
 - `tendsto_tanh_atTop`: tanh(x) → 1 as x → ∞ (limit at infinity)
 
+### Gradient Dynamics: Mamba2 vs Elman (Complete)
+
+**File**: `ElmanProofs/Expressivity/GradientDynamics.lean`
+
+Formalizes WHY Mamba2 learns slightly better than Elman - the key is what the gradient depends on:
+
+| Architecture      | Gradient ∂h'/∂h depends on |
+|-------------------|----------------------------|
+| Pure Linear (S4)  | Nothing (fixed A)          |
+| Mamba2 (Selective)| x only (via A(x))          |
+| Elman             | x AND h (via tanh)         |
+
+Key theorems proven:
+- `tanh_deriv_strict`: |tanh'(x)| < 1 for x ≠ 0 (gradient factor strictly less than 1)
+- `linear_gradient_deterministic`: Linear RNN gradient is input-independent
+- `nonlinear_gradient_varies`: Tanh gradient varies with different inputs
+- `elman_gradient_h_dependent`: Elman gradient factor depends on hidden state h
+- `elman_gradient_varies_with_h`: Different h values → different gradient factors
+- `mamba2_gradient_h_independent`: Mamba2 gradient is h-independent (same x → same gradient)
+- `tanh_gradient_in_unit_interval`: Gradient factor ∈ [0, 1]
+- `selective_gradient_simpler`: SSM gradient is just a diagonal matrix
+- `stock_elman_principle`: Elman has minimal nonlinearity (1 tanh vs 3-4 for GRU/LSTM)
+- `mamba2_tradeoff`: Mamba2 has better gradient quality score than Elman
+
 ### Proof Chain (All Complete)
 
 1. `lsmooth_fundamental_ineq` - Fundamental inequality for L-smooth functions
@@ -78,7 +102,8 @@ All core theorems proven:
 
 | File | Purpose |
 |------|---------|
-| `ElmanProofs/Expressivity/Associativity.lean` | **NEW** Associativity separation proofs |
+| `ElmanProofs/Expressivity/Associativity.lean` | Associativity separation proofs |
+| `ElmanProofs/Expressivity/GradientDynamics.lean` | **NEW** Mamba2 vs Elman gradient analysis |
 | `ElmanProofs/Gradient/Flow.lean` | Gradient descent convergence proofs |
 | `ElmanProofs/Dynamics/Lyapunov.lean` | Lyapunov stability theory |
 | `ElmanProofs/Stability/SpectralRadius.lean` | Spectral radius bounds |

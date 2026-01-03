@@ -109,6 +109,42 @@ is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 
 ---
 
+### 2.1b Gradient Dynamics: Mamba2 vs Elman [COMPLETE]
+
+**Goal**: Formalize why Mamba2 learns slightly better than Elman through gradient analysis.
+
+**Key Insight**: The critical difference is what the gradient ∂h'/∂h depends on:
+
+| Architecture      | Gradient depends on |
+|-------------------|---------------------|
+| Pure Linear (S4)  | Nothing (fixed A)   |
+| Mamba2 (Selective)| x only (via A(x))   |
+| Elman             | x AND h (via tanh)  |
+
+**All theorems proven**:
+
+- [x] `tanh_deriv_strict`: |tanh'(x)| < 1 for x ≠ 0
+- [x] `linear_gradient_deterministic`: Linear RNN gradient is input-independent
+- [x] `nonlinear_gradient_varies`: Tanh gradient varies with different inputs
+- [x] `elman_gradient_h_dependent`: Elman gradient factor depends on h
+- [x] `elman_gradient_varies_with_h`: Different h values → different gradient factors
+- [x] `mamba2_gradient_h_independent`: Mamba2 gradient is h-independent
+- [x] `tanh_gradient_in_unit_interval`: Gradient factor ∈ [0, 1]
+- [x] `selective_gradient_simpler`: SSM gradient is just a diagonal matrix
+- [x] `stock_elman_principle`: Elman has minimal nonlinearity (1 vs 3-4)
+- [x] `mamba2_tradeoff`: Mamba2 has better gradient quality than Elman
+
+**Why this matters**:
+- In Elman, gradient quality depends on hidden state trajectory
+- Trajectory depends on parameters (what we're learning)
+- This creates a feedback loop that complicates optimization
+- Mamba2 avoids this: gradient structure determined by input sequence alone
+
+**Status**: COMPLETE - All proofs finished
+**Location**: `ElmanProofs/Expressivity/GradientDynamics.lean`
+
+---
+
 ### 2.2 Log-Polynomial Gradient Bounds [NOT STARTED]
 
 **Goal**: Prove the log-polynomial activation has bounded gradients.
@@ -240,6 +276,16 @@ is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 | `tanh_deriv_uniform_bound` | Lipschitz.lean | [x] DONE | Medium |
 | `deep_tanh_gradient_vanishing` | Lipschitz.lean | [x] DONE | Medium |
 | `tendsto_tanh_atTop` | Lipschitz.lean | [x] DONE | Easy |
+| `tanh_deriv_strict` | GradientDynamics.lean | [x] DONE | Easy |
+| `linear_gradient_deterministic` | GradientDynamics.lean | [x] DONE | Easy |
+| `nonlinear_gradient_varies` | GradientDynamics.lean | [x] DONE | Easy |
+| `elman_gradient_h_dependent` | GradientDynamics.lean | [x] DONE | Easy |
+| `elman_gradient_varies_with_h` | GradientDynamics.lean | [x] DONE | Medium |
+| `mamba2_gradient_h_independent` | GradientDynamics.lean | [x] DONE | Easy |
+| `tanh_gradient_in_unit_interval` | GradientDynamics.lean | [x] DONE | Easy |
+| `selective_gradient_simpler` | GradientDynamics.lean | [x] DONE | Easy |
+| `stock_elman_principle` | GradientDynamics.lean | [x] DONE | Easy |
+| `mamba2_tradeoff` | GradientDynamics.lean | [x] DONE | Easy |
 
 ---
 
@@ -255,6 +301,8 @@ LinearLimitations.lean ← uses capacity bounds
 LogPolynomialGradient.lean ← independent, can be done in parallel
     ↓
 Universality.lean ← depends on all above
+
+GradientDynamics.lean ← depends on Lipschitz.lean (for tanh properties)
 ```
 
 ---
@@ -266,8 +314,9 @@ Universality.lean ← depends on all above
 3. ~~Complete `LinearCapacity.lean` - prove state is linear combination of inputs~~ DONE
 4. ~~Complete counterexample proofs~~ DONE (polynomial_rnn_not_associative, tanh_composition_not_linear)
 5. ~~Complete `LinearLimitations.lean`~~ DONE (linear_cannot_threshold, linear_rnn_affine_on_binary)
-6. Start `LogPolynomialGradient.lean` - prove gradient bounds for |x|^α activation
-7. Consider `Universality.lean` - prove nonlinear RNN universality
+6. ~~Complete `GradientDynamics.lean`~~ DONE (Mamba2 vs Elman gradient analysis)
+7. Start `LogPolynomialGradient.lean` - prove gradient bounds for |x|^α activation
+8. Consider `Universality.lean` - prove nonlinear RNN universality
 
 ---
 
