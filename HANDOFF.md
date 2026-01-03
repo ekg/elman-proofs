@@ -227,6 +227,36 @@ letI := Matrix.frobeniusSeminormedAddCommGroup (α := ℝ) (m := Fin n) (n := Fi
 Matrix.frobenius_norm_mul M N
 ```
 
+### Expansion Tradeoff Analysis (Sketch)
+
+**File**: `ElmanProofs/Expressivity/ExpansionTradeoff.lean`
+
+Formalizes why dimension expansion (d→4d→d) doesn't help recurrent models:
+
+**Core Insight**: Expansion adds per-step computation, NOT state capacity.
+
+Key structures and theorems:
+- `StateCapacity`: Bounds on information storable in d-dimensional state
+- `LayerConfig`: Configuration with hidden_dim and expansion factor
+- `paramCount`: Parameter count as function of config
+- `stateCapacity`: State capacity = hidden_dim (independent of expansion!)
+- `ExpansionPath`: The d→e·d→d bottleneck structure
+- `expansion_rank_bottleneck`: Composed rank ≤ d regardless of expansion
+- `wide_beats_narrow_on_capacity`: Wider hidden > expansion for state capacity
+- `diagonal_more_efficient`: Diagonal (d params) beats dense (d² params)
+
+**Parameter Efficiency**:
+| Structure | Params | Capacity | Efficiency |
+|-----------|--------|----------|------------|
+| Dense W_h | d² | d | 1/d |
+| Diagonal α | d | d | 1 |
+| Low-rank r | r·d | r | 1 |
+
+**Open Questions**:
+1. Optimal hidden_dim/expansion tradeoff for different sequence lengths
+2. Structured matrices that match dense capacity with fewer params
+3. Information-theoretic bounds on state capacity
+
 ## Possible Next Steps
 
 ### Expressivity Research
