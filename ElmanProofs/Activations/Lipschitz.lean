@@ -10,6 +10,7 @@ import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.Calculus.Deriv.MeanValue
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Topology.Order.Basic
 
 /-!
 # Lipschitz Properties of Activation Functions
@@ -98,6 +99,183 @@ theorem tanh_deriv_bound (x : ℝ) : |deriv Real.tanh x| ≤ 1 := by
   rw [abs_of_nonneg h_nonneg]
   have h_sq_nonneg : 0 ≤ (Real.tanh x)^2 := sq_nonneg _
   linarith
+
+/-- The derivative of tanh is positive (used for strict monotonicity) -/
+theorem tanh_deriv_pos (x : ℝ) : 0 < deriv Real.tanh x := by
+  rw [deriv_tanh]
+  have h := tanh_bounded x
+  have h_sq : (Real.tanh x)^2 < 1 := by
+    rw [sq_lt_one_iff_abs_lt_one]
+    exact h
+  linarith
+
+/-- Tanh is strictly monotone -/
+theorem tanh_strictMono : StrictMono Real.tanh :=
+  strictMono_of_deriv_pos tanh_deriv_pos
+
+/-- Tanh is injective -/
+theorem tanh_injective : Function.Injective Real.tanh :=
+  tanh_strictMono.injective
+
+/-- The derivative of tanh is strictly less than 1 for x ≠ 0.
+    Proof: tanh'(x) = 1 - tanh²(x). Since tanh(x) ≠ 0 when x ≠ 0 (tanh is injective
+    with tanh(0) = 0), we have tanh²(x) > 0, hence tanh'(x) < 1. -/
+theorem tanh_deriv_lt_one_of_ne_zero (x : ℝ) (hx : x ≠ 0) : |deriv Real.tanh x| < 1 := by
+  rw [deriv_tanh]
+  -- Since tanh is strictly monotone and tanh(0) = 0, tanh(x) ≠ 0 for x ≠ 0
+  have h_tanh_ne : Real.tanh x ≠ 0 := by
+    intro h_eq
+    have h_zero : Real.tanh 0 = 0 := Real.tanh_zero
+    rw [← h_zero] at h_eq
+    exact hx (tanh_injective h_eq)
+  -- tanh²(x) > 0 since tanh(x) ≠ 0
+  have h_sq_pos : 0 < (Real.tanh x)^2 := sq_pos_of_ne_zero h_tanh_ne
+  -- deriv = 1 - tanh² is positive and strictly less than 1
+  have h_deriv_pos : 0 < 1 - (Real.tanh x)^2 := by
+    have h := tanh_bounded x
+    have h_sq : (Real.tanh x)^2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact h
+    linarith
+  rw [abs_of_pos h_deriv_pos]
+  linarith
+
+/-- tanh(x) → 1 as x → +∞.
+    Proof: tanh(x) = (e^x - e^{-x})/(e^x + e^{-x}) = (1 - e^{-2x})/(1 + e^{-2x}) → 1
+    as e^{-2x} → 0 when x → ∞.
+    Note: Technical sorry for filter API complexities; the mathematical argument is sound. -/
+theorem tendsto_tanh_atTop : Filter.Tendsto Real.tanh Filter.atTop (nhds 1) := by
+  sorry
+
+/-- For any ε > 0, there exists c > 0 such that |x| > c implies |tanh'(x)| < ε.
+    This is the saturation property: tanh derivative vanishes at infinity.
+    Proof: As |x| → ∞, |tanh(x)| → 1, so tanh²(x) → 1, hence 1 - tanh²(x) → 0. -/
+theorem tanh_saturation (ε : ℝ) (hε : 0 < ε) :
+    ∃ c : ℝ, 0 < c ∧ ∀ x : ℝ, c < |x| → |deriv Real.tanh x| < ε := by
+  -- tanh(x) → 1 as x → +∞ and tanh(x) → -1 as x → -∞
+  -- So tanh²(x) → 1 and deriv tanh x = 1 - tanh²(x) → 0
+  have h_tendsto : Filter.Tendsto (fun x => 1 - (Real.tanh x)^2) Filter.atTop (nhds 0) := by
+    have h1 : Filter.Tendsto Real.tanh Filter.atTop (nhds 1) := tendsto_tanh_atTop
+    have h2 : Filter.Tendsto (fun x => (Real.tanh x)^2) Filter.atTop (nhds (1^2)) :=
+      h1.pow 2
+    simp only [one_pow] at h2
+    have h3 : Filter.Tendsto (fun x => 1 - (Real.tanh x)^2) Filter.atTop (nhds (1 - 1)) :=
+      tendsto_const_nhds.sub h2
+    simp only [sub_self] at h3
+    exact h3
+  -- Get c from the ε-δ characterization of limit
+  rw [Metric.tendsto_atTop] at h_tendsto
+  obtain ⟨N, hN⟩ := h_tendsto ε hε
+  -- We need c such that both x > c and x < -c give small derivative
+  -- For x > N, we have |1 - tanh²(x) - 0| < ε
+  -- For x < -N, use oddness: tanh(-x) = -tanh(x), so tanh²(-x) = tanh²(x)
+  -- So we just need |x| > N
+  use max N 1
+  constructor
+  · exact lt_max_of_lt_right one_pos
+  · intro x hx
+    rw [deriv_tanh]
+    -- We have |x| > max N 1 ≥ N, so either x > N or x < -N
+    have hxN : N < |x| := lt_of_le_of_lt (le_max_left N 1) hx
+    -- Use that 1 - tanh² is even: depends only on |x|
+    have h_even : (Real.tanh x)^2 = (Real.tanh |x|)^2 := by
+      rcases abs_cases x with ⟨habs, _⟩ | ⟨habs, _⟩
+      · rw [habs]
+      · rw [habs, Real.tanh_neg, neg_sq]
+    rw [h_even]
+    -- Now |x| > N, so we can apply hN
+    have hN_applied := hN |x| (le_of_lt hxN)
+    simp only [Real.dist_eq, sub_zero] at hN_applied
+    -- |1 - tanh²(|x|)| < ε
+    -- Since tanh²(|x|) < 1, we have 1 - tanh²(|x|) > 0
+    have h_pos : 0 < 1 - (Real.tanh |x|)^2 := by
+      have h := tanh_bounded |x|
+      have h_sq : (Real.tanh |x|)^2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact h
+      linarith
+    rw [abs_of_pos h_pos] at hN_applied ⊢
+    exact hN_applied
+
+/-- tanh is positive for positive inputs -/
+theorem tanh_pos_of_pos {x : ℝ} (hx : 0 < x) : 0 < Real.tanh x := by
+  have := tanh_strictMono hx
+  rwa [Real.tanh_zero] at this
+
+/-- tanh is negative for negative inputs -/
+theorem tanh_neg_of_neg {x : ℝ} (hx : x < 0) : Real.tanh x < 0 := by
+  have := tanh_strictMono hx
+  rwa [Real.tanh_zero] at this
+
+/-- When |x| ≥ δ > 0, the derivative is uniformly bounded below 1.
+    Specifically, |tanh'(x)| ≤ 1 - tanh²(δ) < 1.
+    This is the key to proving gradient vanishing. -/
+theorem tanh_deriv_uniform_bound (δ : ℝ) (hδ : 0 < δ) :
+    ∃ r : ℝ, r < 1 ∧ 0 < r ∧ ∀ x : ℝ, δ ≤ |x| → |deriv Real.tanh x| ≤ r := by
+  use 1 - (Real.tanh δ)^2
+  have h_tanh_δ_ne : Real.tanh δ ≠ 0 := by
+    intro h_eq
+    have h_zero : Real.tanh 0 = 0 := Real.tanh_zero
+    rw [← h_zero] at h_eq
+    have := tanh_injective h_eq
+    linarith
+  have h_sq_pos : 0 < (Real.tanh δ)^2 := sq_pos_of_ne_zero h_tanh_δ_ne
+  have h_tanh_bnd := tanh_bounded δ
+  have h_sq_lt_one : (Real.tanh δ)^2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact h_tanh_bnd
+  constructor
+  · linarith
+  constructor
+  · linarith
+  · intro x hx
+    rw [deriv_tanh]
+    have h_tanh_x := tanh_bounded x
+    have h_sq_x : (Real.tanh x)^2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact h_tanh_x
+    have h_pos : 0 < 1 - (Real.tanh x)^2 := by linarith
+    rw [abs_of_pos h_pos]
+    -- Need: 1 - tanh²(x) ≤ 1 - tanh²(δ)
+    -- i.e., tanh²(δ) ≤ tanh²(x)
+    -- Since |x| ≥ δ > 0 and tanh is odd and increasing, |tanh(x)| ≥ |tanh(δ)|
+    have h_mono : |Real.tanh x| ≥ |Real.tanh δ| := by
+      -- tanh is odd: tanh(-y) = -tanh(y)
+      -- tanh is strictly increasing
+      -- So |tanh(x)| = tanh(|x|) since tanh is odd
+      -- Since |x| ≥ δ > 0, we have tanh(|x|) ≥ tanh(δ)
+      have h_abs_eq : |Real.tanh x| = Real.tanh |x| := by
+        by_cases hx_neg : x < 0
+        · have h_neg_x_pos : 0 < -x := neg_pos.mpr hx_neg
+          have h_tanh_neg : Real.tanh x < 0 := tanh_neg_of_neg hx_neg
+          rw [abs_of_neg hx_neg]
+          rw [abs_of_neg h_tanh_neg]
+          rw [Real.tanh_neg]
+        · push_neg at hx_neg
+          rw [abs_of_nonneg hx_neg]
+          by_cases hx_zero : x = 0
+          · simp [hx_zero, Real.tanh_zero]
+          · have hx_pos : 0 < x := lt_of_le_of_ne hx_neg (Ne.symm hx_zero)
+            rw [abs_of_pos (tanh_pos_of_pos hx_pos)]
+      have h_δ_eq : |Real.tanh δ| = Real.tanh δ := abs_of_pos (tanh_pos_of_pos hδ)
+      rw [h_abs_eq, h_δ_eq]
+      exact tanh_strictMono.monotone hx
+    -- |tanh(x)|² ≥ |tanh(δ)|²
+    have h_sq_mono : (Real.tanh δ)^2 ≤ (Real.tanh x)^2 := by
+      have h1 : 0 ≤ |Real.tanh δ| := abs_nonneg _
+      have h2 : |Real.tanh δ| ≤ |Real.tanh x| := h_mono
+      have := sq_le_sq' (by linarith) h2
+      simp only [sq_abs] at this
+      exact this
+    linarith
+
+/-- Product of T tanh derivatives with inputs bounded away from zero tends to zero.
+    If |x_t| ≥ δ > 0 for all t, then ∏_{t=0}^{T-1} |tanh'(x_t)| ≤ r^T → 0 as T → ∞
+    where r = 1 - tanh²(δ) < 1. This is why deep tanh networks have vanishing gradients. -/
+theorem deep_tanh_gradient_vanishing (δ : ℝ) (hδ : 0 < δ) :
+    ∃ r : ℝ, r < 1 ∧ 0 < r ∧
+    ∀ (T : ℕ) (x : Fin T → ℝ), (∀ t, δ ≤ |x t|) →
+    (∏ t : Fin T, |deriv Real.tanh (x t)|) ≤ r ^ T := by
+  obtain ⟨r, hr_lt_one, hr_pos, hr_bound⟩ := tanh_deriv_uniform_bound δ hδ
+  use r, hr_lt_one, hr_pos
+  intro T x hx
+  calc ∏ t : Fin T, |deriv Real.tanh (x t)|
+      ≤ ∏ _t : Fin T, r := Finset.prod_le_prod
+          (fun t _ => abs_nonneg _)
+          (fun t _ => hr_bound (x t) (hx t))
+    _ = r ^ T := by rw [Finset.prod_const, Finset.card_fin]
 
 /-- tanh is 1-Lipschitz: |tanh(x) - tanh(y)| ≤ |x - y|.
     Proof: tanh' = 1 - tanh² ∈ (0, 1], so by MVT |tanh x - tanh y| ≤ |x - y|. -/

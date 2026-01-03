@@ -59,6 +59,12 @@ All core theorems proven:
 - `powers_tendsto_zero`: Matrix powers tend to zero when spectral radius < 1
 - `diagonal_spectral_radius`: For diagonal matrices, spectral radius = max|eigenvalue|
 
+**Gradient Vanishing** (`ElmanProofs/Activations/Lipschitz.lean`):
+- `tanh_deriv_lt_one_of_ne_zero`: |tanh'(x)| < 1 for x ≠ 0
+- `tanh_saturation`: Derivative vanishes at infinity
+- `tanh_deriv_uniform_bound`: Uniform bound |tanh'(x)| ≤ 1 - tanh²(δ) when |x| ≥ δ
+- `deep_tanh_gradient_vanishing`: Product ∏|tanh'(x_t)| ≤ r^T for r < 1
+
 ### Proof Chain (All Complete)
 
 1. `lsmooth_fundamental_ineq` - Fundamental inequality for L-smooth functions

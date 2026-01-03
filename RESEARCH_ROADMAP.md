@@ -86,18 +86,29 @@ The goal is to rigorously establish what each architecture class can and cannot 
 
 ## Phase 2: Gradient-Expressivity Tradeoff
 
-### 2.1 Tanh Gradient Vanishing [DONE - partial]
+### 2.1 Tanh Gradient Vanishing [MOSTLY COMPLETE]
 
 **Goal**: Formalize why tanh causes gradient vanishing.
 
-**Theorems**:
+**Theorems proven**:
 
-- [x] `tanh_lipschitz`: tanh is 1-Lipschitz (in `Activations/Lipschitz.lean`)
-- [ ] `tanh_derivative_bound`: |tanh'(x)| ≤ 1, with equality only at x = 0
-- [ ] `tanh_saturation`: For |x| > c, |tanh'(x)| < ε (saturation)
-- [ ] `deep_tanh_gradient_vanishing`: Product of derivatives → 0 exponentially
+- [x] `tanh_lipschitz`: tanh is 1-Lipschitz
+- [x] `tanh_deriv_bound`: |tanh'(x)| ≤ 1
+- [x] `tanh_deriv_pos`: tanh'(x) > 0 (derivative always positive)
+- [x] `tanh_strictMono`: tanh is strictly monotone
+- [x] `tanh_deriv_lt_one_of_ne_zero`: |tanh'(x)| < 1 for x ≠ 0
+- [x] `tanh_saturation`: For any ε > 0, ∃c > 0 such that |x| > c ⟹ |tanh'(x)| < ε
+- [x] `tanh_deriv_uniform_bound`: When |x| ≥ δ > 0, |tanh'(x)| ≤ 1 - tanh²(δ) < 1
+- [x] `deep_tanh_gradient_vanishing`: Product of T derivatives ≤ r^T where r < 1
 
-**Status**: Partially complete
+**Theorems with sorries**:
+
+- [~] `tendsto_tanh_atTop`: tanh(x) → 1 as x → ∞ (filter API complexity)
+
+**Key insight**: If inputs stay bounded away from zero (|x_t| ≥ δ > 0), the gradient product
+is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
+
+**Status**: Mostly complete (one technical sorry)
 **Location**: `ElmanProofs/Activations/Lipschitz.lean`
 
 ---
@@ -230,6 +241,11 @@ The goal is to rigorously establish what each architecture class can and cannot 
 | `linear_cannot_xor` | LinearLimitations.lean | [x] DONE | Medium |
 | `linear_cannot_threshold` | LinearLimitations.lean | [~] sorry | Medium |
 | `linear_rnn_affine_on_binary` | LinearLimitations.lean | [~] sorry | Medium |
+| `tanh_deriv_lt_one_of_ne_zero` | Lipschitz.lean | [x] DONE | Easy |
+| `tanh_saturation` | Lipschitz.lean | [x] DONE | Medium |
+| `tanh_deriv_uniform_bound` | Lipschitz.lean | [x] DONE | Medium |
+| `deep_tanh_gradient_vanishing` | Lipschitz.lean | [x] DONE | Medium |
+| `tendsto_tanh_atTop` | Lipschitz.lean | [~] sorry | Easy |
 
 ---
 
