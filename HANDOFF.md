@@ -4,7 +4,9 @@
 
 This Lean 4 project contains formal proofs for gradient descent convergence, Lyapunov stability, and related optimization/dynamics theory. The proofs are designed to establish rigorous foundations for neural network training analysis, particularly for Elman-style recurrent networks.
 
-## Current State (2026-01-02)
+## Current State (2026-01-03)
+
+**STATUS: SORRY-FREE** - The entire codebase compiles with no sorries.
 
 ### New Research Direction: Expressivity Bounds
 
@@ -15,22 +17,20 @@ A new research direction has been established to formally prove expressivity and
 
 See `RESEARCH_ROADMAP.md` for the full research plan.
 
-### Associativity Separation (Mostly Complete)
+### Associativity Separation (Complete)
 
-**New file**: `ElmanProofs/Expressivity/Associativity.lean`
+**File**: `ElmanProofs/Expressivity/Associativity.lean`
 
-Core theorems proven:
+All theorems proven:
 - `LinearScanElement.instMonoid`: Linear RNN state transitions form a monoid (key for parallel scan!)
 - `polynomial_composition_structure`: Pure power functions compose nicely: `(|a * |b|^α|)^α = |a|^α * |b|^(α²)`
 - `tanh_strictMono`: Tanh is strictly monotone
 - `tanh_injective`: Tanh is injective
 - `sinh_gt_id`: sinh(x) > x for x > 0 (key calculus lemma)
 - `two_tanh_one_gt_tanh_two`: 2*tanh(1) > tanh(2) (proves tanh(x)/x is decreasing)
-- `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step (COMPLETE!)
-
-Theorems with sorries:
-- `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
-  - Mathematical proof outline complete; technical sorry for rpow notation issues
+- `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step
+- `polynomial_rnn_not_associative`: Polynomial RNN with |x|^α activation is non-associative
+  - Uses counterexample (w=1, x₁=1, x₂=1) with case analysis showing 2^α ∈ {2,4} contradiction
 
 ### Linear State Capacity (Complete)
 
@@ -64,6 +64,7 @@ All core theorems proven:
 - `tanh_saturation`: Derivative vanishes at infinity
 - `tanh_deriv_uniform_bound`: Uniform bound |tanh'(x)| ≤ 1 - tanh²(δ) when |x| ≥ δ
 - `deep_tanh_gradient_vanishing`: Product ∏|tanh'(x_t)| ≤ r^T for r < 1
+- `tendsto_tanh_atTop`: tanh(x) → 1 as x → ∞ (limit at infinity)
 
 ### Proof Chain (All Complete)
 
@@ -155,10 +156,10 @@ Matrix.frobenius_norm_mul M N
 
 ## Possible Next Steps
 
-### Expressivity Research (Priority)
-1. **Complete counterexample proofs**: Prove `tanh(x)/x` is strictly decreasing for x > 0
-2. **Linear state capacity**: Prove linear RNN state is linear combination of inputs (`LinearCapacity.lean`)
-3. **Linear limitations**: Prove linear RNNs cannot compute threshold/XOR functions (`LinearLimitations.lean`)
+### Expressivity Research
+1. **Log-polynomial gradient bounds**: Prove gradient bounds for |x|^α activation (`LogPolynomialGradient.lean`)
+2. **Nonlinear universality**: Prove tanh RNN is a universal approximator (`Universality.lean`)
+3. **Memory capacity**: Formalize effective memory capacity of different architectures
 
 ### Convergence Theory
 4. **Linear convergence for strongly convex**: Use `strong_smooth_interpolation` to prove (1-μ/L)^k contraction

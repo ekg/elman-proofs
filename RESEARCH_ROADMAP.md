@@ -50,14 +50,13 @@ The goal is to rigorously establish what each architecture class can and cannot 
   - Key lemma: `two_tanh_one_gt_tanh_two` proves 2*tanh(1) > tanh(2)
   - Uses tanh injectivity to show tanh(t) = a*t + b is impossible
 
-- [~] `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
-  - Proof outline complete with detailed case analysis
-  - Shows ||h+1|^α + 1|^α ≠ |a*h + b|^α for counterexample
-  - Has technical sorry for rpow notation issues; mathematical argument is sound
+- [x] `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
+  - Uses counterexample (w=1, x₁=1, x₂=1) with case analysis
+  - Shows 2^α ∈ {2,4} leads to contradiction with α ≠ 1
 
 **Key insight**: The associativity of linear recurrence is WHY Mamba2 can use parallel scan. Nonlinear models pay a computational cost (sequential processing) for expressivity.
 
-**Status**: Core monoid structure COMPLETE, tanh counterexample COMPLETE, polynomial counterexample has technical sorry
+**Status**: COMPLETE - All proofs finished, no sorries
 **Location**: `ElmanProofs/Expressivity/Associativity.lean`
 
 ---
@@ -86,11 +85,11 @@ The goal is to rigorously establish what each architecture class can and cannot 
 
 ## Phase 2: Gradient-Expressivity Tradeoff
 
-### 2.1 Tanh Gradient Vanishing [MOSTLY COMPLETE]
+### 2.1 Tanh Gradient Vanishing [COMPLETE]
 
 **Goal**: Formalize why tanh causes gradient vanishing.
 
-**Theorems proven**:
+**All theorems proven**:
 
 - [x] `tanh_lipschitz`: tanh is 1-Lipschitz
 - [x] `tanh_deriv_bound`: |tanh'(x)| ≤ 1
@@ -100,15 +99,12 @@ The goal is to rigorously establish what each architecture class can and cannot 
 - [x] `tanh_saturation`: For any ε > 0, ∃c > 0 such that |x| > c ⟹ |tanh'(x)| < ε
 - [x] `tanh_deriv_uniform_bound`: When |x| ≥ δ > 0, |tanh'(x)| ≤ 1 - tanh²(δ) < 1
 - [x] `deep_tanh_gradient_vanishing`: Product of T derivatives ≤ r^T where r < 1
-
-**Theorems with sorries**:
-
-- [~] `tendsto_tanh_atTop`: tanh(x) → 1 as x → ∞ (filter API complexity)
+- [x] `tendsto_tanh_atTop`: tanh(x) → 1 as x → ∞
 
 **Key insight**: If inputs stay bounded away from zero (|x_t| ≥ δ > 0), the gradient product
 is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 
-**Status**: Mostly complete (one technical sorry)
+**Status**: COMPLETE - All proofs finished
 **Location**: `ElmanProofs/Activations/Lipschitz.lean`
 
 ---
@@ -152,26 +148,24 @@ is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 
 ## Phase 3: Expressivity Separations
 
-### 3.1 Functions Linear RNNs Cannot Compute [IN PROGRESS]
+### 3.1 Functions Linear RNNs Cannot Compute [COMPLETE]
 
 **Goal**: Exhibit specific functions that linear RNNs provably cannot compute.
 
-**Theorems proven**:
+**All theorems proven**:
 
 - [x] `xor_not_affine`: XOR function is not affine (key lemma)
 - [x] `linear_cannot_xor`: Linear RNN cannot compute XOR over history
 - [x] `linear_output_as_sum`: Output is weighted sum of inputs
 - [x] `linear_output_additive`: Output is additive in inputs
 - [x] `linear_output_scalar`: Output is homogeneous in inputs
+- [x] `linear_cannot_threshold`: Linear RNN cannot compute step function
+- [x] `linear_rnn_affine_on_binary`: Output is affine on binary inputs
 
-**Theorems with sorries**:
-
-- [~] `linear_cannot_threshold`: Linear RNN cannot compute step function (needs continuity argument)
-- [~] `linear_rnn_affine_on_binary`: Output is affine on binary inputs (technical lemma)
-
+**Future work**:
 - [ ] `linear_cannot_count_mod_k`: Linear RNN cannot count modulo k (for k > dim)
 
-**Status**: Core XOR impossibility proof complete
+**Status**: COMPLETE - All core proofs finished
 **Location**: `ElmanProofs/Expressivity/LinearLimitations.lean`
 
 ---
@@ -225,8 +219,8 @@ is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 | `polynomial_composition_structure` | Associativity.lean | [x] DONE | Medium |
 | `tanh_strictMono` | Associativity.lean | [x] DONE | Easy |
 | `tanh_injective` | Associativity.lean | [x] DONE | Easy |
-| `tanh_composition_not_linear` | Associativity.lean | [~] sorry | Medium |
-| `polynomial_rnn_not_associative` | Associativity.lean | [~] sorry | Medium |
+| `tanh_composition_not_linear` | Associativity.lean | [x] DONE | Medium |
+| `polynomial_rnn_not_associative` | Associativity.lean | [x] DONE | Medium |
 | `output_determined_by_state` | LinearCapacity.lean | [x] DONE | Easy |
 | `same_state_same_future` | LinearCapacity.lean | [x] DONE | Medium |
 | `not_linearly_computable_if_state_independent` | LinearCapacity.lean | [x] DONE | Medium |
@@ -239,13 +233,13 @@ is bounded by r^T where r = 1 - tanh²(δ) < 1, showing exponential vanishing.
 | `log_polynomial_chain_rule` | LogPolynomialGradient.lean | [ ] | Medium |
 | `xor_not_affine` | LinearLimitations.lean | [x] DONE | Easy |
 | `linear_cannot_xor` | LinearLimitations.lean | [x] DONE | Medium |
-| `linear_cannot_threshold` | LinearLimitations.lean | [~] sorry | Medium |
-| `linear_rnn_affine_on_binary` | LinearLimitations.lean | [~] sorry | Medium |
+| `linear_cannot_threshold` | LinearLimitations.lean | [x] DONE | Medium |
+| `linear_rnn_affine_on_binary` | LinearLimitations.lean | [x] DONE | Medium |
 | `tanh_deriv_lt_one_of_ne_zero` | Lipschitz.lean | [x] DONE | Easy |
 | `tanh_saturation` | Lipschitz.lean | [x] DONE | Medium |
 | `tanh_deriv_uniform_bound` | Lipschitz.lean | [x] DONE | Medium |
 | `deep_tanh_gradient_vanishing` | Lipschitz.lean | [x] DONE | Medium |
-| `tendsto_tanh_atTop` | Lipschitz.lean | [~] sorry | Easy |
+| `tendsto_tanh_atTop` | Lipschitz.lean | [x] DONE | Easy |
 
 ---
 
@@ -270,9 +264,11 @@ Universality.lean ← depends on all above
 1. ~~Create `ElmanProofs/Expressivity/` directory~~ DONE
 2. ~~Start with `Associativity.lean` - prove linear recurrence forms a monoid~~ DONE
 3. ~~Complete `LinearCapacity.lean` - prove state is linear combination of inputs~~ DONE
-4. Complete counterexample proofs (need numerical bounds for tanh(x)/x decreasing)
-5. Start `LinearLimitations.lean` - prove linear RNNs cannot compute threshold functions
+4. ~~Complete counterexample proofs~~ DONE (polynomial_rnn_not_associative, tanh_composition_not_linear)
+5. ~~Complete `LinearLimitations.lean`~~ DONE (linear_cannot_threshold, linear_rnn_affine_on_binary)
+6. Start `LogPolynomialGradient.lean` - prove gradient bounds for |x|^α activation
+7. Consider `Universality.lean` - prove nonlinear RNN universality
 
 ---
 
-*Last updated: 2026-01-02*
+*Last updated: 2026-01-03*
