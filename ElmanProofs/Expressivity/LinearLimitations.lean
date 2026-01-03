@@ -85,17 +85,124 @@ noncomputable def thresholdFunction (τ : ℝ) (T : ℕ) : (Fin T → (Fin 1 →
     let total := ∑ t : Fin T, inputs t 0
     fun _ => if total > τ then 1 else 0
 
+/-- Helper: create an input sequence with value x at position 0, zeros elsewhere -/
+def singletonInput (T : ℕ) [NeZero T] (x : ℝ) : Fin T → (Fin 1 → ℝ) :=
+  fun t => if t.val = 0 then fun _ => x else fun _ => 0
+
+/-- Sum of singleton input is just x -/
+theorem singletonInput_sum (T : ℕ) [NeZero T] (x : ℝ) :
+    ∑ t : Fin T, (singletonInput T x) t 0 = x := by
+  rw [Fintype.sum_eq_single (0 : Fin T)]
+  · simp [singletonInput]
+  · intro t ht
+    simp only [singletonInput]
+    have : t.val ≠ 0 := by
+      intro h
+      have : t = 0 := Fin.ext h
+      exact ht this
+    simp [this]
+
 /-- Threshold function is not linearly computable.
     Key idea: Linear outputs are continuous, but threshold has a discontinuity at τ. -/
 theorem linear_cannot_threshold (τ : ℝ) (T : ℕ) (hT : T ≥ 1) :
     ¬ LinearlyComputable (thresholdFunction τ T) := by
+  have hT' : NeZero T := ⟨Nat.one_le_iff_ne_zero.mp hT⟩
   intro ⟨n, A, B, C, h_f⟩
-  -- The threshold function is discontinuous at τ
-  -- But C.mulVec (stateFromZero A B T inputs) is continuous in inputs
-  -- This is a contradiction
-  -- Construct two sequences: one with sum = τ - ε, one with sum = τ + ε
-  -- As ε → 0, linear output converges, but threshold jumps from 0 to 1
-  sorry
+
+  -- Use linearity: singletonInput is linear in x
+  have h_add : ∀ x y, singletonInput T (x + y) = singletonInput T x + singletonInput T y := by
+    intro x y
+    ext t j
+    simp only [singletonInput, Pi.add_apply]
+    split_ifs <;> ring
+
+  -- Get the linear output function
+  let g : ℝ → ℝ := fun x => (C.mulVec (stateFromZero A B T (singletonInput T x))) 0
+
+  -- g is additive (by linearity of state)
+  have g_add : ∀ x y, g (x + y) = g x + g y := by
+    intro x y
+    simp only [g]
+    rw [h_add]
+    have := linear_output_additive C A B T (singletonInput T x) (singletonInput T y)
+    exact congrFun this 0
+
+  -- g is homogeneous
+  have h_smul : ∀ c x, singletonInput T (c * x) = c • singletonInput T x := by
+    intro c x
+    ext t j
+    simp only [singletonInput, Pi.smul_apply, smul_eq_mul]
+    split_ifs <;> ring
+
+  have g_smul : ∀ c x, g (c * x) = c * g x := by
+    intro c x
+    simp only [g]
+    rw [h_smul]
+    have := linear_output_scalar C A B T c (singletonInput T x)
+    exact congrFun this 0
+
+  -- g(0) = 0
+  have g_zero : g 0 = 0 := by
+    have h1 : g 0 = g (0 + 0) := by ring_nf
+    have h2 : g (0 + 0) = g 0 + g 0 := g_add 0 0
+    linarith [h1, h2]
+
+  -- g is linear: g(x) = x * g(1)
+  have g_linear : ∀ x, g x = x * g 1 := by
+    intro x
+    have h := g_smul x 1
+    simp only [mul_one] at h
+    exact h
+
+  -- At x = τ - 1: sum = τ - 1 < τ, so threshold = 0
+  have h_below : thresholdFunction τ T (singletonInput T (τ - 1)) 0 = 0 := by
+    simp only [thresholdFunction, singletonInput_sum]
+    split_ifs with h
+    · exfalso; linarith
+    · rfl
+
+  -- At x = τ + 1: sum = τ + 1 > τ, so threshold = 1
+  have h_above : thresholdFunction τ T (singletonInput T (τ + 1)) 0 = 1 := by
+    simp only [thresholdFunction, singletonInput_sum]
+    split_ifs with h
+    · rfl
+    · exfalso; linarith
+
+  -- At x = τ + 2: sum = τ + 2 > τ, so threshold = 1
+  have h_above2 : thresholdFunction τ T (singletonInput T (τ + 2)) 0 = 1 := by
+    simp only [thresholdFunction, singletonInput_sum]
+    split_ifs with h
+    · rfl
+    · exfalso; linarith
+
+  -- By h_f, g must match threshold at these points
+  have eq_below := congrFun (h_f (singletonInput T (τ - 1))) 0
+  have eq_above := congrFun (h_f (singletonInput T (τ + 1))) 0
+  have eq_above2 := congrFun (h_f (singletonInput T (τ + 2))) 0
+
+  -- Substitute threshold values
+  rw [h_below] at eq_below
+  rw [h_above] at eq_above
+  rw [h_above2] at eq_above2
+
+  -- eq_below: 0 = g(τ-1) = (τ-1) * g(1)
+  -- eq_above: 1 = g(τ+1) = (τ+1) * g(1)
+  -- eq_above2: 1 = g(τ+2) = (τ+2) * g(1)
+
+  -- From eq_above and eq_above2:
+  -- (τ+1) * g(1) = 1 and (τ+2) * g(1) = 1
+  -- Subtracting: g(1) = 0
+  -- From eq_above: 0 = 1, contradiction
+  have h1 : (τ + 1) * g 1 = 1 := by
+    rw [← g_linear (τ + 1)]
+    exact eq_above.symm
+  have h2 : (τ + 2) * g 1 = 1 := by
+    rw [← g_linear (τ + 2)]
+    exact eq_above2.symm
+  have g1_zero : g 1 = 0 := by linarith
+  -- Now (τ + 1) * 0 = 1 is a contradiction
+  have h_contra : (τ + 1) * g 1 = 0 := by rw [g1_zero]; ring
+  linarith
 
 /-! ## XOR Cannot Be Computed -/
 

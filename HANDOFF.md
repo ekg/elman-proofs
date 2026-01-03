@@ -24,10 +24,13 @@ Core theorems proven:
 - `polynomial_composition_structure`: Pure power functions compose nicely: `(|a * |b|^α|)^α = |a|^α * |b|^(α²)`
 - `tanh_strictMono`: Tanh is strictly monotone
 - `tanh_injective`: Tanh is injective
+- `sinh_gt_id`: sinh(x) > x for x > 0 (key calculus lemma)
+- `two_tanh_one_gt_tanh_two`: 2*tanh(1) > tanh(2) (proves tanh(x)/x is decreasing)
+- `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step (COMPLETE!)
 
-Theorems with sorries (need numerical calculus bounds):
-- `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step
+Theorems with sorries:
 - `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
+  - Mathematical proof outline complete; technical sorry for rpow notation issues
 
 ### Linear State Capacity (Complete)
 

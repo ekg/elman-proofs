@@ -43,19 +43,21 @@ The goal is to rigorously establish what each architecture class can and cannot 
 - [x] `tanh_strictMono`: Tanh is strictly monotone (helper for counterexamples)
 - [x] `tanh_injective`: Tanh is injective (follows from strict monotonicity)
 
-**Theorems with numerical sorries** (structure proven, needs calculus bounds):
+**Theorems proven**:
 
-- [ ] `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step
-  - Proof structure complete: shows tanh(tanh(h)) ≠ tanh(a*h + b)
-  - Needs: proof that tanh(x)/x is strictly decreasing for x > 0
+- [x] `tanh_composition_not_linear`: Tanh RNN cannot be reduced to single affine step
+  - Key lemma: `sinh_gt_id` proves sinh(x) > x for x > 0
+  - Key lemma: `two_tanh_one_gt_tanh_two` proves 2*tanh(1) > tanh(2)
+  - Uses tanh injectivity to show tanh(t) = a*t + b is impossible
 
-- [ ] `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
-  - Proof structure complete: shows ||h+1|^α + 1|^α ≠ |a*h + b|^α
-  - Needs: similar numerical bounds
+- [~] `polynomial_rnn_not_associative`: Polynomial RNN is also non-associative
+  - Proof outline complete with detailed case analysis
+  - Shows ||h+1|^α + 1|^α ≠ |a*h + b|^α for counterexample
+  - Has technical sorry for rpow notation issues; mathematical argument is sound
 
 **Key insight**: The associativity of linear recurrence is WHY Mamba2 can use parallel scan. Nonlinear models pay a computational cost (sequential processing) for expressivity.
 
-**Status**: Core monoid structure COMPLETE, counterexamples need numerical bounds
+**Status**: Core monoid structure COMPLETE, tanh counterexample COMPLETE, polynomial counterexample has technical sorry
 **Location**: `ElmanProofs/Expressivity/Associativity.lean`
 
 ---
