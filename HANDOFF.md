@@ -257,6 +257,41 @@ Key structures and theorems:
 2. Structured matrices that match dense capacity with fewer params
 3. Information-theoretic bounds on state capacity
 
+### Low-Rank Capacity Analysis (E5 Formalization)
+
+**File**: `ElmanProofs/Expressivity/LowRankCapacity.lean`
+
+Formalizes findings from E5 experiments: low-rank factorization enables larger hidden states.
+
+**E5 Results** (Pure Low-Rank Elman):
+| Config | dim | rank | rank/dim | Loss |
+|--------|-----|------|----------|------|
+| E5 d1536 r270 | 1536 | 270 | 17% | **1.39** |
+| E1 (baseline) | 512 | full | 100% | 1.55 |
+
+**Key insight**: 3x larger hidden state with 17% rank ratio beats full-rank baseline!
+
+Key structures and theorems:
+- `E5Config`, `E1Config`: Architecture configurations
+- `lowRankParams`, `denseParams`: Parameter counting
+- `stateCapacityLowRank`: State capacity = dim (independent of rank!)
+- `e5_triple_capacity`: E5 has 3x state capacity of E1
+- `rankRatio`: r/d ratio analysis
+- `LowRankGradient`: Gradient filtering through factorization
+- `diagonal_most_efficient`: Diagonal > low-rank > dense in param efficiency
+- `lowRank_between`: Low-rank is between diagonal and dense
+- `optimal_achieves_min`: Optimal config (d1536 r270) minimizes loss
+
+**Parameter efficiency ordering**:
+```
+Diagonal (d params) > Low-rank (2dr params) > Dense (d² params)
+```
+
+**Conjectures to investigate**:
+1. Model quality ∝ dim × f(rank/dim) where f saturates ~20%
+2. Optimal rank ratio decreases as total params increase
+3. Low-rank provides implicit L2 regularization
+
 ## Possible Next Steps
 
 ### Expressivity Research
