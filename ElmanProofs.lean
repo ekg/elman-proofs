@@ -24,3 +24,20 @@ import ElmanProofs.Gradient.Flow
 
 -- Log-Space Computation
 import ElmanProofs.LogSpace.Stability
+
+-- Expressivity Theory
+import ElmanProofs.Expressivity.SpectralLowRank
+import ElmanProofs.Expressivity.ScalingLaws
+import ElmanProofs.Expressivity.GradientDynamics
+import ElmanProofs.Expressivity.ExpressivityGradientTradeoff
+
+-- Architecture Formalizations
+import ElmanProofs.Architectures.DepthScaling
+import ElmanProofs.Architectures.E1_GatedElman
+import ElmanProofs.Architectures.E10_MultiscaleEMA
+import ElmanProofs.Architectures.Mamba2_SSM
+
+-- Information Theory of Language
+import ElmanProofs.Information.LanguageComplexity
+import ElmanProofs.Information.CompositionDepth
+import ElmanProofs.Information.LinearVsNonlinear
