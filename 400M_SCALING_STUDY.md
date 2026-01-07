@@ -199,6 +199,18 @@ y = SSM(Conv(Linear(x)))  # Selective state space
 
 ## 6. Conclusions
 
+### Note on Path Dependence
+
+These results exhibit significant **path dependence** on multiple factors:
+
+- **Depth vs width ratio**: The same parameter count can yield vastly different results (E1 at 400M: 2.0 loss with d=6 vs 1.49 loss with d=26)
+- **Batch size**: Smaller batches = more gradient updates = better fixed-time convergence
+- **Training duration**: 10-minute runs favor high-throughput models; longer runs may shift the balance
+- **Learning rate / optimizer**: All experiments used AdamW with lr=3e-4; other configurations untested
+- **Sequence length**: Fixed at 512; different lengths may favor different architectures
+
+The "best" model depends heavily on the specific configuration and constraints. E1's throughput advantage is consistent, but the quality gap with Mamba2 varies with hyperparameters.
+
 ### Main Findings
 
 1. **Depth matters at scale**: Shallow Elman (depth=6) fails at 400M params. Depth=22-32 is required.
