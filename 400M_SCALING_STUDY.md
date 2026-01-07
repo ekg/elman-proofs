@@ -15,12 +15,68 @@ At 400M parameter scale, the simple gated Elman (E1) achieves **competitive loss
 
 ---
 
-## 1. Background: The Depth Scaling Problem
+## 1. Multi-Scale Comparison (50M - 400M)
 
-### Initial Observation
-When scaling E1/E10 from 50M to 400M parameters, we observed a **quality collapse**:
-- 50M-100M: E1/E10 matched or beat Mamba2
-- 200M-400M: E1/E10 loss jumped to 2.0+ while Mamba2 continued improving
+### Results with Fixed Depth=6 (Original Configuration)
+
+All models trained for 10 minutes with maximum batch sizes:
+
+#### 50M Parameters
+| Model | Dim | Depth | Batch | Loss | Throughput |
+|-------|-----|-------|-------|------|------------|
+| **E10** | 960 | 6 | 288 | **1.433** | 201K tok/s |
+| E1 | 1280 | 6 | 512 | 1.486 | **243K tok/s** |
+| Mamba2 | - | - | 256 | 1.532 | 98K tok/s |
+
+**Winner: E1/E10** - Both beat Mamba2 on loss, E1 has 2.5x throughput.
+
+#### 100M Parameters
+| Model | Dim | Depth | Batch | Loss | Throughput |
+|-------|-----|-------|-------|------|------------|
+| **E10** | 1344 | 6 | 192 | **1.414** | 118K tok/s |
+| E1 | 1792 | 6 | 384 | 1.529 | **134K tok/s** |
+| Mamba2 | - | - | 224 | 1.558 | 60K tok/s |
+
+**Winner: E10** - Best loss, E1 has 2.2x throughput vs Mamba2.
+
+#### 200M Parameters
+| Model | Dim | Depth | Batch | Loss | Throughput |
+|-------|-----|-------|-------|------|------------|
+| **Mamba2** | - | - | 160 | **1.532** | 34K tok/s |
+| E10 | 1920 | 6 | 160 | 1.611 | 66K tok/s |
+| E1 | 2560 | 6 | 256 | 1.651 | **69K tok/s** |
+
+**Crossover point:** Mamba2 starts winning on loss. E1 still 2x throughput.
+
+#### 400M Parameters (Depth=6 - BROKEN)
+| Model | Dim | Depth | Batch | Loss | Throughput |
+|-------|-----|-------|-------|------|------------|
+| **Mamba2** | - | 32 | 128 | **1.587** | 23K tok/s |
+| E1 | 3584 | 6 | 192 | 2.015 | 38K tok/s |
+| E10 | 2688 | 6 | 112 | 2.048 | 36K tok/s |
+
+**E1/E10 collapse!** Loss jumps to 2.0+ while Mamba2 continues improving.
+
+### The Scaling Collapse Visualized
+
+```
+Loss vs Scale (depth=6 for E1/E10)
+
+2.0+ │                              ╭── E1/E10 COLLAPSE
+     │                             ╱
+1.6  │              ╭─────────────╯
+     │    ╭────────╯               ╭── Mamba2 continues
+1.5  │───╯─────────────────────────╯   improving
+     │
+1.4  │──E10───E10
+     │
+     └────┬─────┬─────┬─────┬────→ Scale
+         50M  100M  200M  400M
+```
+
+---
+
+## 2. The Depth Scaling Problem
 
 ### Root Cause Analysis
 The problem was **width vs depth scaling**:
@@ -34,7 +90,7 @@ E1/E10 were scaling **only by width** (depth fixed at 6), while Mamba2 scaled bo
 
 ---
 
-## 2. Depth Sweep at 400M Parameters
+## 3. Depth Sweep at 400M Parameters (The Fix)
 
 ### E1 Depth Sweep Results
 
@@ -73,7 +129,7 @@ E1/E10 were scaling **only by width** (depth fixed at 6), while Mamba2 scaled bo
 
 ---
 
-## 3. Batch Size Study
+## 4. Batch Size Study
 
 ### The Throughput vs Sample Efficiency Tradeoff
 
@@ -113,7 +169,7 @@ E1 with smaller batches (more gradient updates) outperforms E1 with larger batch
 
 ---
 
-## 4. Architecture Comparison
+## 5. Architecture Comparison
 
 ### E1 (Gated Elman)
 ```
@@ -141,7 +197,7 @@ y = SSM(Conv(Linear(x)))  # Selective state space
 
 ---
 
-## 5. Conclusions
+## 6. Conclusions
 
 ### Main Findings
 
@@ -178,8 +234,9 @@ y = SSM(Conv(Linear(x)))  # Selective state space
 All experiments: 400M params, 10-minute training, AdamW lr=3e-4, weight_decay=0.1, seq_len=512
 
 Benchmark logs: `elman/benchmark_results/`
-- `e1_depth_sweep/` - E1 depths 6-22
-- `e10_depth_sweep/` - E10 depths 6-22
-- `deep_sweep/` - E1/E10/Mamba2 depths 26, 32
-- `e1_maxbatch_sweep/` - E1 with ~35GB VRAM
-- `batch48_comparison/` - All models at batch=48
+- `scale_comparison/` - 50M, 100M, 200M, 400M with depth=6
+- `e1_depth_sweep/` - E1 depths 6-22 at 400M
+- `e10_depth_sweep/` - E10 depths 6-22 at 400M
+- `deep_sweep/` - E1/E10/Mamba2 depths 26, 32 at 400M
+- `e1_maxbatch_sweep/` - E1 with ~35GB VRAM at 400M
+- `batch48_comparison/` - All models at batch=48 at 400M
