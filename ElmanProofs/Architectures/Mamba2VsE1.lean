@@ -10,6 +10,7 @@ import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import ElmanProofs.Information.LinearVsNonlinear
 import ElmanProofs.Architectures.RecurrenceLinearity
+import ElmanProofs.Activations.Lipschitz
 
 /-!
 # Mamba2 vs E1: Rigorous Analysis of the 0.09 Nat Gap
@@ -181,13 +182,24 @@ theorem tanh_gradient_bounded (x : Real) : tanh_gradient_factor x ≤ 1 := by
 theorem tanh_gradient_can_vanish :
     ∀ ε > 0, ∃ x : Real, tanh_gradient_factor x < ε := by
   intro ε hε
-  -- For large x, tanh(x) ≈ 1, so 1 - tanh(x)² ≈ 0
-  -- We use the fact that tanh is strictly increasing and bounded
-  use 100  -- Large enough value
+  -- Use tanh_saturation from Lipschitz.lean: ∃ c, |x| > c → |deriv tanh x| < ε
+  obtain ⟨c, hc_pos, hc⟩ := Activation.tanh_saturation ε hε
+  -- Pick x = c + 1, so |x| = c + 1 > c
+  use c + 1
+  have hx : c < |c + 1| := by
+    rw [abs_of_pos (by linarith : c + 1 > 0)]
+    linarith
+  -- Apply hc: |deriv tanh (c+1)| < ε
+  have h := hc (c + 1) hx
+  -- deriv tanh x = 1 - tanh²(x) = tanh_gradient_factor x
   unfold tanh_gradient_factor
-  -- tanh(100) is very close to 1
-  -- This is a computational fact
-  sorry  -- Would need numerical bounds on tanh(100)
+  -- |1 - tanh²(x)| < ε, and 1 - tanh²(x) > 0, so 1 - tanh²(x) < ε
+  rw [Activation.deriv_tanh] at h
+  have h_pos : 0 < 1 - Real.tanh (c + 1) ^ 2 := by
+    have hb := Activation.tanh_bounded (c + 1)
+    have h_sq : Real.tanh (c + 1) ^ 2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact hb
+    linarith
+  rwa [abs_of_pos h_pos] at h
 
 /-- Linear recurrence gradient: For h' = A·h, gradient is just A.
     No activation function → no saturation → no vanishing! -/
