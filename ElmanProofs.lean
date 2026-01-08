@@ -38,6 +38,7 @@ import ElmanProofs.Architectures.E10_MultiscaleEMA
 import ElmanProofs.Architectures.Mamba2_SSM
 import ElmanProofs.Architectures.ExpressivityGap
 import ElmanProofs.Architectures.RecurrenceLinearity
+import ElmanProofs.Architectures.Mamba2VsE1
 
 -- Information Theory of Language
 import ElmanProofs.Information.LanguageComplexity
