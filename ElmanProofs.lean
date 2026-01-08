@@ -36,6 +36,7 @@ import ElmanProofs.Architectures.DepthScaling
 import ElmanProofs.Architectures.E1_GatedElman
 import ElmanProofs.Architectures.E10_MultiscaleEMA
 import ElmanProofs.Architectures.Mamba2_SSM
+import ElmanProofs.Architectures.ExpressivityGap
 
 -- Information Theory of Language
 import ElmanProofs.Information.LanguageComplexity
