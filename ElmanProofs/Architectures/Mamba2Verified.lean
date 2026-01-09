@@ -174,8 +174,7 @@ def mamba2_projection_params (cfg : Mamba2Config) : Nat :=
 theorem mamba2_efficient_projection :
     -- E14 with d=1024, k=1024: 2*1024² + 2*1024² = 4*1024² = 4M params
     e14_projection_params 1024 1024 = 4 * 1024 * 1024 := by
-  simp only [e14_projection_params]
-  ring
+  native_decide
 
 /-! ## Part 5: Gradient Flow Analysis -/
 
@@ -210,7 +209,7 @@ theorem mamba2_gradient_positive (T : Nat) (decays : Fin T → Real)
 /-- Gradient through E1 with tanh.
     dh_0/dh_T = ∏_{t=1}^{T} (1 - tanh²(v_t)) · W_h^T
     The (1 - tanh²) factor CAN be arbitrarily close to 0. -/
-def e1_gradient_factor (v : Real) : Real := 1 - Real.tanh v ^ 2
+noncomputable def e1_gradient_factor (v : Real) : Real := 1 - Real.tanh v ^ 2
 
 /-- THEOREM: E1 gradient CAN vanish (tanh saturation) -/
 theorem e1_gradient_can_vanish :
@@ -245,8 +244,7 @@ def e14_problems_at_scale : E14Problems where
 theorem e14_overhead :
     e14_problems_at_scale.extra_gemms = 3 ∧
     e14_problems_at_scale.extra_decay_params = 992 := by
-  simp only [e14_problems_at_scale]
-  constructor <;> rfl
+  native_decide
 
 /-! ## Part 7: E20 Design Principles -/
 

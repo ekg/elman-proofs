@@ -42,6 +42,7 @@ import ElmanProofs.Architectures.Mamba2VsE1
 import ElmanProofs.Architectures.Mamba2Verified
 import ElmanProofs.Architectures.MatrixStateRNN
 import ElmanProofs.Architectures.E22_PracticalUTM
+import ElmanProofs.Architectures.E23_DualMemory
 
 -- Information Theory of Language
 import ElmanProofs.Information.LanguageComplexity
