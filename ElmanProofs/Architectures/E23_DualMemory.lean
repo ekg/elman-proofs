@@ -260,14 +260,10 @@ def project_input {cfg : E23Config} (proj : InputProjection cfg) (x : Fin cfg.D_
     (Fin cfg.N → Real) × (Fin cfg.D → Real) :=
   (proj.W_k.mulVec x, proj.W_v.mulVec x)
 
-/-- Outer product for tape update -/
-def outer_product {cfg : E23Config}
-    (key : Fin cfg.N → Real)
-    (value : Fin cfg.D → Real)
-    : TapeState cfg :=
-  fun slot dim => key slot * value dim
+/-- Complete E23 step (NO DECAY version)
 
-/-- Complete E23 step (NO DECAY version) -/
+    Both input and working memory use REPLACEMENT writes to tape.
+    This ensures tape values stay bounded (convex combinations). -/
 noncomputable def e23_step {cfg : E23Config}
     (state : E23State cfg)
     (x : Fin cfg.D_in → Real)
@@ -277,10 +273,11 @@ noncomputable def e23_step {cfg : E23Config}
     (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)  -- project work for write
     (b : Fin cfg.D → Real)
     : E23State cfg :=
-  -- 1. TAPE UPDATE FROM INPUT (additive, this is the "input write")
-  let (key, value) := project_input proj x
-  let tape_after_input := fun slot dim =>
-    state.tape slot dim + outer_product key value slot dim
+  -- 1. INPUT WRITES TO TAPE (replacement, not additive!)
+  let input_key := proj.W_k.mulVec x           -- [N] - which slots
+  let input_attn := softmax input_key          -- [N] - attention over slots
+  let input_value := proj.W_v.mulVec x         -- [D] - what to write
+  let tape_after_input := replacement_write state.tape input_attn input_value
 
   -- 2. READ: working memory queries tape
   let read := attention_read tape_after_input state.work
@@ -477,8 +474,10 @@ FORMALIZED:
    - Tape is persistent until explicitly written
    - TM semantics, not SSM semantics
 
-2. **Replacement Write** (replacement_write_bounded, zero_attention_preserves)
-   - Write is convex combination, keeps values bounded
+2. **Replacement Write for BOTH input and working** (replacement_write_bounded)
+   - Both input→tape and working→tape use replacement
+   - Write is convex combination: (1-attn)*old + attn*new
+   - Keeps values bounded (no explosion over time)
    - Zero attention = unchanged (persistence)
    - Full attention = replaced
 
