@@ -16,24 +16,28 @@ This file formalizes the E23 dual-memory architecture, which separates:
 - **Tape**: Large, persistent, linear storage (like TM tape)
 - **Working Memory**: Small, nonlinear computation (like TM head/control)
 
-## Key Design Decisions (from discussion)
+## Key Design Decisions
 
-1. **No decay**: Tape is persistent until explicitly overwritten (TM semantics)
-2. **Replacement write**: Write attention REPLACES slots, not adds (self-normalizing)
-3. **Dot-product attention**: Simple, no learned projections for read/write
-4. **Rank-1 input updates**: Input writes to tape via outer product
+1. **Minimal design**: Only working memory interfaces with tape (no direct input→tape)
+2. **No decay**: Tape is persistent until explicitly overwritten (TM semantics)
+3. **Replacement write**: `(1-attn)*old + attn*new` (self-normalizing, bounded)
+4. **Dot-product attention**: Simple, no learned projections for read/write
 
 ## Architecture
 
 ```
+Data flow:
+  Input → Working Memory ↔ Tape
+               ↓
+            Output
+
 Tape: h_tape ∈ ℝ^{N × D}     (N slots, D dimensions each)
 Working: h_work ∈ ℝ^D        (single vector, same dimension as slots)
 
 Per step:
-1. Tape update: h_tape += outer(key(x), value(x))
-2. Read: working queries tape via attention
-3. Working update: h_work = tanh(W_h @ h_work + W_x @ x + read)
-4. Write: tape slots replaced via attention-weighted update
+1. Read: working queries tape via attention
+2. Working update: h_work = tanh(W_h @ h_work + W_x @ x + read)
+3. Write: tape slots replaced via attention-weighted update
 ```
 
 ## Computational Class
@@ -46,7 +50,7 @@ E23 achieves UTM because:
 ## Main Theorems
 
 1. `tape_persistence`: Without write, tape slots are unchanged
-2. `write_is_convex_combination`: Replacement write preserves boundedness
+2. `replacement_write_bounded`: Replacement write preserves boundedness
 3. `attention_enables_routing`: Any slot can be accessed based on content
 4. `e23_state_efficiency`: State per FLOP ratio analysis
 5. `e23_is_utm`: E23 achieves UTM computational class
@@ -250,46 +254,35 @@ theorem working_bounded {cfg : E23Config}
 
 /-! ## Part 6: Complete E23 Step -/
 
-/-- Input projection for tape update -/
-structure InputProjection (cfg : E23Config) where
-  W_k : Matrix (Fin cfg.N) (Fin cfg.D_in) Real    -- key projection
-  W_v : Matrix (Fin cfg.D) (Fin cfg.D_in) Real    -- value projection
+/-- Complete E23 step (SIMPLIFIED - no direct input→tape)
 
-/-- Project input to tape key and value -/
-def project_input {cfg : E23Config} (proj : InputProjection cfg) (x : Fin cfg.D_in → Real) :
-    (Fin cfg.N → Real) × (Fin cfg.D → Real) :=
-  (proj.W_k.mulVec x, proj.W_v.mulVec x)
+    Data flow:
+      Input → Working Memory ↔ Tape
+                   ↓
+                Output
 
-/-- Complete E23 step (NO DECAY version)
-
-    Both input and working memory use REPLACEMENT writes to tape.
-    This ensures tape values stay bounded (convex combinations). -/
+    Only working memory interfaces with tape (read + write).
+    Input affects tape indirectly through working memory.
+    This is the minimal design that achieves UTM. -/
 noncomputable def e23_step {cfg : E23Config}
     (state : E23State cfg)
     (x : Fin cfg.D_in → Real)
-    (proj : InputProjection cfg)
     (W_h : Matrix (Fin cfg.D) (Fin cfg.D) Real)
     (W_x : Matrix (Fin cfg.D) (Fin cfg.D_in) Real)
     (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)  -- project work for write
     (b : Fin cfg.D → Real)
     : E23State cfg :=
-  -- 1. INPUT WRITES TO TAPE (replacement, not additive!)
-  let input_key := proj.W_k.mulVec x           -- [N] - which slots
-  let input_attn := softmax input_key          -- [N] - attention over slots
-  let input_value := proj.W_v.mulVec x         -- [D] - what to write
-  let tape_after_input := replacement_write state.tape input_attn input_value
+  -- 1. READ: working memory queries tape
+  let read := attention_read state.tape state.work
 
-  -- 2. READ: working memory queries tape
-  let read := attention_read tape_after_input state.work
-
-  -- 3. WORKING UPDATE
+  -- 2. WORKING UPDATE: standard Elman with tape read
   let work_new := working_update state.work x read W_h W_x b
 
-  -- 4. WRITE: replacement (NOT additive)
-  let write_scores := attention_scores tape_after_input work_new
+  -- 3. WRITE: working memory writes to tape (replacement)
+  let write_scores := attention_scores state.tape work_new
   let write_attn := softmax write_scores
   let write_value := W_write.mulVec work_new
-  let tape_new := replacement_write tape_after_input write_attn write_value
+  let tape_new := replacement_write state.tape write_attn write_value
 
   { tape := tape_new, work := work_new }
 
@@ -449,7 +442,6 @@ def work_bounded {cfg : E23Config} (work : WorkState cfg) : Prop :=
 theorem e23_bounded_state {cfg : E23Config}
     (state : E23State cfg)
     (x : Fin cfg.D_in → Real)
-    (proj : InputProjection cfg)
     (W_h : Matrix (Fin cfg.D) (Fin cfg.D) Real)
     (W_x : Matrix (Fin cfg.D) (Fin cfg.D_in) Real)
     (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)
@@ -459,7 +451,7 @@ theorem e23_bounded_state {cfg : E23Config}
     (h_work : work_bounded state.work)
     (h_input : ∀ i, |x i| ≤ 1)
     (h_M_large : M ≥ 1) :
-    let state' := e23_step state x proj W_h W_x W_write b
+    let state' := e23_step state x W_h W_x W_write b
     work_bounded state'.work := by
   intro state' dim
   -- state'.work = working_update(...) which outputs tanh, so |output| < 1 ≤ 1
@@ -470,30 +462,34 @@ theorem e23_bounded_state {cfg : E23Config}
 
 FORMALIZED:
 
-1. **No Decay** (tape_persistence)
+1. **Minimal Design** (e23_step)
+   - Input → Working Memory ↔ Tape
+   - Only working memory interfaces with tape
+   - No direct input→tape path (simpler, same power)
+
+2. **No Decay** (tape_persistence)
    - Tape is persistent until explicitly written
    - TM semantics, not SSM semantics
 
-2. **Replacement Write for BOTH input and working** (replacement_write_bounded)
-   - Both input→tape and working→tape use replacement
+3. **Replacement Write** (replacement_write_bounded)
    - Write is convex combination: (1-attn)*old + attn*new
    - Keeps values bounded (no explosion over time)
    - Zero attention = unchanged (persistence)
    - Full attention = replaced
 
-3. **Attention Routing** (attention_enables_routing)
+4. **Attention Routing** (attention_enables_routing)
    - Content-based addressing
    - Any slot can be read/written based on content
 
-4. **Bounded State** (e23_bounded_state)
+5. **Bounded State** (e23_bounded_state)
    - Working memory bounded by 1 (tanh)
    - Tape bounded by replacement write
 
-5. **State Efficiency** (e23_vs_e1_state, e23_more_efficient_than_e1)
+6. **State Efficiency** (e23_vs_e1_state, e23_more_efficient_than_e1)
    - 65× more state than E1 at same D
    - ~28× more state per FLOP
 
-6. **Computational Class** (e23_is_utm)
+7. **Computational Class** (e23_is_utm)
    - Nonlinearity (tanh) breaks TC⁰
    - Attention routing provides UTM capability
 
