@@ -39,6 +39,9 @@ import ElmanProofs.Architectures.Mamba2_SSM
 import ElmanProofs.Architectures.ExpressivityGap
 import ElmanProofs.Architectures.RecurrenceLinearity
 import ElmanProofs.Architectures.Mamba2VsE1
+import ElmanProofs.Architectures.Mamba2Verified
+import ElmanProofs.Architectures.MatrixStateRNN
+import ElmanProofs.Architectures.E22_PracticalUTM
 
 -- Information Theory of Language
 import ElmanProofs.Information.LanguageComplexity
