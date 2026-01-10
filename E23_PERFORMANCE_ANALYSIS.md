@@ -2,7 +2,17 @@
 
 ## Summary
 
-E23 CUDA kernel achieves **theoretical optimal performance** at 24us/step, which equals exactly 2x the time for a single GEMM operation. No further kernel optimization is possible without architectural changes.
+E23 CUDA kernel achieves **theoretical optimal performance** at 24us/step (batch=4), which equals 2x the GEMM time. However, **E23 scales poorly with batch size** compared to E1, resulting in 6.4x slower training throughput at batch=64.
+
+## Training Benchmark Results (50M params, 10 min, batch=64)
+
+| Model | Loss | Throughput | Steps | vs E1 |
+|-------|------|------------|-------|-------|
+| **E1 d1280×6** | 1.41 | 201.6K tok/s | 3,692 | 1.0x |
+| **Mamba2** | 1.44 | 102.4K tok/s | 1,876 | 0.51x |
+| **E23** | 1.84 | 31.5K tok/s | 577 | 0.16x |
+
+**Key finding**: E23 is 6.4x slower than E1 and has higher loss (1.84 vs 1.41). The tape memory overhead doesn't pay off at this scale.
 
 ## Architecture Overview
 
@@ -36,7 +46,7 @@ Overhead (attention + memcpy):          0.5us (2%)
 
 **Conclusion**: E23 overhead is essentially zero. The 2.67x slowdown vs E1 comes entirely from needing 2 GEMMs per timestep instead of 1.
 
-### Batch Size Scaling
+### Batch Size Scaling (Forward Pass Only)
 
 | Batch | Per-step | Throughput | Scaling |
 |-------|----------|------------|---------|
@@ -46,7 +56,15 @@ Overhead (attention + memcpy):          0.5us (2%)
 | 16 | 22.4us | 715K tok/s | 14.0x |
 | 32 | 25.1us | 1.27M tok/s | 25.0x |
 
-Throughput scales **linearly** with batch size up to batch=16, demonstrating excellent utilization.
+### Batch Size Scaling (Full Training)
+
+| Model | batch=4 | batch=64 | Scaling |
+|-------|---------|----------|---------|
+| E1 | 7.7K tok/s | 201.6K tok/s | **26x** |
+| E23 | 2.2K tok/s | 31.5K tok/s | **14x** |
+| Mamba2 | 19.8K tok/s | 102.4K tok/s | **5.2x** |
+
+**Key insight**: E23 scales worse with batch size than E1 (14x vs 26x). The tape memory operations become a bottleneck at larger batches.
 
 ### Compute Efficiency
 
@@ -103,10 +121,20 @@ Trade-off: 2x speedup vs reduced model capacity.
 
 ## Recommendations
 
-1. **E23 is optimally implemented** - No kernel improvements possible
-2. **Use larger batch sizes** - Scales linearly to batch=16+
-3. **Consider E23-lite** if training speed critical and tape expressivity less important
-4. **E1 remains fastest** for pure throughput (3x faster than E23)
+1. **E23 kernel is optimally implemented** - No further kernel improvements possible
+2. **E23 has poor batch scaling** - Only 14x improvement from batch=4→64 vs E1's 26x
+3. **E23 underperforms E1** - 6.4x slower, higher loss (1.84 vs 1.41)
+4. **E1 remains the best model** - Fastest throughput (201K tok/s), lowest loss (1.41)
+5. **E23 may need architectural changes** - The tape memory concept adds overhead without improving loss
+
+## Verdict
+
+E23's dual-memory architecture is **not competitive** at 50M scale:
+- 6.4x slower than E1
+- 3.2x slower than Mamba2
+- Higher loss despite more architectural complexity
+
+The tape memory idea may need larger scale or different tasks (long-range dependencies, retrieval) to show benefits.
 
 ## Files
 
