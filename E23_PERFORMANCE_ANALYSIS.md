@@ -107,6 +107,47 @@ Total: ~24us/step
    - W_h @ h_work: Compute new hidden state
    - W_write @ h_work_new: Transform for tape write
 
+## Triton Implementation Attempts
+
+Attempted to create a Triton alternative to the CUDA kernel. All attempts failed to match CUDA performance.
+
+### Implementation Comparison (batch=4, seq=512)
+
+| Implementation | Time/step | vs CUDA |
+|---------------|-----------|---------|
+| **CUDA (cuBLAS + kernels)** | 24.3us | 1.0x |
+| Triton + cuBLAS hybrid | 184.1us | 7.6x slower |
+| Fused Triton (inline GEMMs) | 297.8us | 12.2x slower |
+| Pure PyTorch (einsum loop) | 374.9us | 15.4x slower |
+
+### Why Triton Cannot Match CUDA
+
+1. **Python loop overhead**: Each timestep requires Python to dispatch kernels (~40us/step overhead)
+2. **Cannot call cuBLAS from Triton**: Must use inline GEMMs which are 10-20x slower
+3. **Sequential recurrence**: Triton is designed for parallel operations, not sequential loops
+4. **Memory access patterns**: CUDA kernel optimizes L2 cache reuse across batch elements
+
+### Triton Approaches Tested
+
+**1. Triton + cuBLAS Hybrid (7.6x slower)**
+- Use Triton for Phase1/Phase2 attention kernels
+- Use cuBLAS (via PyTorch) for W_h @ h and W_write @ h GEMMs
+- Problem: Python loop between operations adds overhead
+
+**2. Fused Triton Kernel (12.2x slower)**
+- Single Triton kernel per timestep with inline GEMMs
+- Problem: Inline matrix-vector products are extremely slow
+- Each GEMM row computed sequentially instead of using tensor cores
+
+### Conclusion
+
+**Triton is fundamentally unsuited for E23** due to:
+- Sequential recurrent operations requiring Python loop
+- Need for cuBLAS GEMMs (inaccessible from Triton kernels)
+- Poor performance of inline matrix operations in Triton
+
+The CUDA kernel remains the only viable high-performance implementation.
+
 ## Architectural Alternatives (Not Implemented)
 
 To match E1's speed, would need to eliminate W_write GEMM:
@@ -141,9 +182,15 @@ The tape memory idea may need larger scale or different tasks (long-range depend
 - `elman/cuda/lib/dual_memory_elman_gpu.cu.cc` - CUDA kernel
 - `profile_e23.py` - Basic profiling
 - `profile_e23_detailed.py` - Detailed breakdown
+- `profile_e23_triton.py` - Triton vs CUDA comparison
+- `profile_e23_all.py` - All implementations comparison
+- `elman/kernels/e23_triton.py` - Triton + cuBLAS hybrid
+- `elman/kernels/e23_triton_fused.py` - Fused Triton kernel
 
 ## Commit History
 
 - `e520dfe`: Optimize E23 CUDA kernel: 5.5x speedup (5000ms → 917ms)
 - `da65f77`: Fix E23 backward pass misaligned address error
 - `772d80b`: Add E23 profiling scripts for performance analysis
+- `95cca45`: Add E23 benchmark and profiling scripts
+- `3a08eec`: Add E23 Triton kernel attempts and profiling
