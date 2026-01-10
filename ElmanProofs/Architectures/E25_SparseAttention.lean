@@ -58,7 +58,7 @@ But attention uses sparsemax instead of softmax.
 4. `sparse_reduces_interference`: Sparsity reduces slot interference
 -/
 
-namespace E23_Sparse
+namespace E25_SparseAttention
 
 open Matrix Finset
 open SparseAttention
@@ -519,4 +519,4 @@ As alpha increases: softmax → sparsemax → argmax (TM).
 This gives a smooth path from "neural" to "symbolic" behavior.
 -/
 
-end E23_Sparse
+end E25_SparseAttention
