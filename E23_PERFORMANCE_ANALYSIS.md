@@ -2,7 +2,11 @@
 
 ## Summary
 
-E23 CUDA kernel achieves **theoretical optimal performance** at 24us/step (batch=4), which equals 2x the GEMM time. However, **E23 scales poorly with batch size** compared to E1, resulting in 6.4x slower training throughput at batch=64.
+E23 CUDA kernel achieves **theoretical optimal performance** at 24us/step (batch=4) for forward pass, which equals 2x the GEMM time. However, the **backward pass is 4.3x slower than E1** (not 2x) due to:
+1. **3x more memory** - tape history `h_tape_all [T, B, N, D]` adds 403MB vs E1's 151MB total
+2. **Extra compute** - attention gradients + dW_write GEMM add ~1.4x overhead
+
+Combined with optimizer overhead, this results in **6.4x slower training throughput** at batch=64.
 
 ## Training Benchmark Results (50M params, 10 min, batch=64)
 
@@ -65,6 +69,58 @@ Overhead (attention + memcpy):          0.5us (2%)
 | Mamba2 | 19.8K tok/s | 102.4K tok/s | **5.2x** |
 
 **Key insight**: E23 scales worse with batch size than E1 (14x vs 26x). The tape memory operations become a bottleneck at larger batches.
+
+## Root Cause Analysis: Why 6.4x Not 2x?
+
+Initial expectation: E23 has 2 GEMMs per step vs E1's 1, so should be ~2x slower.
+Actual result: E23 is 6.4x slower in full training.
+
+### Per-Layer Breakdown (batch=64, seq=512, dim=768, expansion=1.5)
+
+| Component | E1 | E23 | Ratio |
+|-----------|-----|------|-------|
+| **Forward** | 6.4ms | 15.4ms | **2.4x** |
+| **Backward** | 10.3ms | 44.5ms | **4.3x** |
+| **Total** | 16.7ms | 59.9ms | **3.6x** |
+
+**Key finding**: Forward is close to expected 2x, but backward is 4.3x slower!
+
+### Why Backward is 4.3x Slower: Tape Memory + Extra Compute
+
+Both models save state history for backward, but E23's tape is N times larger:
+
+| Memory Footprint | E1 Backward | E23 Backward |
+|-----------------|-------------|--------------|
+| Hidden states h [T, B, D] | 50 MB | 50 MB |
+| Intermediates v [T, B, D] | 50 MB | - |
+| Gate inputs z [T, B, D] | 50 MB | - |
+| **Tape h_tape [T, B, N, D]** | - | **403 MB** |
+| Attention tensors | - | 1 MB |
+| **Total** | **151 MB** | **454 MB** |
+
+**Memory ratio: 3x** from tape history.
+
+Additional **~1.4x** slowdown from:
+- Attention gradient computation (read + write attention backward)
+- Extra dW_write weight gradient GEMM that E1 doesn't have
+
+**Combined: 3x × 1.4x ≈ 4.3x backward slowdown**
+
+### Full System Slowdown Decomposition
+
+At 50M params with create_ladder_model configs:
+- E1: dim=512, depth=21
+- E23: dim=512, depth=17
+
+| Factor | E1 | E23 | Contribution |
+|--------|-----|------|--------------|
+| Per-layer forward | 6.4ms | 15.4ms | 2.4x |
+| Per-layer backward | 10.3ms | 44.5ms | 4.3x |
+| Per-layer total | 16.7ms | 59.9ms | 3.6x |
+| Depth | 21 | 17 | 0.81x |
+| **Combined** | 351ms | 1018ms | **2.9x** |
+
+The 2.9x layer ratio + optimizer overhead explains the measured 6.4x training slowdown.
 
 ### Compute Efficiency
 
@@ -162,11 +218,12 @@ Trade-off: 2x speedup vs reduced model capacity.
 
 ## Recommendations
 
-1. **E23 kernel is optimally implemented** - No further kernel improvements possible
-2. **E23 has poor batch scaling** - Only 14x improvement from batch=4→64 vs E1's 26x
-3. **E23 underperforms E1** - 6.4x slower, higher loss (1.84 vs 1.41)
-4. **E1 remains the best model** - Fastest throughput (201K tok/s), lowest loss (1.41)
-5. **E23 may need architectural changes** - The tape memory concept adds overhead without improving loss
+1. **E23 forward kernel is optimally implemented** - No further forward kernel improvements possible
+2. **E23 backward is memory-bound** - 4.3x slower due to tape history (454MB vs 151MB per layer) + extra attention gradients
+3. **Potential optimization: gradient checkpointing** - Recompute tape states instead of saving them to reduce memory
+4. **E23 underperforms E1** - 6.4x slower, higher loss (1.84 vs 1.41)
+5. **E1 remains the best model** - Fastest throughput (201K tok/s), lowest loss (1.41)
+6. **E23 may need architectural changes** - The tape memory concept adds significant backward pass overhead
 
 ## Verdict
 
@@ -184,6 +241,9 @@ The tape memory idea may need larger scale or different tasks (long-range depend
 - `profile_e23_detailed.py` - Detailed breakdown
 - `profile_e23_triton.py` - Triton vs CUDA comparison
 - `profile_e23_all.py` - All implementations comparison
+- `profile_e23_system.py` - Full system profiling (forward/backward/optimizer breakdown)
+- `profile_e23_backward.py` - Backward pass analysis
+- `profile_e23_layers.py` - Layer stacking and depth analysis
 - `elman/kernels/e23_triton.py` - Triton + cuBLAS hybrid
 - `elman/kernels/e23_triton_fused.py` - Fused Triton kernel
 
