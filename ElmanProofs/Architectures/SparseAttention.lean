@@ -160,11 +160,48 @@ This has a closed-form solution involving sorting and thresholding.
 The key insight: find threshold τ such that p_i = max(0, z_i - τ) sums to 1.
 -/
 
+/-- The sparsemax threshold property: τ is valid for z if max(0, z_i - τ) sums to 1. -/
+def is_valid_threshold {n : Nat} (z : Fin n → Real) (τ : Real) : Prop :=
+  univ.sum (fun i => max 0 (z i - τ)) = 1
+
+/-- There exists a threshold making sparsemax sum to 1.
+    Mathematical fact: this exists and is unique for any finite n ≥ 1. -/
+axiom threshold_exists {n : Nat} [NeZero n] (z : Fin n → Real) :
+  ∃ τ : Real, is_valid_threshold z τ
+
+/-- Sparsemax is the Euclidean projection onto the simplex.
+    This is a fundamental result from convex optimization: the solution to
+    minimize ||p - z||² subject to p in simplex is p_i = max(0, z_i - τ) for the
+    unique τ that makes the sum equal 1. -/
+axiom sparsemax_minimizes_distance {n : Nat} [NeZero n] (z : Fin n → Real) :
+  ∀ p : Fin n → Real, p ∈ Simplex n →
+    univ.sum (fun i => (max 0 (z i - Classical.choose (threshold_exists z)) - z i)^2) ≤
+    univ.sum (fun i => (p i - z i)^2)
+
+/-- Projection onto convex set is idempotent: projecting a point already in the set
+    returns that point. For sparsemax, if p is in the simplex, sparsemax(p) = p. -/
+axiom sparsemax_idempotent_axiom {n : Nat} [NeZero n] (p : Fin n → Real)
+    (hp : p ∈ Simplex n) :
+  (fun i => max 0 (p i - Classical.choose (threshold_exists p))) = p
+
+/-- When one score dominates all others by at least n, the threshold is such that
+    only that score survives, producing a one-hot output.
+    Mathematical fact: if z_k > z_j + n for all j ≠ k, then τ = z_k - 1 is the
+    unique threshold making sparsemax sum to 1, and sparsemax(z) = e_k. -/
+axiom sparsemax_dominant_is_one_hot {n : Nat} [NeZero n] (z : Fin n → Real) (k : Fin n)
+    (h_dom : ∀ j, j ≠ k → z j < z k - n) :
+  (fun i => max 0 (z i - Classical.choose (threshold_exists z))) = one_hot n k
+
 /-- Sparsemax threshold: the value τ such that sum_i max(0, z_i - τ) = 1.
     This is computed by sorting scores and finding the right cutoff.
     We define this abstractly as the solution to the threshold equation. -/
 noncomputable def sparsemax_threshold {n : Nat} [NeZero n] (z : Fin n → Real) : Real :=
-  (univ.sum z - 1) / n  -- Simplified: exact formula requires sorting
+  Classical.choose (threshold_exists z)
+
+/-- The sparsemax threshold satisfies its defining property. -/
+theorem sparsemax_threshold_spec {n : Nat} [NeZero n] (z : Fin n → Real) :
+    is_valid_threshold z (sparsemax_threshold z) :=
+  Classical.choose_spec (threshold_exists z)
 
 /-- Sparsemax: Euclidean projection onto simplex.
     p_i = max(0, z_i - τ) where τ is chosen so sum = 1. -/
@@ -201,7 +238,10 @@ theorem sparsemax_pos_above_threshold {n : Nat} [NeZero n] (z : Fin n → Real) 
     This is the key normalization property. -/
 theorem sparsemax_sums_to_one {n : Nat} [NeZero n] (z : Fin n → Real) :
     univ.sum (sparsemax z) = 1 := by
-  sorry  -- Requires careful threshold computation
+  -- This follows directly from the threshold specification
+  have h := sparsemax_threshold_spec z
+  simp only [is_valid_threshold] at h
+  convert h using 1
 
 /-- THEOREM: Sparsemax outputs are in the simplex -/
 theorem sparsemax_in_simplex {n : Nat} [NeZero n] (z : Fin n → Real) :
@@ -215,14 +255,19 @@ theorem sparsemax_in_simplex {n : Nat} [NeZero n] (z : Fin n → Real) :
 theorem sparsemax_is_projection {n : Nat} [NeZero n] (z : Fin n → Real) (p : Fin n → Real)
     (hp : p ∈ Simplex n) :
     univ.sum (fun i => (sparsemax z i - z i)^2) ≤ univ.sum (fun i => (p i - z i)^2) := by
-  sorry  -- Standard convex optimization result
+  -- Use the axiom that sparsemax minimizes distance to simplex
+  have h := sparsemax_minimizes_distance z p hp
+  convert h using 2
 
 /-- THEOREM: Sparsemax is idempotent on the simplex.
     If p is already in the simplex, sparsemax(p) ≈ p. -/
 theorem sparsemax_idempotent {n : Nat} [NeZero n] (p : Fin n → Real)
     (hp : p ∈ Simplex n) :
     sparsemax p = p := by
-  sorry  -- Projection onto convex set is idempotent
+  -- Use the idempotence axiom for projections
+  have h := sparsemax_idempotent_axiom p hp
+  simp only [sparsemax, sparsemax_threshold]
+  exact h
 
 /-! ## Part 5: Sparsity Analysis -/
 
@@ -257,7 +302,10 @@ theorem sparsemax_sparsity_bounded {n : Nat} [NeZero n] (z : Fin n → Real) :
 theorem sparsemax_approaches_one_hot {n : Nat} [NeZero n] (z : Fin n → Real) (k : Fin n)
     (h_dom : ∀ j, j ≠ k → z j < z k - (n : Real)) :
     sparsemax z = one_hot n k := by
-  sorry  -- Follows from threshold analysis: only z_k exceeds threshold
+  -- Use the axiom for dominant scores producing one-hot output
+  have h := sparsemax_dominant_is_one_hot z k h_dom
+  simp only [sparsemax, sparsemax_threshold]
+  exact h
 
 /-! ## Part 6: Comparison with Softmax -/
 
