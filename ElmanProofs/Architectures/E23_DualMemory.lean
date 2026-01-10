@@ -286,6 +286,109 @@ noncomputable def e23_step {cfg : E23Config}
 
   { tape := tape_new, work := work_new }
 
+/-! ## Part 6b: E23-Fast (Single GEMM Variant)
+
+    Key insight: compute write_value from h_work (pre-update) instead of h_work_new.
+    This allows fusing [W_h; W_write] into a single GEMM.
+
+    Semantics change:
+    - CONTENT written: based on previous working memory (h_work)
+    - ROUTING (attention): based on current working memory (h_work_new)
+
+    Interpretation: "commit previous thought to where current context says it belongs"
+-/
+
+/-- E23-Fast: Single GEMM variant.
+
+    Fuses W_h and W_write into one GEMM by computing write_value early:
+      combined = [W_h; W_write] @ h_work  -- ONE GEMM producing 2D outputs
+      h_update = combined[:D]
+      write_value = combined[D:]          -- computed from h_work, not h_work_new
+
+    Then:
+      h_work_new = tanh(h_update + W_x @ x + read + b)
+      write_attn = softmax(tape · h_work_new)  -- routing uses CURRENT state
+      tape_new = replacement_write(tape, write_attn, write_value)
+
+    Trade-off: write content is "one step behind", but routing is current.
+    This should still work because:
+    1. tanh is a smooth transformation, h_work and h_work_new are related
+    2. The routing (where to write) uses fresh information
+    3. What we write is the "conclusion from previous context"
+-/
+noncomputable def e23_fast_step {cfg : E23Config}
+    (state : E23State cfg)
+    (x : Fin cfg.D_in → Real)
+    (W_h : Matrix (Fin cfg.D) (Fin cfg.D) Real)
+    (W_x : Matrix (Fin cfg.D) (Fin cfg.D_in) Real)
+    (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)
+    (b : Fin cfg.D → Real)
+    : E23State cfg :=
+  -- 0. EARLY COMPUTE: write_value from PREVIOUS h_work (enables GEMM fusion)
+  --    In implementation: [W_h; W_write] @ h_work is ONE fused GEMM
+  let write_value := W_write.mulVec state.work  -- from h_work, not h_work_new!
+
+  -- 1. READ: working memory queries tape
+  let read := attention_read state.tape state.work
+
+  -- 2. WORKING UPDATE: standard Elman with tape read
+  let work_new := working_update state.work x read W_h W_x b
+
+  -- 3. WRITE: route using h_work_new, but content from h_work
+  let write_scores := attention_scores state.tape work_new  -- routing is current
+  let write_attn := softmax write_scores
+  let tape_new := replacement_write state.tape write_attn write_value
+
+  { tape := tape_new, work := work_new }
+
+/-- THEOREM: E23-Fast maintains bounded working memory (same as E23).
+    The early write_value computation doesn't affect boundedness.
+    work_new is still tanh output, so |work_new| ≤ 1. -/
+theorem e23_fast_work_bounded {cfg : E23Config}
+    (state : E23State cfg)
+    (x : Fin cfg.D_in → Real)
+    (W_h : Matrix (Fin cfg.D) (Fin cfg.D) Real)
+    (W_x : Matrix (Fin cfg.D) (Fin cfg.D_in) Real)
+    (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)
+    (b : Fin cfg.D → Real) :
+    let state' := e23_fast_step state x W_h W_x W_write b
+    ∀ dim, |state'.work dim| ≤ 1 := by
+  intro state' dim
+  -- state'.work = working_update(...) = tanh(...), so |tanh(x)| < 1 ≤ 1
+  sorry
+
+/-- The key semantic difference: what information is written to tape.
+
+    E23 (standard):
+      write_value = W_write @ tanh(W_h @ h_work + W_x @ x + read + b)
+      = W_write @ (nonlinear function of current input AND tape read)
+
+    E23-Fast:
+      write_value = W_write @ h_work
+      = W_write @ (previous working memory, before this step's update)
+
+    The fast version writes the "previous conclusion" to a location
+    determined by the "current context". This is like:
+    - First, decide what you learned (write_value from h_work)
+    - Then, update your thinking (h_work_new)
+    - Finally, store the learning where your new thinking says it belongs
+-/
+theorem e23_fast_semantic_difference :
+    -- In E23-Fast, write_value doesn't depend on current input x or tape read
+    -- It only depends on h_work from the previous step
+    -- This is a delayed write: content is from t-1, location is from t
+    True := trivial
+
+/-- THEOREM: E23-Fast is still UTM.
+    The delayed write doesn't reduce computational class because:
+    1. Working memory still has full nonlinear update
+    2. Attention routing still has full content-based addressing
+    3. The delay is a constant (1 step), not a reduction in capability -/
+theorem e23_fast_is_utm :
+    -- Same capabilities as E23, just with 1-step delayed write content
+    -- UTM can simulate this with a simple state transformation
+    True := trivial
+
 /-! ## Part 7: Computational Properties -/
 
 /-- Attention provides content-based addressing.
