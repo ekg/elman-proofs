@@ -31,6 +31,9 @@ import ElmanProofs.Expressivity.ScalingLaws
 import ElmanProofs.Expressivity.GradientDynamics
 import ElmanProofs.Expressivity.ExpressivityGradientTradeoff
 
+-- Delta Rule and Associative Memory
+import ElmanProofs.DeltaRule
+
 -- Architecture Formalizations
 import ElmanProofs.Architectures.DepthScaling
 import ElmanProofs.Architectures.E1_GatedElman
