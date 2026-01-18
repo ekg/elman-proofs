@@ -4,6 +4,48 @@
 #set heading(numbering: "1.1")
 #set math.equation(numbering: "(1)")
 
+// Custom theorem-like environments
+#let theorem(name, body) = block(
+  width: 100%,
+  inset: 8pt,
+  stroke: (left: 2pt + blue),
+  [*Theorem* (#name)*.* #body]
+)
+
+#let proposition(name, body) = block(
+  width: 100%,
+  inset: 8pt,
+  stroke: (left: 2pt + green),
+  [*Proposition* (#name)*.* #body]
+)
+
+#let definition(name, body) = block(
+  width: 100%,
+  inset: 8pt,
+  stroke: (left: 2pt + orange),
+  [*Definition* (#name)*.* #body]
+)
+
+#let proof(body) = block(
+  width: 100%,
+  inset: (left: 12pt),
+  [_Proof._ #body #h(1fr) $square$]
+)
+
+#let corollary(body) = block(
+  width: 100%,
+  inset: 8pt,
+  stroke: (left: 2pt + purple),
+  [*Corollary.* #body]
+)
+
+#let conjecture(body) = block(
+  width: 100%,
+  inset: 8pt,
+  stroke: (left: 2pt + red),
+  [*Conjecture.* #body]
+)
+
 #align(center)[
   #text(size: 18pt, weight: "bold")[E79: Coupled Memory-Modulation Matrix System]
 
@@ -33,7 +75,7 @@ This document provides:
 E79 maintains two matrix states:
 
 $ bold(S) in RR^(n times n) quad "Content Memory (primary associative storage)" $
-$ bold(M) in RR^(n times n) quad "Modulation Memory (residual predictor)" $
+$ bold(M) in RR^(n times n) quad "Modulation Memory (controls S's gating)" $
 
 Total state: $2n^2$ real values. For $n = 32$, this is 2048 elements.
 
@@ -43,31 +85,37 @@ At each timestep, E79 receives:
 - $bold(k) in RR^n$: Key vector for content addressing
 - $bold(v) in RR^n$: Value to store
 - $bold(q) in RR^n$: Query for output
-- $bold(m) in RR^n$: Modulation key for error addressing
+- $bold(m) in RR^n$: Modulation key for M addressing
 
-== The E79 Update Rule
+== The E79 Update Rule (Actual Implementation)
 
 #figure(
   kind: "algorithm",
   supplement: [Algorithm],
-  caption: [E79 Forward Pass],
+  caption: [E79 Forward Pass - Mutual Gating Control],
   align(left)[
-    *Input:* State $(bold(S), bold(M))$, vectors $(bold(k), bold(v), bold(q), bold(m))$, decays $(alpha_S, alpha_M)$
+    *Input:* State $(bold(S), bold(M))$, vectors $(bold(k), bold(v), bold(q), bold(m))$, biases $(bold(b)_S, bold(b)_M)$
 
     *Step 1: Normalize keys*
     $ hat(bold(k)) = bold(k) / norm(bold(k))_2, quad hat(bold(m)) = bold(m) / norm(bold(m))_2 $
 
-    *Step 2: Content memory update (Level 1 delta rule)*
-    $ bold(s)_"retrieved" &= bold(S) hat(bold(k)) quad "(what S predicts for key " hat(bold(k)) ")" $
-    $ bold(delta)_S &= bold(v) - bold(s)_"retrieved" quad "(prediction error)" $ <eq:s_delta>
-    $ bold(S)' &= alpha_S bold(S) + bold(delta)_S hat(bold(k))^top quad "(delta rule update)" $
+    *Step 2: M controls S's decay gates* #text(fill: red)[(M → S coupling)]
+    $ bold(g)^S_"row" &= sigma(bold(M) hat(bold(k)) + bold(b)_S) quad "(row decay from M)" $ <eq:s_row_gate>
+    $ bold(g)^S_"col" &= sigma(bold(M)^top hat(bold(k)) + bold(b)_S) quad "(col decay from M)" $ <eq:s_col_gate>
 
-    *Step 3: Modulation memory update (Level 2 delta rule)*
-    $ bold(m)_"retrieved" &= bold(M) hat(bold(m)) quad "(what M predicts about " bold(delta)_S ")" $
-    $ bold(delta)_M &= bold(delta)_S - bold(m)_"retrieved" quad "(second-order residual)" $ <eq:m_delta>
-    $ bold(M)' &= alpha_M bold(M) + bold(delta)_M hat(bold(m))^top $
+    *Step 3: S delta rule update with M-controlled gating*
+    $ bold(delta)_S &= bold(v) - bold(S) hat(bold(k)) $
+    $ bold(S)' &= (bold(g)^S_"row" bold(g)^S_"col"{}^top) dot.circle bold(S) + bold(delta)_S hat(bold(k))^top $ <eq:S_update>
 
-    *Step 4: Output with self-gating*
+    *Step 4: S controls M's decay gates* #text(fill: blue)[(S → M coupling)]
+    $ bold(g)^M_"row" &= sigma(bold(S) hat(bold(m)) + bold(b)_M) $
+    $ bold(g)^M_"col" &= sigma(bold(S)^top hat(bold(m)) + bold(b)_M) $
+
+    *Step 5: M delta rule update (M predicts S's changes)*
+    $ bold(delta)_M &= bold(delta)_S - bold(M) hat(bold(m)) $
+    $ bold(M)' &= (bold(g)^M_"row" bold(g)^M_"col"{}^top) dot.circle bold(M) + bold(delta)_M hat(bold(m))^top $ <eq:M_update>
+
+    *Step 6: Output with self-gating*
     $ bold(o) = (bold(S)' bold(q)) dot.circle "silu"(bold(S)' bold(q)) $
 
     *Return:* New state $(bold(S)', bold(M)')$, output $bold(o)$
@@ -76,67 +124,107 @@ At each timestep, E79 receives:
 
 == Explicit Matrix Form
 
-Writing out the updates explicitly:
+The key insight is the *factorized gating*:
 
-$ bold(S)' = alpha_S bold(S) + (bold(v) - bold(S) hat(bold(k))) hat(bold(k))^top $ <eq:S_update>
+$ bold(S)' = underbrace((bold(g)^S_"row" bold(g)^S_"col"{}^top), "M-controlled decay") dot.circle bold(S) + bold(delta)_S hat(bold(k))^top $ <eq:S_explicit>
 
-$ bold(M)' = alpha_M bold(M) + (bold(v) - bold(S) hat(bold(k)) - bold(M) hat(bold(m))) hat(bold(m))^top $ <eq:M_update>
+Where the decay gate is an outer product of M's outputs:
+$ bold(g)^S_"row" bold(g)^S_"col"{}^top = sigma(bold(M) hat(bold(k))) sigma(bold(M)^top hat(bold(k)))^top $
 
-The critical observation is that $bold(M)$'s update depends on $bold(S)$ through $bold(delta)_S$.
+This means *M directly influences S's update* and thus the output. Similarly:
+$ bold(M)' = (bold(g)^M_"row" bold(g)^M_"col"{}^top) dot.circle bold(M) + bold(delta)_M hat(bold(m))^top $
+
+With S controlling M's decay gates.
 
 = How M Modulates S
 
-== The Coupling Mechanism
+== The Coupling Mechanism (Actual Implementation)
 
-M does *not* directly modify S. Instead, M learns to *predict* S's errors, which affects:
+Unlike the simplified description in E79_RESULTS.md, the *actual* E79 implements *mutual gating control*:
 
-1. *Gradient flow*: Gradients from loss flow through $bold(delta)_S$ to both S and M
-2. *Implicit regularization*: M's predictions of $bold(delta)_S$ create a learning signal
-3. *Information storage*: M captures patterns in S's errors, freeing S for new content
-
-== Mathematical Analysis of the Coupling
-
-Consider the residual chain:
-
-$ bold(delta)_S = bold(v) - bold(S) hat(bold(k)) quad "(Level 1 residual)" $
-$ bold(delta)_M = bold(delta)_S - bold(M) hat(bold(m)) = bold(v) - bold(S) hat(bold(k)) - bold(M) hat(bold(m)) quad "(Level 2 residual)" $
-
-#theorem[Perfect Modulation][
-  If M perfectly predicts $bold(delta)_S$ for all inputs, then $bold(delta)_M = bold(0)$ and M stops updating.
-
-  _Proof._ If $bold(M) hat(bold(m)) = bold(delta)_S$ for all $(bold(v), bold(k), bold(m))$, then:
-  $ bold(delta)_M = bold(delta)_S - bold(M) hat(bold(m)) = bold(delta)_S - bold(delta)_S = bold(0) $
-  The update becomes $bold(M)' = alpha_M bold(M) + bold(0) dot hat(bold(m))^top = alpha_M bold(M)$.
-]
-
-== Interpretation: Boosting for Associative Memory
-
-The E79 structure mirrors *gradient boosting*:
-
-#table(
-  columns: (1fr, 1fr),
-  align: (center, center),
-  [*Gradient Boosting*], [*E79*],
-  [Base predictor $f_0(x)$], [Content memory $bold(S)$],
-  [Residual $r_0 = y - f_0(x)$], [$bold(delta)_S = bold(v) - bold(S) hat(bold(k))$],
-  [Boost predictor $f_1(x)$ learns $r_0$], [Modulation memory $bold(M)$ learns $bold(delta)_S$],
-  [Combined: $f_0 + f_1$], [Implicit: $bold(S) + bold(M)$ in gradient space],
+#block(
+  fill: rgb("#fff3cd"),
+  inset: 10pt,
+  radius: 4pt,
+  [*Key Insight:* M directly controls S's decay gates, and S controls M's decay gates. This creates a bidirectional dynamical coupling where each memory controls what the other forgets.]
 )
 
-The key difference: in E79, M doesn't directly add to output. Instead, M's learning *reduces* $bold(delta)_M$, which indirectly improves $bold(S)$ through shared gradient updates.
+=== M → S Coupling (M controls S's forgetting)
 
-== The Modulation Effect on Learning
+The decay factors for S come from M:
+$ bold(g)^S_"row" = sigma(bold(M) hat(bold(k)) + bold(b)_S) in (0, 1)^n $
+$ bold(g)^S_"col" = sigma(bold(M)^top hat(bold(k)) + bold(b)_S) in (0, 1)^n $
 
-When M successfully predicts $bold(delta)_S$:
+The S update becomes:
+$ S'_(i j) = g^S_("row",i) dot g^S_("col",j) dot S_(i j) + (delta_S)_i hat(k)_j $
 
-1. $bold(delta)_M arrow 0$, so M's outer product updates become small
-2. But M still receives gradients from the loss through $bold(delta)_S$
-3. This creates a "memory offloading" effect: M stores error patterns, S stores content
+*M controls what S retains.* When $bold(M) hat(bold(k))$ is large and positive, $bold(g)^S_"row" arrow 1$ and S preserves its rows. When negative, S forgets.
 
-#proposition[Key Specialization][
-  If $bold(k) perp bold(m)$ (orthogonal addressing), then S and M can develop different organizational structures:
-  - S organized by content similarity (via $bold(k)$)
-  - M organized by error patterns (via $bold(m)$)
+=== S → M Coupling (S controls M's forgetting)
+
+Symmetrically, S controls M's decay:
+$ bold(g)^M_"row" = sigma(bold(S) hat(bold(m)) + bold(b)_M) $
+$ bold(g)^M_"col" = sigma(bold(S)^top hat(bold(m)) + bold(b)_M) $
+
+*S controls what M retains.* This creates a feedback loop where the memories regulate each other.
+
+== Gradient Flow Through M
+
+#theorem[M Gets Gradients Through S][
+  M influences the output through the gating path:
+  $ "Loss" arrow bold(o) arrow bold(S)' arrow bold(g)^S_"row", bold(g)^S_"col" arrow bold(M) $
+
+  Specifically:
+  $ (partial cal(L)) / (partial bold(M)) = (partial cal(L)) / (partial bold(S)') dot (partial bold(S)') / (partial bold(g)^S) dot (partial bold(g)^S) / (partial bold(M)) $
+]
+
+#proof[
+  From @eq:S_update: $bold(S)' = (bold(g)^S_"row" bold(g)^S_"col"{}^top) dot.circle bold(S) + bold(delta)_S hat(bold(k))^top$
+
+  The gradient of $bold(S)'$ with respect to $bold(g)^S_"row"$ is:
+  $ (partial S'_(i j)) / (partial g^S_("row", i)) = g^S_("col", j) dot S_(i j) $
+
+  And $bold(g)^S_"row" = sigma(bold(M) hat(bold(k)) + bold(b)_S)$, so:
+  $ (partial g^S_("row", i)) / (partial M_(i l)) = sigma'(...) dot hat(k)_l $
+
+  Composing these gives a non-zero gradient path from Loss to M.
+]
+
+== Interpretation: Mutual Control Dynamical System
+
+The E79 coupling creates a *self-organizing* memory system:
+
+#table(
+  columns: (auto, 1fr),
+  align: (center, left),
+  [*Aspect*], [*Mechanism*],
+  [M → S], [M decides what S should forget based on current key],
+  [S → M], [S decides what M should forget based on modulation key],
+  [S delta], [Standard delta rule with M-modulated decay],
+  [M delta], [Learns S's prediction errors for meta-learning],
+)
+
+This is analogous to:
+- *Neural gating* (LSTM): Forget gates control information flow
+- *Attention* (Transformers): Context-dependent routing
+- *Neuromodulation* (Biology): One system modulates another's plasticity
+
+== Why Mutual Control Helps
+
+#proposition[Adaptive Forgetting][
+  With M-controlled gating, S can learn *input-dependent* forgetting:
+  - For familiar keys: M outputs high gates → S preserves old information
+  - For novel keys: M outputs low gates → S makes room for new content
+
+  This is impossible with fixed decay $alpha_S$.
+]
+
+#proposition[Meta-Learning Through Coupling][
+  M can learn to recognize *when* S should update strongly vs. weakly:
+  - Systematic input patterns → M learns predictable gating
+  - Noisy inputs → M learns to gate conservatively
+
+  This is a form of "learning to learn" for associative memory.
 ]
 
 = Jacobian Analysis
@@ -230,12 +318,12 @@ The second term means: *M's gradient signal flows back to S*.
 == Orthogonal Keys Preserve Information
 
 #theorem[Selective Update][
-  If $hat(bold(k)}_1 perp hat(bold(k)}_2$ (orthogonal keys), then writing $(bold(v)_2, bold(k)_2)$ does not affect retrieval with $bold(k)_1$:
-  $ bold(S)' hat(bold(k)}_1 = bold(S) hat(bold(k)}_1 $
+  If $hat(bold(k))_1 perp hat(bold(k))_2$ (orthogonal keys), then writing $(bold(v)_2, bold(k)_2)$ does not affect retrieval with $bold(k)_1$:
+  $ bold(S)' hat(bold(k))_1 = bold(S) hat(bold(k))_1 $
 
-  _Proof._ The update adds $(bold(v)_2 - bold(S) hat(bold(k)}_2) hat(bold(k)}_2^top$. Applying to $hat(bold(k)}_1$:
-  $ [(bold(v)_2 - bold(S) hat(bold(k)}_2) hat(bold(k)}_2^top] hat(bold(k)}_1 = (bold(v)_2 - bold(S) hat(bold(k)}_2) (hat(bold(k)}_2^top hat(bold(k)}_1) = bold(0) $
-  since $hat(bold(k)}_2^top hat(bold(k)}_1 = 0$.
+  _Proof._ The update adds $(bold(v)_2 - bold(S) hat(bold(k))_2) hat(bold(k))_2^top$. Applying to $hat(bold(k))_1$:
+  $ [(bold(v)_2 - bold(S) hat(bold(k))_2) hat(bold(k))_2^top] hat(bold(k))_1 = (bold(v)_2 - bold(S) hat(bold(k))_2) (hat(bold(k))_2^top hat(bold(k))_1) = bold(0) $
+  since $hat(bold(k))_2^top hat(bold(k))_1 = 0$.
 ]
 
 == Capacity Analysis
@@ -302,7 +390,7 @@ The benchmark showing $n = 32$ optimal for 10-minute training suggests E79 is ne
   $ bold(S)' + bold(M)' &= alpha_S bold(S) + alpha_M bold(M) + (bold(v) - bold(S) hat(bold(k))) hat(bold(k))^top + (bold(v) - bold(S) hat(bold(k)) - bold(M) hat(bold(k))) hat(bold(k))^top $
 
   If $alpha_S = alpha_M = alpha$:
-  $ bold(S)' + bold(M)' = alpha(bold(S) + bold(M)) + [2bold(v) - 2bold(S) hat(bold(k)) - bold(M) hat(bold(k)}] hat(bold(k))^top $
+  $ bold(S)' + bold(M)' = alpha(bold(S) + bold(M)) + [2bold(v) - 2bold(S) hat(bold(k)) - bold(M) hat(bold(k))] hat(bold(k))^top $
 
   This is *not* exactly a single delta rule, but the key insight is: tied keys limit M's ability to organize independently.
 ]
@@ -364,5 +452,5 @@ Key observations:
 3. How does E79 scale beyond 100M parameters?
 4. Can parallel scan be applied to coupled matrices?
 
-#bibliography("refs.bib", style: "ieee") // Optional
+// Bibliography would go here if needed
 
