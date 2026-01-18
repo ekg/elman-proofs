@@ -129,20 +129,45 @@ structure E79Decay where
   α_s : Real  -- S decay (content memory)
   α_m : Real  -- M decay (modulation memory)
 
-/-- Single E79 update step (the core coupled delta rule) -/
+/-- Sigmoid function for gating -/
+noncomputable def sigmoid (x : Real) : Real := 1 / (1 + Real.exp (-x))
+
+/-- Apply sigmoid elementwise to a vector -/
+noncomputable def sigmoidVec (v : Fin n → Real) : Fin n → Real :=
+  fun i => sigmoid (v i)
+
+/-- Factorized gating: element (i,j) gets gate_row[i] * gate_col[j] -/
+noncomputable def factorizedGate (gate_row gate_col : Fin n → Real)
+    (M : Matrix (Fin n) (Fin n) Real) : Matrix (Fin n) (Fin n) Real :=
+  Matrix.of fun i j => gate_row i * M i j * gate_col j
+
+/-- Single E79 update step (ACTUAL: mutual gating control) -/
 noncomputable def e79Update (state : E79State n) (input : E79Input n)
-    (decay : E79Decay) : E79State n × (Fin n → Real) :=
+    (b_s b_m : Fin n → Real) : E79State n × (Fin n → Real) :=
   -- Normalize keys
   let k_norm := normalize input.k
   let m_norm := normalize input.m
-  -- Level 1: Content memory delta rule
+
+  -- M controls S's decay gates (M → S coupling)
+  let s_row_gate := sigmoidVec (fun i => retrieve state.M k_norm i + b_s i)
+  let s_col_gate := sigmoidVec (fun i => retrieve state.M.transpose k_norm i + b_s i)
+
+  -- S delta rule with M-controlled gating
   let s_retrieved := retrieve state.S k_norm
   let s_delta := fun i => input.v i - s_retrieved i
-  let S_new := decay.α_s • state.S + outer s_delta k_norm
-  -- Level 2: Modulation memory delta rule (learns s_delta!)
+  let S_gated := factorizedGate s_row_gate s_col_gate state.S
+  let S_new := S_gated + outer s_delta k_norm
+
+  -- S controls M's decay gates (S → M coupling)
+  let m_row_gate := sigmoidVec (fun i => retrieve state.S m_norm i + b_m i)
+  let m_col_gate := sigmoidVec (fun i => retrieve state.S.transpose m_norm i + b_m i)
+
+  -- M delta rule with S-controlled gating (M predicts s_delta)
   let m_retrieved := retrieve state.M m_norm
   let m_delta := fun i => s_delta i - m_retrieved i
-  let M_new := decay.α_m • state.M + outer m_delta m_norm
+  let M_gated := factorizedGate m_row_gate m_col_gate state.M
+  let M_new := M_gated + outer m_delta m_norm
+
   -- Output: self-gated query on S
   let Sq := retrieve S_new input.q
   let output := selfGate Sq
