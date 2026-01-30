@@ -7,7 +7,10 @@ import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.Calculus.FDeriv.Basic
 import Mathlib.Analysis.Calculus.FDeriv.Comp
+import Mathlib.Analysis.Calculus.FDeriv.Add
+import Mathlib.Analysis.Calculus.FDeriv.Linear
 import Mathlib.Analysis.Normed.Field.Basic
+import Mathlib.Topology.Algebra.Module.FiniteDimension
 
 /-!
 # RNN Gradient Flow: From First Principles
@@ -102,7 +105,43 @@ theorem linearRNN_closed_form (W : RecurrenceMatrix n) (h₀ : State n) (inputs 
     -- W · (W^T · h₀ + Σ W^{T-1-k} · x_k) + x_T
     -- = W^{T+1} · h₀ + Σ W^{T-k} · x_k + x_T
     -- = W^{T+1} · h₀ + Σ_{k=0}^{T} W^{T-k} · x_k
-    sorry -- Algebraic manipulation of sums - requires careful index juggling
+    -- Distribute W over the sum: W *ᵥ (a + b) = W *ᵥ a + W *ᵥ b
+    rw [Matrix.mulVec_add]
+    -- Now: (W *ᵥ W^T *ᵥ h₀) + (W *ᵥ Σ ...) + x_T
+    -- Use W *ᵥ (W^T *ᵥ h₀) = (W * W^T) *ᵥ h₀ = W^{T+1} *ᵥ h₀
+    rw [Matrix.mulVec_mulVec]
+    -- W * W^T = W^{T+1}, use pow_succ' : a^(n+1) = a * a^n
+    conv_lhs => arg 1; arg 1; rw [← pow_succ']
+    -- Now rearrange: need W^{T+1} *ᵥ h₀ + (W *ᵥ Σ_k W^{T-1-k} *ᵥ x_k + x_T)
+    --             = W^{T+1} *ᵥ h₀ + Σ_k W^{T-k} *ᵥ x_k
+    -- where the new sum goes from 0 to T (inclusive)
+    rw [add_assoc]
+    congr 1
+    -- Need: W *ᵥ (Σ_{k ∈ range T} W^{T-1-k} *ᵥ x_k) + x_T = Σ_{k ∈ range (T+1)} W^{T-k} *ᵥ x_k
+    -- Distribute W through the sum
+    rw [Matrix.mulVec_sum]
+    -- Now: (Σ_{k ∈ range T} W *ᵥ W^{T-1-k} *ᵥ x_k) + x_T = Σ_{k ∈ range (T+1)} W^{T-k} *ᵥ x_k
+    -- W *ᵥ W^{T-1-k} *ᵥ x_k = (W * W^{T-1-k}) *ᵥ x_k
+    simp_rw [Matrix.mulVec_mulVec]
+    -- Now use range (T+1) = range T ∪ {T}
+    rw [Finset.sum_range_succ]
+    -- Need: (Σ_{k ∈ range T} (W * W^{T-1-k}) *ᵥ x_k) + x_T
+    --     = (Σ_{k ∈ range T} W^{T-k} *ᵥ x_k) + W^{T-T} *ᵥ x_T
+    -- For the last term: W^{T+1-1-T} = W^0 = 1, so W^0 *ᵥ x_T = x_T
+    have h_last : (W ^ (T + 1 - 1 - T)).mulVec (inputs T) = inputs T := by
+      simp only [Nat.add_sub_cancel, Nat.sub_self, pow_zero, Matrix.one_mulVec]
+    rw [h_last]
+    -- Now need to show the sums match term by term
+    congr 1
+    apply Finset.sum_congr rfl
+    intro k hk
+    -- For k ∈ range T (i.e., k < T), show W * W^{T-1-k} = W^{T+1-1-k}
+    have hk' : k < T := Finset.mem_range.mp hk
+    have h_exp : W * W ^ (T - 1 - k) = W ^ (T + 1 - 1 - k) := by
+      have h1 : T - 1 - k + 1 = T - k := by omega
+      have h2 : T + 1 - 1 - k = T - k := by omega
+      rw [h2, ← h1, pow_succ']
+    exact congrArg (·.mulVec (inputs k)) h_exp
 
 /-! ## Part 2: Jacobian Structure -/
 
@@ -112,7 +151,17 @@ theorem jacobian_linear_rnn (W : RecurrenceMatrix n) (x : State n) :
   intro h
   -- linearStep W h x = W.mulVec h + x
   -- This is an affine function of h, so its derivative is W
-  sorry -- Need to show derivative of affine map
+  -- Rewrite linearStep in terms of mulVec + x
+  simp only [linearStep_eq_mulVec_add]
+  -- fderiv (f + c) = fderiv f for constant c
+  rw [fderiv_add_const x]
+  -- Now fderiv ℝ (W.mulVec) h = W.toLin'
+  -- W.mulVec is a continuous linear map (finite dimensional), so fderiv = itself
+  let L : State n →L[ℝ] State n := W.toLin'.toContinuousLinearMap
+  have hL : fderiv ℝ L h = L := L.fderiv
+  have hfun : W.mulVec = L := rfl
+  rw [hfun, hL]
+  rfl
 
 /-- The Jacobian of h_T with respect to h_0 is W^T -/
 theorem jacobian_composition (W : RecurrenceMatrix n) (h₀ : State n) (inputs : ℕ → State n) (T : ℕ) :
@@ -253,6 +302,23 @@ theorem powerlaw_condition_number (r : ℕ) (α : ℝ) (hr : r > 0) (hα : α > 
     let σ := fun i : Fin r => ((i : ℕ) + 1 : ℝ) ^ (-α)
     let κ := σ ⟨0, hr⟩ / σ ⟨r - 1, Nat.sub_lt hr Nat.one_pos⟩
     κ = (r : ℝ) ^ α := by
-  sorry -- Algebraic manipulation
+  -- Expand definitions
+  simp only []
+  -- σ ⟨0, hr⟩ = ((0 : ℕ) + 1 : ℝ)^{-α} = 1^{-α} = 1
+  have h_sig0 : (((⟨0, hr⟩ : Fin r) : ℕ) + 1 : ℝ) ^ (-α) = (1 : ℝ) := by
+    simp only [Nat.cast_zero, zero_add, Real.one_rpow]
+  -- σ ⟨r-1, ...⟩ = ((r-1 : ℕ) + 1 : ℝ)^{-α} = r^{-α}
+  have hr' : (r : ℝ) > 0 := Nat.cast_pos.mpr hr
+  have h_cast_eq : ((r - 1 : ℕ) : ℝ) + 1 = (r : ℝ) := by
+    have h := Nat.sub_add_cancel hr
+    simp only [← Nat.cast_add_one, h]
+  have h_sigrm1 : (((⟨r - 1, Nat.sub_lt hr Nat.one_pos⟩ : Fin r) : ℕ) + 1 : ℝ) ^ (-α) =
+      (r : ℝ) ^ (-α) := by
+    rw [h_cast_eq]
+  -- κ = σ 0 / σ (r-1) = 1 / r^{-α}
+  rw [h_sig0, h_sigrm1]
+  -- 1 / r^{-α} = r^α
+  rw [Real.rpow_neg (le_of_lt hr')]
+  simp only [one_div, inv_inv]
 
 end GradientFlow

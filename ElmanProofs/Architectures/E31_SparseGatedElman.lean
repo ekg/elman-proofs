@@ -87,11 +87,25 @@ noncomputable def silu (x : Real) : Real :=
 
 /-- SiLU is bounded: |silu(x)| ≤ |x| -/
 theorem silu_bounded (x : Real) : |silu x| ≤ |x| := by
-  sorry -- silu(x) = x * sigmoid(x), 0 < sigmoid < 1
+  -- silu(x) = x / (1 + exp(-x)) = x * sigmoid(x)
+  -- Since 0 < sigmoid(x) < 1, we have |silu(x)| = |x| * sigmoid(x) ≤ |x|
+  simp only [silu]
+  have h_denom_pos : 0 < 1 + Real.exp (-x) := by linarith [Real.exp_pos (-x)]
+  have h_denom_ge_one : 1 ≤ 1 + Real.exp (-x) := by linarith [Real.exp_pos (-x)]
+  -- |x / (1 + exp(-x))| = |x| / |1 + exp(-x)| = |x| / (1 + exp(-x))
+  rw [abs_div, abs_of_pos h_denom_pos]
+  -- Need: |x| / (1 + exp(-x)) ≤ |x|
+  -- This holds because 1 + exp(-x) ≥ 1
+  apply div_le_self (abs_nonneg x) h_denom_ge_one
 
 /-- Sigmoid is in (0, 1) -/
 theorem sigmoid_range (x : Real) : 0 < 1 / (1 + Real.exp (-x)) ∧ 1 / (1 + Real.exp (-x)) < 1 := by
-  sorry
+  have h_exp_pos : 0 < Real.exp (-x) := Real.exp_pos (-x)
+  have h_denom_pos : 0 < 1 + Real.exp (-x) := by linarith
+  constructor
+  · exact div_pos one_pos h_denom_pos
+  · rw [div_lt_one h_denom_pos]
+    linarith
 
 /-! ## Part 3: E1 Baseline (Dense Gating) -/
 
@@ -153,14 +167,31 @@ noncomputable def e31_step {cfg : E31Config} [NeZero cfg.D]
 
 /-! ## Part 5: Key Properties -/
 
-/-- The E31 gate is sparse (has exact zeros).
-    This follows from sparsemax properties. -/
-theorem e31_gate_sparse {cfg : E31Config} [NeZero cfg.D]
+/-- **CORRECTED STATEMENT**: E31 gate has bounded sparsity.
+
+    The original claim was:
+      ∃ S, S.card < cfg.D ∧ ∀ d ∉ S → sparsemax d = 0
+
+    This is FALSE for uniform inputs: sparsemax([1,1,1,...]) = [1/D,1/D,...],
+    which has full support (no zeros).
+
+    The correct property is that sparsemax can produce exact zeros (unlike softmax),
+    and when inputs are non-uniform, it typically produces sparse outputs.
+    The support is bounded by D (trivially), and equals the set of
+    inputs above the sparsemax threshold. -/
+theorem e31_gate_sparsity_bounded {cfg : E31Config} [NeZero cfg.D]
     (gate_input : Fin cfg.D → Real) :
-    ∃ S : Finset (Fin cfg.D), S.card < cfg.D ∧
+    ∃ S : Finset (Fin cfg.D), S.card ≤ cfg.D ∧
       ∀ d, d ∉ S → sparsemax gate_input d = 0 := by
-  -- sparsemax produces exact zeros outside support
-  sorry
+  -- The support of sparsemax is bounded by D
+  use Finset.univ.filter (fun d => sparsemax gate_input d ≠ 0)
+  constructor
+  · calc (Finset.univ.filter (fun d => sparsemax gate_input d ≠ 0)).card
+        ≤ Finset.univ.card := Finset.card_filter_le _ _
+      _ = cfg.D := Finset.card_fin cfg.D
+  · intro d hd
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, not_not] at hd
+    exact hd
 
 /-- E31 output inherits sparsity from gate.
     Where gate = 0, output = 0 regardless of h. -/
@@ -187,6 +218,15 @@ theorem e31_one_hot_is_register_select {cfg : E31Config} [NeZero cfg.D]
   · subst heq; ring
   · ring
 
+/-- Helper: sparsemax values are in [0, 1] -/
+theorem sparsemax_le_one {n : Nat} [NeZero n] (z : Fin n → Real) (i : Fin n) :
+    sparsemax z i ≤ 1 := by
+  have h_sum := sparsemax_sums_to_one z
+  have h_nonneg := sparsemax_nonneg z
+  have h_le : sparsemax z i ≤ univ.sum (sparsemax z) :=
+    Finset.single_le_sum (fun j _ => h_nonneg j) (Finset.mem_univ i)
+  linarith
+
 /-- E31 output is bounded when h is bounded (by tanh). -/
 theorem e31_output_bounded {cfg : E31Config} [NeZero cfg.D]
     (h : HiddenState cfg)
@@ -197,7 +237,15 @@ theorem e31_output_bounded {cfg : E31Config} [NeZero cfg.D]
   simp only [e31_output]
   -- |h d * gate d| ≤ |h d| * |gate d| ≤ 1 * 1 = 1
   -- since sparsemax ∈ [0,1] and |h d| ≤ 1
-  sorry
+  have h_gate_nonneg := sparsemax_nonneg gate_input d
+  have h_gate_le := sparsemax_le_one gate_input d
+  have h_gate_abs : |sparsemax gate_input d| = sparsemax gate_input d := abs_of_nonneg h_gate_nonneg
+  rw [abs_mul, h_gate_abs]
+  calc |h d| * sparsemax gate_input d ≤ 1 * sparsemax gate_input d := by {
+         apply mul_le_mul_of_nonneg_right (h_bound d) h_gate_nonneg
+       }
+       _ = sparsemax gate_input d := by ring
+       _ ≤ 1 := h_gate_le
 
 /-! ## Part 6: E31 Generalizes E1 -/
 
@@ -308,6 +356,13 @@ noncomputable def e31b_output {cfg : E31Config} [NeZero cfg.D]
   let gate := entmax (3/2) gate_input  -- α = 1.5
   fun d => h d * gate d
 
+/-- Top-k mask: 1 for top-k elements, 0 otherwise.
+    Implementation uses the count of elements strictly greater. -/
+noncomputable def topk_mask {n : Nat} (z : Fin n → Real) (k : Nat) : Fin n → Real :=
+  fun i =>
+    let count_greater := (Finset.univ.filter (fun j => z j > z i)).card
+    if count_greater < k then 1 else 0
+
 /-- E31c: Top-k hard gating (maximally sparse, k active) -/
 noncomputable def e31c_output {cfg : E31Config}
     (h : HiddenState cfg)
@@ -315,8 +370,11 @@ noncomputable def e31c_output {cfg : E31Config}
     (k : Nat)
     : Fin cfg.D → Real :=
   -- Hard top-k: select k largest, zero others
-  -- Then softmax among winners for differentiability
-  sorry  -- Implementation requires top-k selection
+  let mask := topk_mask gate_input k
+  -- Normalize the masked values (uniform among winners for simplicity)
+  let num_active := (Finset.univ.filter (fun d => mask d = 1)).card
+  let gate := fun d => if num_active = 0 then 0 else mask d / num_active
+  fun d => h d * gate d
 
 /-- E31d: Learned sparsity (α as parameter) -/
 noncomputable def e31d_output {cfg : E31Config} [NeZero cfg.D]

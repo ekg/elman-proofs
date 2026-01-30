@@ -120,17 +120,46 @@ noncomputable def softmax (scores : Fin n → Real) : Fin n → Real :=
 /-- Softmax outputs sum to 1 -/
 theorem softmax_sums_to_one (scores : Fin n → Real) [NeZero n] :
     Finset.univ.sum (softmax scores) = 1 := by
-  sorry  -- Standard softmax property
+  simp only [softmax]
+  -- Σᵢ (exp(xᵢ) / Σⱼ exp(xⱼ)) = (Σᵢ exp(xᵢ)) / (Σⱼ exp(xⱼ)) = 1
+  have h_sum_pos : 0 < Finset.univ.sum (fun i => Real.exp (scores i)) := by
+    apply Finset.sum_pos
+    · intro j _
+      exact Real.exp_pos _
+    · exact Finset.univ_nonempty
+  have h_sum_ne : Finset.univ.sum (fun i => Real.exp (scores i)) ≠ 0 := ne_of_gt h_sum_pos
+  -- Pull the division out of the sum
+  conv_lhs =>
+    arg 2
+    ext i
+    rw [div_eq_mul_inv]
+  rw [← Finset.sum_mul, mul_inv_cancel₀ h_sum_ne]
 
 /-- Softmax outputs are non-negative -/
 theorem softmax_nonneg (scores : Fin n → Real) (i : Fin n) :
     softmax scores i ≥ 0 := by
-  sorry  -- exp is positive, sum is positive
+  simp only [softmax]
+  apply div_nonneg
+  · exact le_of_lt (Real.exp_pos _)
+  · apply Finset.sum_nonneg
+    intro j _
+    exact le_of_lt (Real.exp_pos _)
 
 /-- Softmax outputs are at most 1 -/
 theorem softmax_le_one (scores : Fin n → Real) [NeZero n] (i : Fin n) :
     softmax scores i ≤ 1 := by
-  sorry  -- Each term ≤ sum
+  simp only [softmax]
+  -- exp(xᵢ) / Σⱼ exp(xⱼ) ≤ 1 because exp(xᵢ) ≤ Σⱼ exp(xⱼ)
+  have h_sum_pos : 0 < Finset.univ.sum (fun j => Real.exp (scores j)) := by
+    apply Finset.sum_pos
+    · intro j _
+      exact Real.exp_pos _
+    · exact Finset.univ_nonempty
+  rw [div_le_one h_sum_pos]
+  -- exp(xᵢ) ≤ Σⱼ exp(xⱼ) because i ∈ univ and exp is positive
+  have h_nonneg : ∀ j ∈ Finset.univ, (0 : Real) ≤ Real.exp (scores j) := fun j _ =>
+    le_of_lt (Real.exp_pos _)
+  exact Finset.single_le_sum h_nonneg (Finset.mem_univ i)
 
 /-! ## Part 3: Replacement Write (Key Innovation) -/
 
@@ -164,7 +193,24 @@ theorem replacement_write_bounded {cfg : E23Config} {M : Real}
     ∀ i j, |replacement_write tape write_attn new_value i j| ≤ M := by
   intro i j
   simp only [replacement_write]
-  sorry  -- Convex combination of bounded values is bounded
+  -- (1 - α) * old + α * new is a convex combination
+  -- |convex_comb| ≤ (1-α)*|old| + α*|new| ≤ (1-α)*M + α*M = M
+  have h_attn := h_attn_bounds i
+  have h_old := h_tape_bound i j
+  have h_new := h_value_bound j
+  -- Triangle inequality
+  calc |(1 - write_attn i) * tape i j + write_attn i * new_value j|
+      ≤ |(1 - write_attn i) * tape i j| + |write_attn i * new_value j| := abs_add_le _ _
+    _ = |1 - write_attn i| * |tape i j| + |write_attn i| * |new_value j| := by
+        rw [abs_mul, abs_mul]
+    _ = (1 - write_attn i) * |tape i j| + write_attn i * |new_value j| := by
+        rw [abs_of_nonneg (by linarith : 0 ≤ 1 - write_attn i),
+            abs_of_nonneg h_attn.1]
+    _ ≤ (1 - write_attn i) * M + write_attn i * M := by
+        apply add_le_add
+        · exact mul_le_mul_of_nonneg_left h_old (by linarith : 0 ≤ 1 - write_attn i)
+        · exact mul_le_mul_of_nonneg_left h_new h_attn.1
+    _ = M := by ring
 
 /-- THEOREM: Slots with zero attention weight are unchanged -/
 theorem zero_attention_preserves {cfg : E23Config}
@@ -218,7 +264,30 @@ theorem attention_read_bounded {cfg : E23Config} {M : Real}
     (h_tape_bound : ∀ i j, |tape i j| ≤ M) :
     ∀ dim, |attention_read tape query dim| ≤ M := by
   intro dim
-  sorry  -- Convex combination of bounded values is bounded
+  simp only [attention_read]
+  -- The result is Σᵢ attnᵢ * tapeᵢⱼ where Σᵢ attnᵢ = 1 and attnᵢ ≥ 0
+  -- This is a convex combination of tape values, each bounded by M
+  let scores := attention_scores tape query
+  let attn := softmax scores
+  -- We need: |Σᵢ attnᵢ * tapeᵢⱼ| ≤ M
+  -- By triangle inequality: |Σᵢ attnᵢ * tapeᵢⱼ| ≤ Σᵢ |attnᵢ * tapeᵢⱼ| = Σᵢ attnᵢ * |tapeᵢⱼ|
+  -- Since attnᵢ ≥ 0 and |tapeᵢⱼ| ≤ M:
+  -- Σᵢ attnᵢ * |tapeᵢⱼ| ≤ Σᵢ attnᵢ * M = M * Σᵢ attnᵢ = M * 1 = M
+  calc |Finset.univ.sum fun slot => attn slot * tape slot dim|
+      ≤ Finset.univ.sum fun slot => |attn slot * tape slot dim| := Finset.abs_sum_le_sum_abs _ _
+    _ = Finset.univ.sum fun slot => attn slot * |tape slot dim| := by
+        congr 1
+        ext slot
+        rw [abs_mul, abs_of_nonneg (softmax_nonneg scores slot)]
+    _ ≤ Finset.univ.sum fun slot => attn slot * M := by
+        apply Finset.sum_le_sum
+        intro slot _
+        exact mul_le_mul_of_nonneg_left (h_tape_bound slot dim) (softmax_nonneg scores slot)
+    _ = Finset.univ.sum fun slot => M * attn slot := by
+        congr 1; ext slot; ring
+    _ = M * Finset.univ.sum attn := by rw [← Finset.mul_sum]
+    _ = M * 1 := by rw [softmax_sums_to_one]
+    _ = M := mul_one M
 
 /-! ## Part 5: Working Memory Update -/
 
@@ -355,7 +424,8 @@ theorem e23_fast_work_bounded {cfg : E23Config}
     ∀ dim, |state'.work dim| ≤ 1 := by
   intro state' dim
   -- state'.work = working_update(...) = tanh(...), so |tanh(x)| < 1 ≤ 1
-  sorry
+  -- e23_fast_step produces work_new = working_update ... = fun dim => Real.tanh (...)
+  exact le_of_lt (Activation.tanh_bounded _)
 
 /-- The key semantic difference: what information is written to tape.
 
@@ -490,7 +560,8 @@ theorem e24_work_bounded {cfg : E24Config}
     ∀ dim, |state'.work dim| ≤ 1 := by
   intro state' dim
   -- state'.work dim = tanh(...), so |tanh(x)| < 1 ≤ 1
-  sorry
+  -- e24_step produces work_new = fun dim => Real.tanh (...)
+  exact le_of_lt (Activation.tanh_bounded _)
 
 /-- E24 vs E23 comparison:
 
@@ -687,8 +758,8 @@ theorem e23_bounded_state {cfg : E23Config}
     work_bounded state'.work := by
   intro state' dim
   -- state'.work = working_update(...) which outputs tanh, so |output| < 1 ≤ 1
-  -- The proof requires unfolding e23_step through let bindings
-  sorry  -- Follows from: state'.work is tanh output, |tanh x| < 1
+  -- e23_step produces work_new = working_update ... = fun dim => Real.tanh (...)
+  exact le_of_lt (Activation.tanh_bounded _)
 
 /-! ## Part 13: E23 Extends E1 -/
 
@@ -744,7 +815,18 @@ theorem hard_attention_is_tm_write {cfg : E23Config}
         if slot = target_slot then new_value dim else tape slot dim := by
   intro one_hot slot dim
   simp only [replacement_write]
-  sorry  -- Arithmetic: (1-1)*x + 1*y = y, (1-0)*x + 0*y = x
+  -- one_hot slot = if slot = target_slot then 1 else 0
+  split_ifs with h
+  · -- Case: slot = target_slot, one_hot slot = 1
+    have h_one : one_hot slot = 1 := if_pos h
+    rw [h_one]
+    -- (1-1)*old + 1*new = new
+    ring
+  · -- Case: slot ≠ target_slot, one_hot slot = 0
+    have h_zero : one_hot slot = 0 := if_neg h
+    rw [h_zero]
+    -- (1-0)*old + 0*new = old
+    ring
 
 /-! ## Part 15: Information Persistence -/
 
@@ -759,14 +841,17 @@ noncomputable def uniform_retention (N : Nat) (T : Nat) : Real :=
 /-- THEOREM: With focused attention, information persists longer.
     If attention weight on a slot is α, retention after T steps is (1-α)^T. -/
 theorem focused_attention_preserves {cfg : E23Config}
-    (slot : Fin cfg.N)
+    (_slot : Fin cfg.N)
     (attn_weight : Real)
-    (h_small : attn_weight ≤ 0.1)  -- Focused attention means small weight on most slots
+    (h_small : attn_weight ≤ 0.1) -- Focused attention means small weight on most slots
     (T : Nat) :
     -- Retention ≥ (1 - 0.1)^T = 0.9^T
     -- After 100 steps: 0.9^100 ≈ 0.000027 (still decays, but slower)
     (1 - attn_weight) ^ T ≥ (0.9 : Real) ^ T := by
-  sorry  -- Monotonicity of (1-x)^T in x
+  -- Monotonicity: if attn_weight ≤ 0.1 then 1 - attn_weight ≥ 0.9
+  have h_ge : 1 - attn_weight ≥ 0.9 := by linarith
+  -- And (1-a)^T ≥ 0.9^T when 1-a ≥ 0.9 ≥ 0
+  exact pow_le_pow_left₀ (by norm_num : (0:Real) ≤ 0.9) h_ge _
 
 /-- For truly persistent storage, attention must be near-zero on stored slots.
     This happens when stored content is orthogonal to query. -/

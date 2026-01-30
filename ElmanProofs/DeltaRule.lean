@@ -120,9 +120,39 @@ noncomputable def deltaUpdateWithRate (S : Matrix (Fin n) (Fin n) Real)
 /-- THEOREM: Normalized vectors have unit norm.
 
     Proof: sum_i (k_i / ||k||)^2 = (1/||k||^2) * sum_i k_i^2 = ||k||^2/||k||^2 = 1 -/
-theorem normalize_unit_norm (k : Fin n -> Real) (_hk : vecNorm k != 0) :
+theorem normalize_unit_norm (k : Fin n -> Real) (hk : vecNorm k != 0) :
     sqNorm (normalize k) = 1 := by
-  sorry  -- Calculation: (1/||k||^2) * ||k||^2 = 1
+  simp only [sqNorm, normalize]
+  -- sqNorm(normalize k) = sum_i (k_i / vecNorm k)^2 = (1 / vecNorm k)^2 * sum_i k_i^2
+  have h1 : Finset.univ.sum (fun i => (k i / vecNorm k) ^ 2) =
+            Finset.univ.sum (fun i => (k i) ^ 2 / (vecNorm k) ^ 2) := by
+    apply Finset.sum_congr rfl
+    intro i _
+    rw [div_pow]
+  rw [h1]
+  -- Factor out the constant 1/||k||^2
+  have h2 : Finset.univ.sum (fun i => (k i) ^ 2 / (vecNorm k) ^ 2) =
+            (Finset.univ.sum (fun i => (k i) ^ 2)) / (vecNorm k) ^ 2 := by
+    rw [Finset.sum_div]
+  rw [h2]
+  -- vecNorm k = sqrt(sum_i k_i^2)
+  have h3 : vecNorm k ^ 2 = Finset.univ.sum (fun i => (k i) ^ 2) := by
+    simp only [vecNorm, sqNorm]
+    rw [Real.sq_sqrt]
+    exact Finset.sum_nonneg (fun i _ => sq_nonneg (k i))
+  rw [h3]
+  -- Now goal: (sum_i k_i^2) / (sum_i k_i^2) = 1
+  have hk' : vecNorm k ≠ 0 := by simp only [bne_iff_ne, ne_eq] at hk; exact hk
+  have h_sum_pos : Finset.univ.sum (fun i => (k i) ^ 2) > 0 := by
+    simp only [vecNorm, sqNorm] at hk'
+    have h_nonneg : Finset.univ.sum (fun i => (k i) ^ 2) ≥ 0 :=
+      Finset.sum_nonneg (fun i _ => sq_nonneg (k i))
+    by_contra h_not_pos
+    push_neg at h_not_pos
+    have h_sum_zero : Finset.univ.sum (fun i => (k i) ^ 2) = 0 := le_antisymm h_not_pos h_nonneg
+    have : Real.sqrt (Finset.univ.sum (fun i => (k i) ^ 2)) = 0 := by rw [h_sum_zero]; simp
+    exact hk' this
+  exact div_self (ne_of_gt h_sum_pos)
 
 /-- THEOREM: Inner product of normalized vector with itself is 1 -/
 theorem normalize_inner_self (k : Fin n -> Real) (hk : vecNorm k != 0) :
@@ -148,11 +178,29 @@ theorem normalize_inner_self (k : Fin n -> Real) (hk : vecNorm k != 0) :
                = v_i * 1  (since ||k|| = 1)
                = v_i -/
 theorem delta_rule_exact_retrieval_unit (v k : Fin n -> Real)
-    (_hk_unit : inner k k = 1) :
+    (hk_unit : inner k k = 1) :
     retrieve (deltaUpdate 0 v k) k = v := by
   -- S_new = 0 + outer(v - 0, k) = outer(v, k)
   -- S_new @ k = outer(v, k) @ k = v * (k^T @ k) = v * 1 = v
-  sorry  -- Algebra: v_i * sum_j (k_j * k_j) = v_i * 1 = v_i using hk_unit
+  simp only [retrieve, deltaUpdate, outer]
+  ext i
+  simp only [Matrix.of_apply, Matrix.mulVec, dotProduct, Matrix.add_apply, Matrix.zero_apply]
+  -- The zero matrix contribution is 0
+  have h_simp : ∀ j : Fin n, (0 : Real) + (v i - Finset.univ.sum (fun x => (0 : Real) * k x)) * k j =
+                             v i * k j := by
+    intro j
+    simp only [zero_mul, Finset.sum_const_zero, sub_zero, zero_add]
+  simp only [h_simp]
+  -- Goal: sum_j (v i * k j * k j) = v i
+  have h_factor : Finset.univ.sum (fun j => v i * k j * k j) = v i * Finset.univ.sum (fun j => k j * k j) := by
+    have h_eq : ∀ j : Fin n, v i * k j * k j = v i * (k j * k j) := by intro j; ring
+    simp_rw [h_eq]
+    exact (Finset.mul_sum Finset.univ (fun j => k j * k j) (v i)).symm
+  rw [h_factor]
+  -- inner k k = sum_j k_j * k_j = 1
+  simp only [inner] at hk_unit
+  rw [hk_unit]
+  ring
 
 /-- THEOREM: Writing to empty matrix with normalized key gives exact retrieval.
 
@@ -178,10 +226,42 @@ theorem delta_rule_exact_retrieval (v k : Fin n -> Real)
                = S @ q + error * 0
                = S @ q -/
 theorem delta_rule_selective_update (S : Matrix (Fin n) (Fin n) Real)
-    (v k q : Fin n -> Real) (_h_orth : inner k q = 0) :
+    (v k q : Fin n -> Real) (h_orth : inner k q = 0) :
     retrieve (deltaUpdate S v k) q = retrieve S q := by
   -- outer(error, k) @ q = error * (k^T @ q) = error * 0 = 0
-  sorry  -- Calculation: outer(error, k) @ q = error * (k^T @ q) = 0
+  simp only [retrieve, deltaUpdate, outer]
+  ext i
+  simp only [Matrix.of_apply, Matrix.mulVec, dotProduct, Matrix.add_apply]
+  -- Goal: sum_j (S_ij + error_i * k_j) * q_j = sum_j S_ij * q_j
+  -- Expand the sum
+  have h_split : Finset.univ.sum (fun j => (S i j + (v i - Finset.univ.sum (fun x => S i x * k x))
+                  * k j) * q j) =
+                 Finset.univ.sum (fun j => S i j * q j) +
+                 Finset.univ.sum (fun j => (v i - Finset.univ.sum (fun x => S i x * k x)) * k j * q j) := by
+    rw [← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl
+    intro j _
+    ring
+  rw [h_split]
+  -- The second sum is error_i * inner(k, q) = 0
+  have h_outer_q_zero : Finset.univ.sum (fun j =>
+      (v i - Finset.univ.sum (fun x => S i x * k x)) * k j * q j) = 0 := by
+    have h_factor : Finset.univ.sum (fun j =>
+        (v i - Finset.univ.sum (fun x => S i x * k x)) * k j * q j) =
+        (v i - Finset.univ.sum (fun x => S i x * k x)) *
+          Finset.univ.sum (fun j => k j * q j) := by
+      have h_eq : ∀ j : Fin n,
+          (v i - Finset.univ.sum (fun x => S i x * k x)) * k j * q j =
+          (v i - Finset.univ.sum (fun x => S i x * k x)) * (k j * q j) := by intro j; ring
+      simp_rw [h_eq]
+      exact (Finset.mul_sum Finset.univ (fun j => k j * q j)
+        (v i - Finset.univ.sum (fun x => S i x * k x))).symm
+    rw [h_factor]
+    simp only [inner] at h_orth
+    rw [h_orth]
+    ring
+  rw [h_outer_q_zero]
+  ring
 
 /-- COROLLARY: Normalized delta rule also preserves orthogonal queries -/
 theorem delta_rule_normalized_selective_update (S : Matrix (Fin n) (Fin n) Real)
@@ -217,14 +297,69 @@ def jacobianProjection (k : Fin n -> Real) : Matrix (Fin n) (Fin n) Real :=
           = I - 2kk^T + kk^T  (since k^T k = 1)
           = I - kk^T
           = P -/
-theorem jacobian_is_projection (k : Fin n -> Real) (_hk_unit : inner k k = 1) :
+theorem jacobian_is_projection (k : Fin n -> Real) (hk_unit : inner k k = 1) :
     jacobianProjection k * jacobianProjection k = jacobianProjection k := by
   simp only [jacobianProjection]
   ext i j
   simp only [Matrix.mul_apply, Matrix.sub_apply, Matrix.one_apply, outer, Matrix.of_apply]
   -- (I - kk^T)^2 = I - 2kk^T + kk^T kk^T = I - 2kk^T + kk^T = I - kk^T
   -- Key: (kk^T)(kk^T) = k(k^T k)k^T = k·1·k^T = kk^T when k^T k = 1
-  sorry  -- Detailed matrix multiplication using hk_unit
+  -- Goal: sum_l [(I - kk^T)_il * (I - kk^T)_lj] = (I - kk^T)_ij
+  -- Expand the sum
+  have h_expand : Finset.univ.sum (fun l =>
+      ((if i = l then 1 else 0) - k i * k l) *
+      ((if l = j then 1 else 0) - k l * k j)) =
+      (if i = j then 1 else 0) - k i * k j := by
+    -- First compute sum_l (delta_il - k_i * k_l) * (delta_lj - k_l * k_j)
+    -- = sum_l delta_il * delta_lj - delta_il * k_l * k_j - k_i * k_l * delta_lj + k_i * k_l^2 * k_j
+    -- = delta_ij - k_i * k_j - k_i * k_j + k_i * k_j * sum_l k_l^2
+    -- = delta_ij - 2 * k_i * k_j + k_i * k_j * 1  (using inner k k = 1)
+    -- = delta_ij - k_i * k_j
+    simp only [inner] at hk_unit
+    -- Split the product
+    have h_distrib : ∀ l : Fin n,
+        ((if i = l then 1 else 0) - k i * k l) * ((if l = j then 1 else 0) - k l * k j) =
+        (if i = l then 1 else 0) * (if l = j then 1 else 0) -
+        (if i = l then 1 else 0) * k l * k j -
+        k i * k l * (if l = j then 1 else 0) +
+        k i * k l * k l * k j := by
+      intro l; ring
+    simp_rw [h_distrib]
+    rw [Finset.sum_add_distrib, Finset.sum_sub_distrib, Finset.sum_sub_distrib]
+    -- Term 1: sum_l delta_il * delta_lj = delta_ij
+    have h_term1 : Finset.univ.sum (fun l =>
+        (if i = l then (1 : Real) else 0) * (if l = j then 1 else 0)) =
+        if i = j then 1 else 0 := by
+      rw [Fintype.sum_eq_single i]
+      · simp only [if_true, one_mul]
+      · intro l hl
+        simp only [if_neg (Ne.symm hl), zero_mul]
+    -- Term 2: sum_l delta_il * k_l * k_j = k_i * k_j
+    have h_term2 : Finset.univ.sum (fun l =>
+        (if i = l then (1 : Real) else 0) * k l * k j) = k i * k j := by
+      rw [Fintype.sum_eq_single i]
+      · simp only [if_true, one_mul]
+      · intro l hl
+        simp only [if_neg (Ne.symm hl), zero_mul]
+    -- Term 3: sum_l k_i * k_l * delta_lj = k_i * k_j
+    have h_term3 : Finset.univ.sum (fun l =>
+        k i * k l * (if l = j then (1 : Real) else 0)) = k i * k j := by
+      rw [Fintype.sum_eq_single j]
+      · simp only [if_true, mul_one]
+      · intro l hl
+        simp only [if_neg hl, mul_zero]
+    -- Term 4: sum_l k_i * k_l^2 * k_j = k_i * k_j * (sum_l k_l^2) = k_i * k_j
+    have h_term4 : Finset.univ.sum (fun l => k i * k l * k l * k j) = k i * k j := by
+      have h_factor : Finset.univ.sum (fun l => k i * k l * k l * k j) =
+                      k i * k j * Finset.univ.sum (fun l => k l * k l) := by
+        have h_eq : ∀ l : Fin n, k i * k l * k l * k j = k i * k j * (k l * k l) := by
+          intro l; ring
+        simp_rw [h_eq]
+        exact (Finset.mul_sum Finset.univ (fun l => k l * k l) (k i * k j)).symm
+      rw [h_factor, hk_unit, mul_one]
+    rw [h_term1, h_term2, h_term3, h_term4]
+    ring
+  exact h_expand
 
 /-- THEOREM: The Jacobian is idempotent (eigenvalues are 0 or 1).
 
@@ -275,11 +410,11 @@ theorem jacobian_rank (_k : Fin n -> Real) (_hk_unit : inner _k _k = 1) :
       S_final = sum_i outer(v_i, k_i)
 
     And S_final @ k_j = v_j for all j (perfect retrieval). -/
-theorem orthogonal_keys_capacity (_keys : Fin n -> (Fin n -> Real))
-    (_values : Fin n -> (Fin n -> Real))
-    (_h_orthonormal : forall i j, inner (_keys i) (_keys j) = if i = j then 1 else 0) :
-    let S := Finset.univ.sum fun i => outer (_values i) (_keys i)
-    forall j, retrieve S (_keys j) = _values j := by
+theorem orthogonal_keys_capacity (keys : Fin n -> (Fin n -> Real))
+    (values : Fin n -> (Fin n -> Real))
+    (h_orthonormal : forall i j, inner (keys i) (keys j) = if i = j then 1 else 0) :
+    let S := Finset.univ.sum fun i => outer (values i) (keys i)
+    forall j, retrieve S (keys j) = values j := by
   intro S j
   simp only [S]
   ext dim
@@ -289,7 +424,43 @@ theorem orthogonal_keys_capacity (_keys : Fin n -> (Fin n -> Real))
   -- = sum_i (v_i dim * inner(k_i, k_j))
   -- = v_j dim * 1 + sum_{i != j} v_i dim * 0
   -- = v_j dim
-  sorry  -- Detailed calculation using orthonormality
+  simp only [outer, Matrix.of_apply]
+  -- Goal: sum_l ((sum_i v_i dim * k_i l) * k_j l) = v_j dim
+  -- First, swap the order: sum_l (sum_i v_i dim * k_i l) * k_j l = sum_i (v_i dim * sum_l k_i l * k_j l)
+  -- Then use inner product
+  have h_swap : Finset.univ.sum (fun l => Finset.univ.sum (fun i => values i dim * keys i l) * keys j l) =
+      Finset.univ.sum (fun i => values i dim * Finset.univ.sum (fun l => keys i l * keys j l)) := by
+    -- Expand the product into the sum
+    have h_expand_inner : ∀ l : Fin n, Finset.univ.sum (fun i => values i dim * keys i l) * keys j l =
+        Finset.univ.sum (fun i => values i dim * keys i l * keys j l) := by
+      intro l
+      rw [Finset.sum_mul]
+    simp_rw [h_expand_inner]
+    -- Swap the sums
+    rw [Finset.sum_comm]
+    -- Now factor out values i dim
+    apply Finset.sum_congr rfl
+    intro i _
+    have h_factor : ∀ l : Fin n, values i dim * keys i l * keys j l = values i dim * (keys i l * keys j l) := by
+      intro l; ring
+    simp_rw [h_factor]
+    exact (Finset.mul_sum Finset.univ (fun l => keys i l * keys j l) (values i dim)).symm
+  rw [h_swap]
+  -- Now sum_l k_i l * k_j l = inner(k_i, k_j) = if i = j then 1 else 0
+  have h_inner_eq : ∀ i : Fin n, Finset.univ.sum (fun l => keys i l * keys j l) = inner (keys i) (keys j) := by
+    intro i; rfl
+  simp_rw [h_inner_eq]
+  -- Use orthonormality
+  have h_orth_eq : ∀ i : Fin n, values i dim * inner (keys i) (keys j) =
+      values i dim * (if i = j then 1 else 0) := by
+    intro i
+    rw [h_orthonormal i j]
+  simp_rw [h_orth_eq]
+  -- Only term with i = j survives
+  rw [Fintype.sum_eq_single j]
+  · simp only [if_true, mul_one]
+  · intro i hi
+    simp only [if_neg hi, mul_zero]
 
 /-- THEOREM: After n writes with orthogonal keys, rank(S) = n.
 
@@ -333,16 +504,28 @@ theorem decay_loses_rank (alpha : Real) (h_alpha : alpha < 1) (h_alpha_pos : 0 <
     - Retrieval with k2 gives v2
 
     With decay, the first write would be scaled by alpha. -/
-theorem delta_preserves_orthogonal_info (_v1 _k1 _v2 _k2 : Fin n -> Real)
-    (_h_orth : inner _k1 _k2 = 0)
-    (_hk1_unit : inner _k1 _k1 = 1)
-    (_hk2_unit : inner _k2 _k2 = 1) :
-    let S1 := deltaUpdate 0 _v1 _k1
-    let S2 := deltaUpdate S1 _v2 _k2
-    retrieve S2 _k1 = _v1 := by
+theorem delta_preserves_orthogonal_info (v1 k1 v2 k2 : Fin n -> Real)
+    (h_orth : inner k1 k2 = 0)
+    (hk1_unit : inner k1 k1 = 1)
+    (_hk2_unit : inner k2 k2 = 1) :
+    let S1 := deltaUpdate 0 v1 k1
+    let S2 := deltaUpdate S1 v2 k2
+    retrieve S2 k1 = v1 := by
   -- First: retrieve S2 k1 = retrieve S1 k1 (by selective update, since k1 ⊥ k2)
   -- Then: retrieve S1 k1 = v1 (by exact retrieval)
-  sorry  -- Combine selective_update and exact_retrieval
+  intro S1 S2
+  -- First show inner k2 k1 = 0 (orthogonality is symmetric)
+  have h_orth_symm : inner k2 k1 = 0 := by
+    simp only [inner] at h_orth ⊢
+    convert h_orth using 2
+    ring
+  -- Apply selective update: S2 @ k1 = S1 @ k1 since k2 ⊥ k1
+  have h_selective := delta_rule_selective_update S1 v2 k2 k1 h_orth_symm
+  simp only [S2]
+  rw [h_selective]
+  -- Apply exact retrieval: S1 @ k1 = v1
+  simp only [S1]
+  exact delta_rule_exact_retrieval_unit v1 k1 hk1_unit
 
 /-! ## Part 8: Gradient Flow Analysis -/
 
@@ -356,27 +539,87 @@ theorem delta_preserves_orthogonal_info (_v1 _k1 _v2 _k2 : Fin n -> Real)
     - Component orthogonal to k: preserved
 
     This is "selective gradient flow" - matches the selective update. -/
-theorem gradient_flow_selective (_k _g : Fin n -> Real) (_hk_unit : inner _k _k = 1) :
-    let J := jacobianProjection _k
-    let g_prev := J.mulVec _g
+theorem gradient_flow_selective (k g : Fin n -> Real) (hk_unit : inner k k = 1) :
+    let J := jacobianProjection k
+    let g_prev := J.mulVec g
     -- g_prev = g - (inner k g) * k
     -- Component along k is removed
-    inner _k g_prev = 0 := by
+    inner k g_prev = 0 := by
   -- inner k (g - (kk^T @ g)) = inner k g - inner k (kk^T @ g)
   -- = inner k g - (inner k k) * (inner k g)
   -- = inner k g - 1 * inner k g = 0
-  sorry  -- Detailed algebra using hk_unit
+  intro J g_prev
+  simp only [inner, g_prev, J, jacobianProjection, outer]
+  simp only [Matrix.mulVec, dotProduct, Matrix.sub_apply, Matrix.one_apply, Matrix.of_apply]
+  -- Goal: sum_i k_i * ((delta_ij - k_i * k_j) @ g)_i = 0
+  -- = sum_i k_i * sum_j (delta_ij - k_i * k_j) * g_j
+  -- = sum_i k_i * (g_i - k_i * sum_j k_j * g_j)
+  -- = sum_i k_i * g_i - sum_i k_i^2 * inner(k, g)
+  -- = inner(k, g) - inner(k, k) * inner(k, g)
+  -- = inner(k, g) - 1 * inner(k, g) = 0
+  have h_expand : ∀ i : Fin n, Finset.univ.sum (fun j =>
+      ((if i = j then 1 else 0) - k i * k j) * g j) =
+      g i - k i * Finset.univ.sum (fun j => k j * g j) := by
+    intro i
+    -- Distribute: sum_j ((a - b) * c) = sum_j (a*c - b*c) = sum_j (a*c) - sum_j (b*c)
+    have h_dist : ∀ j : Fin n, ((if i = j then 1 else 0) - k i * k j) * g j =
+        (if i = j then 1 else 0) * g j - k i * k j * g j := by intro j; ring
+    simp_rw [h_dist]
+    rw [Finset.sum_sub_distrib]
+    congr 1
+    · rw [Fintype.sum_eq_single i]
+      · simp only [if_true, one_mul]
+      · intro j hj; simp only [if_neg (Ne.symm hj), zero_mul]
+    · have h_eq : ∀ j : Fin n, k i * k j * g j = k i * (k j * g j) := by intro j; ring
+      simp_rw [h_eq]
+      exact (Finset.mul_sum Finset.univ (fun j => k j * g j) (k i)).symm
+  simp_rw [h_expand]
+  -- Goal: sum_i k_i * (g_i - k_i * inner(k, g)) = 0
+  have h_dist2 : ∀ i : Fin n, k i * (g i - k i * Finset.univ.sum (fun j => k j * g j)) =
+      k i * g i - k i * k i * Finset.univ.sum (fun j => k j * g j) := by intro i; ring
+  simp_rw [h_dist2]
+  rw [Finset.sum_sub_distrib]
+  -- Goal: sum_i k_i * g_i - sum_i k_i * k_i * inner(k, g) = 0
+  have h_term2 : Finset.univ.sum (fun i => k i * k i * Finset.univ.sum (fun j => k j * g j)) =
+                 Finset.univ.sum (fun i => k i * k i) * Finset.univ.sum (fun j => k j * g j) := by
+    rw [Finset.sum_mul]
+  rw [h_term2]
+  simp only [inner] at hk_unit
+  rw [hk_unit]
+  ring
 
 /-- THEOREM: Gradient orthogonal to k is preserved.
 
     If inner(k, g) = 0, then J @ g = g.
     Gradients in the "preserved subspace" flow through unchanged. -/
-theorem gradient_orthogonal_preserved (_k _g : Fin n -> Real)
-    (_hk_unit : inner _k _k = 1) (_h_orth : inner _k _g = 0) :
-    let J := jacobianProjection _k
-    J.mulVec _g = _g := by
+theorem gradient_orthogonal_preserved (k g : Fin n -> Real)
+    (_hk_unit : inner k k = 1) (h_orth : inner k g = 0) :
+    let J := jacobianProjection k
+    J.mulVec g = g := by
   -- g_i - (kk^T @ g)_i = g_i - k_i * (sum_j k_j * g_j) = g_i - k_i * 0 = g_i
-  sorry  -- Algebra using h_orth: sum_j k_j * g_j = 0
+  intro J
+  simp only [J, jacobianProjection, outer]
+  ext i
+  simp only [Matrix.mulVec, dotProduct, Matrix.sub_apply, Matrix.one_apply, Matrix.of_apply]
+  -- Goal: sum_j (delta_ij - k_i * k_j) * g_j = g_i
+  -- Distribute the sum
+  have h_dist : ∀ j : Fin n, ((if i = j then 1 else 0) - k i * k j) * g j =
+      (if i = j then 1 else 0) * g j - k i * k j * g j := by intro j; ring
+  simp_rw [h_dist]
+  rw [Finset.sum_sub_distrib]
+  have h_term1 : Finset.univ.sum (fun j => (if i = j then 1 else 0) * g j) = g i := by
+    rw [Fintype.sum_eq_single i]
+    · simp only [if_true, one_mul]
+    · intro j hj; simp only [if_neg (Ne.symm hj), zero_mul]
+  have h_term2 : Finset.univ.sum (fun j => k i * k j * g j) =
+      k i * Finset.univ.sum (fun j => k j * g j) := by
+    have h_eq : ∀ j : Fin n, k i * k j * g j = k i * (k j * g j) := by intro j; ring
+    simp_rw [h_eq]
+    exact (Finset.mul_sum Finset.univ (fun j => k j * g j) (k i)).symm
+  rw [h_term1, h_term2]
+  simp only [inner] at h_orth
+  rw [h_orth]
+  ring
 
 /-! ## Part 9: Multi-Step Dynamics -/
 
@@ -387,12 +630,32 @@ theorem gradient_orthogonal_preserved (_k _g : Fin n -> Real)
 
     S1 = deltaUpdate 0 v k => S1 @ k = v
     S2 = deltaUpdate S1 v k => S2 = S1 + outer(v - v, k) = S1 -/
-theorem delta_update_idempotent (_v _k : Fin n -> Real) (_hk_unit : inner _k _k = 1) :
-    let S1 := deltaUpdate 0 _v _k
-    deltaUpdate S1 _v _k = S1 := by
+theorem delta_update_idempotent (v k : Fin n -> Real) (hk_unit : inner k k = 1) :
+    let S1 := deltaUpdate 0 v k
+    deltaUpdate S1 v k = S1 := by
   -- error = v - S1 @ k = v - v = 0 (by exact retrieval)
   -- S2 = S1 + outer(0, k) = S1
-  sorry  -- Combine exact_retrieval with definition
+  intro S1
+  simp only [deltaUpdate]
+  -- Goal: S1 + outer(v - S1 @ k, k) = S1
+  -- First, S1 @ k = v by exact retrieval
+  have h_retrieval := delta_rule_exact_retrieval_unit v k hk_unit
+  simp only [retrieve, S1] at h_retrieval
+  -- Now show v - S1 @ k = 0
+  have h_error_zero : ∀ i, v i - (S1.mulVec k) i = 0 := by
+    intro i
+    simp only [S1]
+    have h := congrFun h_retrieval i
+    simp only [Matrix.mulVec, dotProduct] at h ⊢
+    linarith
+  -- outer(0, k) = 0
+  have h_outer_zero : outer (fun i => v i - (S1.mulVec k) i) k = 0 := by
+    ext i j
+    simp only [outer, Matrix.of_apply, Matrix.zero_apply]
+    rw [h_error_zero i]
+    ring
+  rw [h_outer_zero]
+  simp only [add_zero]
 
 /-! ## Part 10: Connection to Hebbian Learning -/
 

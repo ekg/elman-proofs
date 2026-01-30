@@ -79,13 +79,7 @@ theorem standard_jacobian (W : Matrix (Fin n) (Fin n) Real) :
 theorem standard_gradient_is_power (W : Matrix (Fin n) (Fin n) Real) (T : Nat) :
     -- Through T timesteps, gradient dh_T/dh_0 = W^T
     (List.replicate T W).foldl (· * ·) 1 = W ^ T := by
-  induction T with
-  | zero => simp
-  | succ T' ih =>
-    simp only [List.replicate_succ, List.foldl_cons, one_mul]
-    -- Goal: (W * W^T').foldl = W^{T'+1}
-    -- Proof sketch: W * (foldl ... = W^T') = W^{T'+1}
-    sorry  -- Technical: foldl associativity with matrix multiplication
+  rw [← List.prod_eq_foldl, List.prod_replicate]
 
 /-- KEY RESULT: Standard gradient vanishes when spectral radius < 1.
     If ||W|| < 1, then ||W^T|| -> 0 as T -> infinity. -/
@@ -110,9 +104,7 @@ theorem standard_gradient_exponential_decay (spectral_radius : Real)
     (h_small : spectral_radius < 1) (h_pos : spectral_radius > 0)
     (T1 T2 : Nat) (h_order : T1 < T2) :
     spectral_radius ^ T2 < spectral_radius ^ T1 := by
-  -- When 0 < r < 1 and T1 < T2, r^T2 < r^T1
-  -- r^T2 = r^T1 * r^(T2-T1), and r^(T2-T1) < 1 when T2 > T1
-  sorry  -- Technical: requires pow_lt_pow_succ lemmas from Mathlib
+  exact pow_lt_pow_right_of_lt_one₀ h_pos h_small h_order
 
 /-! ## Part 2: Pure Residual Recurrence -/
 
@@ -309,6 +301,49 @@ theorem gate_product_diagonal (n T : Nat) (gates : Fin T -> (Fin n -> Real))
 theorem single_gate_bounded (g : Real) (h_pos : 0 < g) (h_lt : g < 1) :
     0 < g ∧ g < 1 := And.intro h_pos h_lt
 
+/-- Helper: relate foldl with different initial values -/
+private lemma foldl_mul_start {a : Real} {l : List Real} :
+    l.foldl (· * ·) a = a * l.prod := by
+  induction l generalizing a with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.foldl_cons, List.prod_cons]
+    rw [ih, mul_assoc]
+
+/-- Helper: product of positive list is positive -/
+private lemma list_prod_pos {l : List Real} (h : ∀ x ∈ l, 0 < x) : 0 < l.prod := by
+  induction l with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.prod_cons]
+    apply mul_pos (h x (List.mem_cons.mpr (Or.inl rfl)))
+    exact ih (fun y hy => h y (List.mem_cons.mpr (Or.inr hy)))
+
+/-- Helper: product of nonneg is nonneg -/
+private lemma list_prod_nonneg {l : List Real} (h : ∀ x ∈ l, 0 ≤ x) : 0 ≤ l.prod := by
+  induction l with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.prod_cons]
+    apply mul_nonneg (h x (List.mem_cons.mpr (Or.inl rfl)))
+    exact ih (fun y hy => h y (List.mem_cons.mpr (Or.inr hy)))
+
+/-- Helper: product of elements in (0,1] is in (0,1] -/
+private lemma list_prod_le_one {l : List Real} (h_pos : ∀ x ∈ l, 0 ≤ x) (h_le : ∀ x ∈ l, x ≤ 1) :
+    l.prod ≤ 1 := by
+  induction l with
+  | nil => simp
+  | cons x xs ih =>
+    simp only [List.prod_cons]
+    have h_x_pos : 0 ≤ x := h_pos x (List.mem_cons.mpr (Or.inl rfl))
+    have h_x_le : x ≤ 1 := h_le x (List.mem_cons.mpr (Or.inl rfl))
+    have h_rest_pos : ∀ y ∈ xs, 0 ≤ y := fun y hy => h_pos y (List.mem_cons.mpr (Or.inr hy))
+    have h_rest_le : ∀ y ∈ xs, y ≤ 1 := fun y hy => h_le y (List.mem_cons.mpr (Or.inr hy))
+    have h_prod_pos : 0 ≤ xs.prod := list_prod_nonneg h_rest_pos
+    have h_prod_le : xs.prod ≤ 1 := ih h_rest_pos h_rest_le
+    calc x * xs.prod ≤ 1 * 1 := mul_le_mul h_x_le h_prod_le h_prod_pos (le_of_lt Real.zero_lt_one)
+      _ = 1 := one_mul 1
+
 /-- Product of gate values stays bounded -/
 theorem gate_product_bounded (gates : List Real)
     (h_all_pos : forall g, g ∈ gates -> 0 < g)
@@ -322,16 +357,22 @@ theorem gate_product_bounded (gates : List Real)
     have h_g_lt : g < 1 := h_all_lt g (Or.inl rfl)
     have h_rest_pos : forall g', g' ∈ gs -> 0 < g' := fun g' hg' => h_all_pos g' (Or.inr hg')
     have h_rest_lt : forall g', g' ∈ gs -> g' < 1 := fun g' hg' => h_all_lt g' (Or.inr hg')
-    have ih' := ih h_rest_pos h_rest_lt
-    -- The foldl starts with 1, then multiplies by g first
-    -- So foldl (· * ·) 1 (g :: gs) = foldl (· * ·) (1 * g) gs = foldl (· * ·) g gs
-    -- We need to prove properties about foldl (· * ·) g gs
+    have _ih' := ih h_rest_pos h_rest_lt
+    -- After cons, foldl (· * ·) 1 (g :: gs) = foldl (· * ·) (1 * g) gs
+    -- And 1 * g = g, so foldl (· * ·) g gs = g * gs.prod
+    simp only [one_mul]  -- Simplify 1 * g to g
     constructor
-    · -- Product > 0: since g > 0 and all gs elements > 0
-      -- foldl (· * ·) g gs > 0
-      sorry  -- Technical: positivity of product
-    · -- Product <= 1: since g < 1 and foldl <= 1 for rest
-      sorry  -- Technical: bounded product
+    · -- Product > 0
+      rw [foldl_mul_start]
+      apply mul_pos h_g_pos (list_prod_pos h_rest_pos)
+    · -- Product <= 1
+      rw [foldl_mul_start]
+      have h_prod_pos : 0 ≤ gs.prod := list_prod_nonneg (fun x hx => le_of_lt (h_rest_pos x hx))
+      have h_prod_le : gs.prod ≤ 1 := list_prod_le_one
+        (fun x hx => le_of_lt (h_rest_pos x hx))
+        (fun x hx => le_of_lt (h_rest_lt x hx))
+      calc g * gs.prod ≤ 1 * 1 := mul_le_mul (le_of_lt h_g_lt) h_prod_le h_prod_pos (le_of_lt Real.zero_lt_one)
+        _ = 1 := one_mul 1
 
 /-- Gated residual gradient doesn't vanish completely (positive lower bound) -/
 theorem gated_gradient_positive (gates : List Real)

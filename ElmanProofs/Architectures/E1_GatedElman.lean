@@ -7,6 +7,7 @@ import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Fin.Basic
+import ElmanProofs.Activations.Lipschitz
 
 /-!
 # E1: Gated Elman Network
@@ -149,8 +150,10 @@ theorem tanh_deriv_bounded (x : Real) : 0 <= tanh_deriv x ∧ tanh_deriv x <= 1 
   constructor
   · -- 0 <= 1 - tanh(x)^2 because tanh(x)^2 <= 1
     have h : Real.tanh x ^ 2 <= 1 := by
-      -- |tanh(x)| <= 1 is a standard fact
-      sorry
+      -- |tanh(x)| < 1 implies tanh(x)^2 < 1 ≤ 1
+      have h_abs : |Real.tanh x| < 1 := Activation.tanh_bounded x
+      have h_sq : Real.tanh x ^ 2 < 1 := by rw [sq_lt_one_iff_abs_lt_one]; exact h_abs
+      linarith
     linarith
   · have h : 0 <= Real.tanh x ^ 2 := sq_nonneg _
     linarith
@@ -165,7 +168,11 @@ theorem sigmoid_deriv_bounded (x : Real) : 0 <= sigmoid_deriv x ∧ sigmoid_deri
       linarith
   · -- The maximum of sigma(x)(1-sigma(x)) is 1/4 at x=0
     simp only [sigmoid_deriv]
-    sorry -- Standard calculus: max of t(1-t) on (0,1) is 1/4
+    -- For s ∈ (0,1), s(1-s) ≤ 1/4 by AM-GM: s(1-s) = 1/4 - (s - 1/2)^2 ≤ 1/4
+    have hs := sigmoid_bounded x
+    set s := sigmoid x with hs_def
+    have h_prod_bound : s * (1 - s) ≤ 1/4 := by nlinarith [hs.1, hs.2, sq_nonneg (s - 1/2)]
+    exact h_prod_bound
 
 /-! ## Part 4: Effective Jacobian Norm -/
 

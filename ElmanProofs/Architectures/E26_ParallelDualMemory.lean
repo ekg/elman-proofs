@@ -280,11 +280,7 @@ theorem e26_work_bounded {cfg : E26Config} [NeZero cfg.N]
     (W_write : Matrix (Fin cfg.D) (Fin cfg.D) Real)
     (b : Fin cfg.D → Real) :
     let state' := e26_sequential_step state x_proj_t W_h W_write b
-    ∀ dim, |state'.work dim| < 1 := by
-  intro dim
-  -- state'.work dim = tanh(...), and |tanh(x)| < 1
-  -- The work component is defined as tanh of a sum, so bounded by 1
-  sorry  -- Requires unfolding through let bindings; tanh_bounded applies
+    ∀ dim, |state'.work dim| < 1 := fun dim => Activation.tanh_bounded _
 
 /-- Tape remains bounded under sparse replacement write -/
 theorem e26_tape_bounded {cfg : E26Config} {M : Real} [NeZero cfg.N]
@@ -300,9 +296,43 @@ theorem e26_tape_bounded {cfg : E26Config} {M : Real} [NeZero cfg.N]
     let state' := e26_sequential_step state x_proj_t W_h W_write b
     ∀ slot dim, |state'.tape slot dim| ≤ M := by
   intro state' slot dim
-  -- Follows from sparse_write being a convex combination
-  -- and SparseAttention.sparse_replacement_write_bounded
-  sorry  -- Would use the sparse attention boundedness lemma
+  -- The new tape is defined via sparse_write as a convex combination:
+  -- tape_new slot dim = (1 - attn slot) * tape slot dim + attn slot * value dim
+  -- where attn is sparsemax (so attn slot ∈ [0, 1])
+  -- Define the attention weights for this computation
+  set scores := attention_scores state.tape state'.work with h_scores
+  set attn := sparsemax scores with h_attn
+  set write_val := W_write.mulVec state'.work with h_write_val
+  -- sparsemax produces values in the simplex, so each component is in [0, 1]
+  have h_attn_nonneg : 0 ≤ attn slot := sparsemax_nonneg scores slot
+  have h_attn_le_one : attn slot ≤ 1 := by
+    have h_sum := sparsemax_sums_to_one scores
+    have h_all_nonneg : ∀ j, 0 ≤ attn j := sparsemax_nonneg scores
+    calc attn slot ≤ univ.sum attn := single_le_sum (fun j _ => h_all_nonneg j) (mem_univ slot)
+      _ = 1 := h_sum
+  -- Now we prove the convex combination bound
+  -- |(1 - a) * x + a * y| ≤ M when |x| ≤ M and |y| ≤ M and 0 ≤ a ≤ 1
+  have h_coeff_nonneg : 0 ≤ 1 - attn slot := by linarith
+  have h_tape_bd := h_tape_bound slot dim
+  have h_write_bd := h_write_bound dim
+  -- Unfold the tape definition to expose the convex combination
+  -- state'.tape = sparse_write state.tape state'.work write_val
+  -- sparse_write gives: (1 - attn slot) * old_tape + attn slot * new_val
+  show |(sparse_write state.tape state'.work write_val) slot dim| ≤ M
+  simp only [sparse_write]
+  -- Apply triangle inequality and convexity
+  calc |(1 - sparsemax (attention_scores state.tape state'.work) slot) * state.tape slot dim +
+         sparsemax (attention_scores state.tape state'.work) slot * write_val dim|
+      ≤ |(1 - attn slot) * state.tape slot dim| + |attn slot * write_val dim| := by
+        simp only [← h_attn, ← h_scores]
+        exact abs_add_le _ _
+    _ = (1 - attn slot) * |state.tape slot dim| + attn slot * |write_val dim| := by
+        rw [abs_mul, abs_mul, abs_of_nonneg h_coeff_nonneg, abs_of_nonneg h_attn_nonneg]
+    _ ≤ (1 - attn slot) * M + attn slot * M := by
+        apply add_le_add
+        · exact mul_le_mul_of_nonneg_left h_tape_bd h_coeff_nonneg
+        · exact mul_le_mul_of_nonneg_left h_write_bd h_attn_nonneg
+    _ = M := by ring
 
 /-! ## Part 7: Performance Analysis -/
 
@@ -327,9 +357,27 @@ def sequential_phase_cost (cfg : E26Config) : Nat :=
     This justifies focusing optimization on the parallel phase. -/
 theorem attention_cost_small (cfg : E26Config) (h_N_small : cfg.N ≤ 64) (h_D_large : cfg.D ≥ 256) :
     2 * cfg.N * cfg.D ≤ cfg.D * cfg.D / 2 := by
-  -- For N ≤ 64, D ≥ 256: 2ND ≤ D²/2 ⟺ 4N ≤ D
+  -- For N ≤ 64, D ≥ 256: 2ND ≤ D²/2 ⟺ 4ND ≤ D² ⟺ 4N ≤ D
   -- 4 × 64 = 256 ≤ D ✓
-  sorry  -- Arithmetic
+  -- First show 4 * N ≤ D
+  have h_4N_le_D : 4 * cfg.N ≤ cfg.D := calc
+    4 * cfg.N ≤ 4 * 64 := Nat.mul_le_mul_left 4 h_N_small
+    _ = 256 := by norm_num
+    _ ≤ cfg.D := h_D_large
+  -- Since D ≥ 256 > 0, we have D > 0
+  have h_D_pos : 0 < cfg.D := Nat.lt_of_lt_of_le (by norm_num : 0 < 256) h_D_large
+  -- We have 4N ≤ D, so 4ND ≤ D², so 2ND ≤ D²/2
+  -- Key: 4ND ≤ D² implies 2ND ≤ D²/2 (for natural number division)
+  have h_4ND : 4 * cfg.N * cfg.D ≤ cfg.D * cfg.D := by
+    calc 4 * cfg.N * cfg.D
+        = cfg.D * (4 * cfg.N) := by ring
+      _ ≤ cfg.D * cfg.D := Nat.mul_le_mul_left cfg.D h_4N_le_D
+  -- From 4ND ≤ D², we get 2ND ≤ D²/2 using: a ≤ b/c ⟺ c*a ≤ b (for natural div)
+  -- Goal: 2ND ≤ D²/2, i.e., we need 2 * (2ND) ≤ D²
+  have h_2ND : 2 * (2 * cfg.N * cfg.D) ≤ cfg.D * cfg.D := by linarith
+  -- Use: a ≤ b/n ⟺ n*a ≤ b for natural numbers
+  rw [Nat.le_div_iff_mul_le (by norm_num : 0 < 2)]
+  linarith
 
 /-! ## Part 8: Further Optimizations -/
 

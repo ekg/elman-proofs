@@ -316,13 +316,43 @@ theorem e79_n32_state : stateSize 32 = 2048 := by native_decide
     This holds for both S and M. -/
 theorem orthogonal_keys_independent (S : Matrix (Fin n) (Fin n) Real)
     (v k1 k2 : Fin n → Real) (h_orth : inner k1 k2 = 0)
-    (hk1_unit : inner k1 k1 = 1) (hk2_unit : inner k2 k2 = 1) :
+    (_hk1_unit : inner k1 k1 = 1) (_hk2_unit : inner k2 k2 = 1) :
     let S' := S + outer (fun i => v i - retrieve S k2 i) k2
     retrieve S' k1 = retrieve S k1 := by
   -- Proof: S' @ k1 = S @ k1 + outer(delta, k2) @ k1
   --              = S @ k1 + delta * (k2 · k1)
   --              = S @ k1 + delta * 0 = S @ k1
-  sorry
+  intro S'
+  -- retrieve S' k1 = (S + outer(delta, k2)).mulVec k1
+  --               = S.mulVec k1 + (outer(delta, k2)).mulVec k1
+  simp only [S', retrieve]
+  -- Use mulVec_add: (A + B) *ᵥ x = A *ᵥ x + B *ᵥ x
+  rw [Matrix.add_mulVec]
+  -- Now goal is: S *ᵥ k1 + (outer _ k2) *ᵥ k1 = S *ᵥ k1
+  -- We need to show the second term is 0
+  suffices h : (outer (fun i => v i - (S.mulVec k2) i) k2).mulVec k1 = 0 by rw [h, add_zero]
+  -- Prove the outer product applied to orthogonal key is zero
+  ext i
+  simp only [Matrix.mulVec, outer, Matrix.of_apply, Pi.zero_apply]
+  -- Goal: (fun j => (v i - (S *ᵥ k2) i) * k2 j) ⬝ᵥ k1 = 0
+  unfold dotProduct
+  -- Goal: Σⱼ ((v i - (S *ᵥ k2) i) * k2 j) * k1 j = 0
+  -- Let c = v i - (S *ᵥ k2) i (a constant w.r.t. j)
+  let c := v i - (S.mulVec k2) i
+  -- Factor out c
+  have h_factor : ∑ j : Fin n, (c * k2 j) * k1 j = c * ∑ j : Fin n, k2 j * k1 j := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j _
+    ring
+  convert h_factor using 1
+  -- Σⱼ k2 j * k1 j = inner k1 k2 (by commutativity)
+  have h_inner_comm : ∑ j : Fin n, k2 j * k1 j = inner k1 k2 := by
+    simp only [inner]
+    apply Finset.sum_congr rfl
+    intro j _
+    ring
+  rw [h_inner_comm, h_orth, mul_zero]
 
 /-- Effective capacity: n orthogonal keys for S, n orthogonal keys for M.
     Total: 2n independent associations (if keys are chosen wisely). -/
@@ -341,13 +371,41 @@ structure KLevelHierarchy (n K : Nat) where
   decays : Fin K → Real
   keys : Fin K → (Fin n → Real)  -- Different key for each level
 
-/-- Update for K-level hierarchy -/
+/-- Compute residuals for all K levels given initial value v.
+    Level 0: residual_0 = v - M_0 @ k_0
+    Level i: residual_i = residual_{i-1} - M_i @ k_i
+
+    The residual at level i is:
+      residual_i = v - Σⱼ≤i (M_j @ k_j)
+
+    This captures the "cascading error prediction" structure of E79. -/
+noncomputable def computeResiduals (hier : KLevelHierarchy n K) (v : Fin n → Real) :
+    Fin K → (Fin n → Real) :=
+  fun level =>
+    -- Compute residual at this level by subtracting all predictions up to this level
+    -- residual_i = v - Σⱼ≤i (M_j @ k_j)
+    fun i => v i - ∑ j : Fin K,
+      if j.val ≤ level.val then retrieve (hier.matrices j) (hier.keys j) i else 0
+
+/-- Update for K-level hierarchy.
+
+    For each level i:
+    - Compute residual_i = residual_{i-1} - M_i @ k_i (where residual_{-1} = v)
+    - Update: M_i_new = α_i · M_i + outer(residual_i, k_i)
+
+    This generalizes E79 (K=2) to arbitrary depth hierarchies. -/
 noncomputable def kLevelUpdate (hier : KLevelHierarchy n K) (v : Fin n → Real) :
     KLevelHierarchy n K × (Fin K → Fin n → Real) :=
-  -- Level 0: residual_0 = v - M_0 @ k_0
-  -- Level i: residual_i = residual_{i-1} - M_i @ k_i
-  -- M_i_new = α_i · M_i + outer(residual_i, k_i)
-  sorry
+  let residuals := computeResiduals hier v
+  -- Build the updated hierarchy with delta rule at each level
+  let newMatrices : Fin K → Matrix (Fin n) (Fin n) Real := fun level =>
+    hier.decays level • hier.matrices level + outer (residuals level) (hier.keys level)
+  let newHier : KLevelHierarchy n K := {
+    matrices := newMatrices
+    decays := hier.decays
+    keys := hier.keys
+  }
+  (newHier, residuals)
 
 /-- THEOREM: E79 is the K=2 case of the K-level hierarchy.
 

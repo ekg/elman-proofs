@@ -83,9 +83,23 @@ structure E27State (cfg : E27Config) where
 noncomputable def silu (x : Real) : Real :=
   x / (1 + Real.exp (-x))
 
-/-- SiLU is bounded for bounded input -/
+/-- SiLU is bounded for bounded input.
+    Proof: silu(x) = x / (1 + exp(-x)) = x * sigmoid(x).
+    Since 0 < sigmoid(x) < 1, we have |silu(x)| = |x| * sigmoid(x) ≤ |x|. -/
 theorem silu_bounded_by_input (x : Real) : |silu x| ≤ |x| := by
-  sorry  -- silu(x) = x * sigmoid(x), and 0 < sigmoid(x) < 1
+  unfold silu
+  -- silu x = x / (1 + exp(-x))
+  -- The denominator 1 + exp(-x) > 1 > 0, so 0 < 1/(1 + exp(-x)) < 1
+  have h_denom_pos : 0 < 1 + Real.exp (-x) := by linarith [Real.exp_pos (-x)]
+  have h_denom_gt_one : 1 < 1 + Real.exp (-x) := by linarith [Real.exp_pos (-x)]
+  -- |x / (1 + exp(-x))| = |x| / (1 + exp(-x)) since denom > 0
+  rw [abs_div, abs_of_pos h_denom_pos]
+  -- |x| / (1 + exp(-x)) ≤ |x| / 1 = |x| since denom ≥ 1
+  have h_denom_ge_one : 1 ≤ 1 + Real.exp (-x) := le_of_lt h_denom_gt_one
+  calc |x| / (1 + Real.exp (-x)) ≤ |x| / 1 := by
+        apply div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num : (0 : ℝ) < 1)
+        exact h_denom_ge_one
+    _ = |x| := div_one _
 
 /-! ## Part 3: Attention Operations -/
 
@@ -255,7 +269,8 @@ theorem e27_output_depends_on_tape {cfg : E27Config} [NeZero cfg.N]
     True := trivial
 
 /-- THEOREM: E27 output is bounded when inputs are bounded.
-    h_work is bounded by tanh, silu preserves boundedness. -/
+    h_work is bounded by tanh, silu preserves boundedness.
+    Proof: |output| = |h_work| * |silu(z + read)| ≤ 1 * |z + read| ≤ M_z + M_r -/
 theorem e27_output_bounded {cfg : E27Config}
     (h_work : WorkState cfg)
     (z read : Fin cfg.D → Real)
@@ -263,10 +278,31 @@ theorem e27_output_bounded {cfg : E27Config}
     (h_z_bound : ∃ M, ∀ dim, |z dim| ≤ M)
     (h_read_bound : ∃ M, ∀ dim, |read dim| ≤ M) :
     ∃ B, ∀ dim, |e27b_output h_work z read dim| ≤ B := by
-  -- h_work bounded by 1, silu bounded, product bounded
-  use 1  -- Since |h_work| < 1 and |silu(x)| ≤ |x| for reasonable x
+  -- Extract bounds from hypotheses
+  obtain ⟨M_z, hM_z⟩ := h_z_bound
+  obtain ⟨M_r, hM_r⟩ := h_read_bound
+  -- The bound is M_z + M_r (product of |h_work| < 1 with |silu(z+read)| ≤ |z+read| ≤ M_z + M_r)
+  use M_z + M_r
   intro dim
-  sorry  -- Would follow from bounds on tanh and silu
+  -- e27b_output h_work z read dim = h_work dim * silu (z dim + read dim)
+  simp only [e27b_output]
+  -- |h_work dim * silu (z dim + read dim)| = |h_work dim| * |silu (z dim + read dim)|
+  rw [abs_mul]
+  -- |h_work dim| < 1, so |h_work dim| ≤ 1
+  have h_work_le_one : |h_work dim| ≤ 1 := le_of_lt (h_work_bound dim)
+  -- |silu (z dim + read dim)| ≤ |z dim + read dim| by silu_bounded_by_input
+  have h_silu_bound : |silu (z dim + read dim)| ≤ |z dim + read dim| :=
+    silu_bounded_by_input (z dim + read dim)
+  -- |z dim + read dim| ≤ |z dim| + |read dim| by triangle inequality
+  have h_sum_bound : |z dim + read dim| ≤ |z dim| + |read dim| := abs_add_le _ _
+  -- Chain the inequalities
+  calc |h_work dim| * |silu (z dim + read dim)|
+      ≤ 1 * |silu (z dim + read dim)| := by
+          exact mul_le_mul_of_nonneg_right h_work_le_one (abs_nonneg _)
+    _ = |silu (z dim + read dim)| := one_mul _
+    _ ≤ |z dim + read dim| := h_silu_bound
+    _ ≤ |z dim| + |read dim| := h_sum_bound
+    _ ≤ M_z + M_r := add_le_add (hM_z dim) (hM_r dim)
 
 /-! ## Part 8: Information Flow Analysis
 

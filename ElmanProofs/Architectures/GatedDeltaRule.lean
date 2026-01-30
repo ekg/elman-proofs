@@ -183,15 +183,27 @@ theorem gate_bounds_gradient (α : GateValue) :
 theorem gradient_bounded_through_time (gates : List GateValue) :
     0 < gates.foldl (fun acc g => acc * g.val) 1 ∧
     gates.foldl (fun acc g => acc * g.val) 1 <= 1 := by
-  induction gates with
-  | nil => simp
+  -- Prove with a generalized version that tracks the accumulator bounds
+  suffices h : ∀ (acc : Real), 0 < acc → acc ≤ 1 →
+      0 < gates.foldl (fun a g => a * g.val) acc ∧
+      gates.foldl (fun a g => a * g.val) acc ≤ 1 by
+    exact h 1 one_pos (le_refl 1)
+  intro acc hacc_pos hacc_le
+  induction gates generalizing acc with
+  | nil =>
+    simp only [List.foldl_nil]
+    exact ⟨hacc_pos, hacc_le⟩
   | cons g gs ih =>
     simp only [List.foldl_cons]
-    have h1 : g.val * gates.foldl (fun acc g => acc * g.val) 1 =
-              (List.foldl (fun acc g => acc * g.val) g.val gs) := by
-      -- foldl (op) (g * 1) gs = foldl (op) g gs = g * foldl (op) 1 gs
-      sorry
-    sorry
+    apply ih
+    · -- 0 < acc * g.val
+      exact mul_pos hacc_pos g.pos
+    · -- acc * g.val ≤ 1
+      calc acc * g.val ≤ 1 * g.val := by {
+        apply mul_le_mul_of_nonneg_right hacc_le (le_of_lt g.pos)
+      }
+        _ = g.val := one_mul g.val
+        _ ≤ 1 := le_of_lt g.lt_one
 
 /-! ## Part 6: Connection to DeltaNet (Matrix Form) -/
 

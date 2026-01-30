@@ -94,6 +94,11 @@ structure LinearFunction (n : Nat) where
 noncomputable def threshold_output (f : LinearFunction n) (input : Fin n → Bool) : Bool :=
   (Finset.univ.sum fun i => f.weights i * if input i then 1 else 0) + f.bias > 0
 
+/-- Helper: ite simplification for Bool = true comparisons -/
+private theorem ite_false_eq_true : (if false = true then (1 : ℝ) else 0) = 0 := rfl
+private theorem ite_true_eq_true : (if true = true then (1 : ℝ) else 0) = 1 := rfl
+private theorem ite_True_real : (if True then (1 : ℝ) else 0) = 1 := rfl
+
 /-- THEOREM: No linear threshold function computes parity for n ≥ 2.
 
     This is a classic result: parity is not linearly separable.
@@ -109,14 +114,93 @@ theorem tc0_cannot_parity :
   let i01 : Fin 2 → Bool := ![false, true]   -- parity = true
   let i10 : Fin 2 → Bool := ![true, false]   -- parity = true
   let i11 : Fin 2 → Bool := ![true, true]    -- parity = false
-  -- Linear separability would require:
-  -- f(0,0) ≤ 0, f(0,1) > 0, f(1,0) > 0, f(1,1) ≤ 0
-  -- But f(0,1) + f(1,0) = w1 + w2 + 2b
-  -- And f(0,0) + f(1,1) = w1 + w2 + 2b
-  -- So f(0,1) + f(1,0) = f(0,0) + f(1,1)
-  -- If f(0,1) > 0, f(1,0) > 0, f(0,0) ≤ 0, f(1,1) ≤ 0, then
-  -- f(0,1) + f(1,0) > 0 but f(0,0) + f(1,1) ≤ 0. Contradiction!
-  sorry  -- Technical real analysis; the classic XOR non-separability proof
+
+  -- Define the linear scores for each input
+  let L := fun (input : Fin 2 → Bool) =>
+    (Finset.univ.sum fun i => f.weights i * if input i then 1 else 0) + f.bias
+
+  -- Simplify L for each input
+  have L00_eq : L i00 = f.bias := by
+    simp only [L, i00, Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one,
+               ite_false_eq_true, mul_zero, zero_add]
+  have L01_eq : L i01 = f.weights 1 + f.bias := by
+    simp only [L, i01, Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one,
+               ite_false_eq_true, ite_True_real, mul_zero, mul_one, zero_add]
+  have L10_eq : L i10 = f.weights 0 + f.bias := by
+    simp only [L, i10, Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one,
+               ite_True_real, ite_false_eq_true, mul_one, mul_zero, add_zero]
+  have L11_eq : L i11 = f.weights 0 + f.weights 1 + f.bias := by
+    simp only [L, i11, Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one,
+               ite_True_real, mul_one, add_comm (f.weights 0) (f.weights 1)]
+
+  -- Key algebraic fact: L(0,0) + L(1,1) = L(0,1) + L(1,0)
+  have sum_eq : L i00 + L i11 = L i01 + L i10 := by
+    rw [L00_eq, L01_eq, L10_eq, L11_eq]; ring
+
+  -- Compute parity values
+  have p00 : parity [i00 0, i00 1] = false := by native_decide
+  have p01 : parity [i01 0, i01 1] = true := by native_decide
+  have p10 : parity [i10 0, i10 1] = true := by native_decide
+  have p11 : parity [i11 0, i11 1] = false := by native_decide
+
+  -- Simplify threshold_output for each input
+  have t00_eq : threshold_output f i00 = decide (L i00 > 0) := by
+    simp only [threshold_output, L, i00, Fin.sum_univ_two, Matrix.cons_val_zero,
+               Matrix.cons_val_one, ite_false_eq_true, mul_zero, zero_add]
+  have t01_eq : threshold_output f i01 = decide (L i01 > 0) := by
+    simp only [threshold_output, L, i01, Fin.sum_univ_two, Matrix.cons_val_zero,
+               Matrix.cons_val_one, ite_false_eq_true, ite_True_real, mul_zero,
+               mul_one, zero_add]
+  have t10_eq : threshold_output f i10 = decide (L i10 > 0) := by
+    simp only [threshold_output, L, i10, Fin.sum_univ_two, Matrix.cons_val_zero,
+               Matrix.cons_val_one, ite_True_real, ite_false_eq_true, mul_one,
+               mul_zero, add_zero]
+  have t11_eq : threshold_output f i11 = decide (L i11 > 0) := by
+    simp only [threshold_output, L, i11, Fin.sum_univ_two, Matrix.cons_val_zero,
+               Matrix.cons_val_one, ite_True_real, mul_one, add_comm (f.weights 0) (f.weights 1)]
+
+  -- Case analysis: at least one input must give wrong answer
+  by_cases h00 : L i00 > 0
+  case pos =>
+    -- L(0,0) > 0 means threshold_output(0,0) = true, but parity(0,0) = false
+    use i00
+    rw [t00_eq, p00]
+    -- Need: decide (L i00 > 0) ≠ false, i.e., decide (L i00 > 0) = true
+    simp only [ne_eq]
+    rw [show decide (L i00 > 0) = true from decide_eq_true h00]
+    decide
+  case neg =>
+    push_neg at h00
+    by_cases h11 : L i11 > 0
+    case pos =>
+      -- L(1,1) > 0 means threshold_output(1,1) = true, but parity(1,1) = false
+      use i11
+      rw [t11_eq, p11]
+      simp only [ne_eq]
+      rw [show decide (L i11 > 0) = true from decide_eq_true h11]
+      decide
+    case neg =>
+      push_neg at h11
+      -- L(0,0) ≤ 0 and L(1,1) ≤ 0, so L(0,0) + L(1,1) ≤ 0
+      -- By sum_eq, L(0,1) + L(1,0) ≤ 0
+      have sum_neg : L i01 + L i10 ≤ 0 := by linarith
+      by_cases h01 : L i01 > 0
+      case pos =>
+        -- If L(0,1) > 0, then L(1,0) ≤ 0
+        have h10_neg : L i10 ≤ 0 := by linarith
+        -- threshold_output(1,0) = false, but parity(1,0) = true
+        use i10
+        rw [t10_eq, p10]
+        -- Need: decide (L i10 > 0) ≠ true, i.e., ¬(L i10 > 0)
+        simp only [ne_eq, decide_eq_true_eq, not_lt]
+        exact h10_neg
+      case neg =>
+        -- L(0,1) ≤ 0, so threshold_output(0,1) = false, but parity(0,1) = true
+        push_neg at h01
+        use i01
+        rw [t01_eq, p01]
+        simp only [ne_eq, decide_eq_true_eq, not_lt]
+        exact h01
 
 /-- A nonlinear function CAN compute parity.
 

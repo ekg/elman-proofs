@@ -7,6 +7,9 @@ import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Fin.Basic
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Topology.MetricSpace.Basic
+import ElmanProofs.Activations.Lipschitz
 
 /-!
 # Mamba2 Verified: Formal Model Matching Implementation
@@ -144,12 +147,13 @@ def e14_state_update
 
 /-- THEOREM: Mamba2's broadcast decay is simpler
     All headdim × d_state elements share ONE decay value -/
-theorem mamba2_broadcast_is_simpler (cfg : Mamba2Config) :
+theorem mamba2_broadcast_is_simpler :
     -- Number of distinct decay operations per head
     -- Mamba2: 1 (broadcast)
     -- E14: headdim (per-row)
-    1 < cfg.headdim := by
-  sorry  -- Depends on config; typically headdim = 64 > 1
+    -- For typical config, headdim = 64 > 1
+    1 < typical_mamba2_config.headdim := by
+  native_decide
 
 /-! ## Part 4: Projection Cost -/
 
@@ -211,13 +215,92 @@ theorem mamba2_gradient_positive (T : Nat) (decays : Fin T → Real)
     The (1 - tanh²) factor CAN be arbitrarily close to 0. -/
 noncomputable def e1_gradient_factor (v : Real) : Real := 1 - Real.tanh v ^ 2
 
+/-- tanh(v) → 1 as v → ∞ (needed for e1_gradient_can_vanish) -/
+private theorem tendsto_tanh_atTop : Filter.Tendsto Real.tanh Filter.atTop (nhds 1) := by
+  -- tanh(x) = (exp(2x) - 1)/(exp(2x) + 1) → 1 as exp(2x) → ∞
+  have h_exp_neg2 : Filter.Tendsto (fun x => Real.exp (-(2 * x))) Filter.atTop (nhds 0) := by
+    rw [Real.tendsto_exp_comp_nhds_zero]
+    have h1 : Filter.Tendsto (fun x : ℝ => 2 * x) Filter.atTop Filter.atTop :=
+      Filter.Tendsto.const_mul_atTop (by norm_num : (0 : ℝ) < 2) Filter.tendsto_id
+    exact Filter.tendsto_neg_atTop_atBot.comp h1
+  have h_num : Filter.Tendsto (fun x => 1 - Real.exp (-(2 * x))) Filter.atTop (nhds 1) := by
+    convert (tendsto_const_nhds (x := (1 : ℝ))).sub h_exp_neg2 using 1
+    simp
+  have h_denom : Filter.Tendsto (fun x => 1 + Real.exp (-(2 * x))) Filter.atTop (nhds 1) := by
+    convert (tendsto_const_nhds (x := (1 : ℝ))).add h_exp_neg2 using 1
+    simp
+  have h_ratio : Filter.Tendsto (fun x => (1 - Real.exp (-(2 * x))) / (1 + Real.exp (-(2 * x))))
+      Filter.atTop (nhds 1) := by
+    convert h_num.div h_denom (by norm_num : (1 : ℝ) ≠ 0) using 1
+    simp
+  refine h_ratio.congr (fun x => ?_)
+  rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq, Real.cosh_eq]
+  have h_exp_pos : 0 < Real.exp x := Real.exp_pos x
+  have h_exp_neg : Real.exp (-x) = (Real.exp x)⁻¹ := Real.exp_neg x
+  have hne : Real.exp x ≠ 0 := ne_of_gt h_exp_pos
+  have h_exp_neg_2x : Real.exp (-(2*x)) = (Real.exp x)⁻¹ * (Real.exp x)⁻¹ := by
+    have h1 : -(2*x) = (-x) + (-x) := by ring
+    simp only [h1, Real.exp_add, Real.exp_neg]
+  have h_cosh_ne : Real.exp x + (Real.exp x)⁻¹ ≠ 0 := by
+    have h2 : 0 < (Real.exp x)⁻¹ := inv_pos.mpr h_exp_pos
+    linarith
+  symm
+  rw [h_exp_neg]
+  calc (Real.exp x - (Real.exp x)⁻¹) / 2 / ((Real.exp x + (Real.exp x)⁻¹) / 2)
+      = (Real.exp x - (Real.exp x)⁻¹) / (Real.exp x + (Real.exp x)⁻¹) := by field_simp
+    _ = (1 - (Real.exp x)⁻¹ * (Real.exp x)⁻¹) / (1 + (Real.exp x)⁻¹ * (Real.exp x)⁻¹) := by
+        field_simp [hne, h_cosh_ne]
+    _ = (1 - Real.exp (-(2*x))) / (1 + Real.exp (-(2*x))) := by rw [h_exp_neg_2x]
+
 /-- THEOREM: E1 gradient CAN vanish (tanh saturation) -/
 theorem e1_gradient_can_vanish :
     ∀ ε > 0, ∃ v : Real, e1_gradient_factor v < ε := by
   intro ε hε
-  -- As v → ±∞, tanh(v) → ±1, so 1 - tanh²(v) → 0
-  use max 5 (Real.log (2 / ε))
-  sorry  -- Technical real analysis; follows from tanh asymptotics
+  -- As v → +∞, tanh(v) → 1, so tanh²(v) → 1, hence 1 - tanh²(v) → 0
+  -- Strategy: Use that tanh(v) → 1 implies 1 - tanh²(v) → 0
+  -- tanh²(v) = (1 - (1 - tanh(v)))² > 1 - 2(1 - tanh(v)) when tanh(v) > 0
+  -- So 1 - tanh²(v) < 2(1 - tanh(v)) when tanh(v) is close to 1
+  -- We need tanh(v) > 1 - ε/2 to get 1 - tanh²(v) < ε
+  have h_half_pos : 0 < ε / 2 := by linarith
+  -- From tanh → 1, get that tanh eventually exceeds 1 - ε/2
+  have h_tend := tendsto_tanh_atTop
+  rw [Metric.tendsto_atTop] at h_tend
+  obtain ⟨N, hN⟩ := h_tend (ε / 2) h_half_pos
+  -- Use v = max N 1 so v > 0 and v ≥ N
+  use max N 1
+  simp only [e1_gradient_factor]
+  have hv_ge_N : max N 1 ≥ N := le_max_left N 1
+  have hv_pos : (max N 1 : ℝ) > 0 := by
+    have : (1 : ℝ) ≤ max N 1 := le_max_right N 1
+    linarith
+  have h_dist := hN (max N 1) hv_ge_N
+  simp only [Real.dist_eq] at h_dist
+  -- h_dist : |tanh(max N 1) - 1| < ε/2
+  -- Since tanh(x) < 1 for all x, this means 1 - tanh(max N 1) < ε/2
+  have h_tanh_lt_1 : Real.tanh (max N 1) < 1 := by
+    have h_bounded := Activation.tanh_bounded (max N 1)
+    exact (abs_lt.mp h_bounded).2
+  have h_tanh_pos : Real.tanh (max N 1) > 0 := by
+    have h_mono : StrictMono Real.tanh := Activation.tanh_strictMono
+    have h_lt : (0 : ℝ) < max N 1 := by linarith
+    have := h_mono h_lt
+    rwa [Real.tanh_zero] at this
+  have h_tanh_near_1 : 1 - Real.tanh (max N 1) < ε / 2 := by
+    rw [abs_sub_comm] at h_dist
+    rw [abs_of_pos (by linarith : 1 - Real.tanh (max N 1) > 0)] at h_dist
+    exact h_dist
+  -- Now we show: 1 - tanh² < 2 * (1 - tanh) when 0 < tanh < 1
+  -- 1 - tanh² = (1 - tanh)(1 + tanh) < 2(1 - tanh) since tanh < 1 means 1 + tanh < 2
+  have h_factor : 1 - Real.tanh (max N 1) ^ 2 = (1 - Real.tanh (max N 1)) * (1 + Real.tanh (max N 1)) := by
+    ring
+  rw [h_factor]
+  have h_sum_lt_2 : 1 + Real.tanh (max N 1) < 2 := by linarith
+  have h_diff_pos : 0 < 1 - Real.tanh (max N 1) := by linarith
+  calc (1 - Real.tanh (max N 1)) * (1 + Real.tanh (max N 1))
+      < (1 - Real.tanh (max N 1)) * 2 := by nlinarith
+    _ = 2 * (1 - Real.tanh (max N 1)) := by ring
+    _ < 2 * (ε / 2) := by nlinarith
+    _ = ε := by ring
 
 /-! ## Part 6: Why E14 Failed -/
 
