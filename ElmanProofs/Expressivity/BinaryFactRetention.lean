@@ -349,37 +349,39 @@ theorem parity_not_affine (n : ℕ) (hn : 2 ≤ n) :
   have par_e0 : (∑ i : Fin n, if e0 i > 0.5 then (1 : ℕ) else 0) = 1 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx0)]
     simp only [e0, ↓reduceIte]
-    rw [add_comm]
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e0]
-    simp [hx]
+    have h_rest : (∑ x ∈ Finset.univ.erase idx0, if (if x = idx0 then (1:ℝ) else 0) > 0.5 then (1:ℕ) else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      have hx0 : x ≠ idx0 := (Finset.mem_erase.mp hx).1
+      simp only [hx0, ↓reduceIte]
+      norm_num
+    simp only [h_rest, add_zero]
+    norm_num
   have par_e1 : (∑ i : Fin n, if e1 i > 0.5 then (1 : ℕ) else 0) = 1 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx1)]
     simp only [e1, ↓reduceIte]
-    rw [add_comm]
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e1]
-    simp [hx]
+    have h_rest : (∑ x ∈ Finset.univ.erase idx1, if (if x = idx1 then (1:ℝ) else 0) > 0.5 then (1:ℕ) else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      have hx1 : x ≠ idx1 := (Finset.mem_erase.mp hx).1
+      simp only [hx1, ↓reduceIte]
+      norm_num
+    simp only [h_rest, add_zero]
+    norm_num
   have par_e01 : (∑ i : Fin n, if e01 i > 0.5 then (1 : ℕ) else 0) = 2 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx0)]
     have h_mem : idx1 ∈ Finset.univ.erase idx0 := Finset.mem_erase.mpr ⟨h01_ne.symm, Finset.mem_univ idx1⟩
     rw [← Finset.sum_erase_add (Finset.univ.erase idx0) _ h_mem]
     simp only [e01, h01_ne, h01_ne.symm, or_true, true_or, ↓reduceIte]
-    rw [add_comm (1:ℕ), add_comm]
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e01]
-    have hx0 : x ≠ idx0 := hx.2.2
-    have hx1 : x ≠ idx1 := hx.1
-    simp [hx0, hx1]
+    have h_rest_zero : (∑ x ∈ (Finset.univ.erase idx0).erase idx1, if (if x = idx0 ∨ x = idx1 then (1:ℝ) else 0) > 0.5 then (1:ℕ) else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      have hx1 : x ≠ idx1 := (Finset.mem_erase.mp hx).1
+      have hx0 : x ≠ idx0 := (Finset.mem_erase.mp (Finset.mem_erase.mp hx).2).1
+      simp only [hx0, hx1, or_self, ↓reduceIte]
+      norm_num
+    simp only [h_rest_zero, zero_add]
+    norm_num
   -- Parity-to-Real conversions
   have parity_zero_val : (if (∑ i, if all_zero i > 0.5 then (1:ℕ) else 0) % 2 = 1 then (1 : ℝ) else 0) = 0 := by
     simp [par_zero]
@@ -394,37 +396,33 @@ theorem parity_not_affine (n : ℕ) (hn : 2 ≤ n) :
   have sum_e0 : (∑ i, w i * e0 i) = w idx0 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx0)]
     simp only [e0, ↓reduceIte, mul_one]
-    rw [add_comm]
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e0]
-    simp [hx]
+    have h_sum_zero : (∑ x ∈ Finset.univ.erase idx0, w x * if x = idx0 then 1 else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
+      simp [hx]
+    linarith
   have sum_e1 : (∑ i, w i * e1 i) = w idx1 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx1)]
     simp only [e1, ↓reduceIte, mul_one]
-    rw [add_comm]
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e1]
-    simp [hx]
+    have h_sum_zero : (∑ x ∈ Finset.univ.erase idx1, w x * if x = idx1 then 1 else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
+      simp [hx]
+    linarith
   have sum_e01 : (∑ i, w i * e01 i) = w idx0 + w idx1 := by
     rw [← Finset.sum_erase_add _ _ (Finset.mem_univ idx0)]
     have h_mem : idx1 ∈ Finset.univ.erase idx0 := Finset.mem_erase.mpr ⟨h01_ne.symm, Finset.mem_univ idx1⟩
     rw [← Finset.sum_erase_add (Finset.univ.erase idx0) _ h_mem]
     simp only [e01, h01_ne, h01_ne.symm, or_true, true_or, ↓reduceIte, mul_one]
-    ring_nf
-    congr 1
-    refine Finset.sum_eq_zero ?_
-    intro x hx
-    simp only [Finset.mem_erase, ne_eq, Finset.mem_univ, and_true] at hx
-    simp only [e01]
-    have hx0 : x ≠ idx0 := hx.2.2
-    have hx1 : x ≠ idx1 := hx.1
-    simp [hx0, hx1]
+    have h_sum_zero : (∑ x ∈ (Finset.univ.erase idx0).erase idx1, w x * if x = idx0 ∨ x = idx1 then 1 else 0) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro x hx
+      have hx1 : x ≠ idx1 := (Finset.mem_erase.mp hx).1
+      have hx0 : x ≠ idx0 := (Finset.mem_erase.mp (Finset.mem_erase.mp hx).2).1
+      simp [hx0, hx1]
+    linarith
   -- Now use the equations
   rw [parity_zero_val, sum_zero] at eq_zero
   rw [parity_e0_val, sum_e0] at eq_e0
@@ -448,9 +446,6 @@ theorem running_parity_not_linear (T : ℕ) (hT : 2 ≤ T) :
   -- The output is a linear function of inputs (by linear_output_as_sum)
   -- But running parity at position T-1 is the full parity of all inputs
   -- And parity is not affine (by parity_not_affine)
-  -- The RNN output at T-1 is: y = C · Σ_{t<T} A^{T-1-t} · B · x_t
-  -- This is an affine function of inputs (linear combination + 0 bias from h₀=0)
-  -- But parity is not affine, contradiction
   apply parity_not_affine T hT
   use fun t => (C * (A ^ (T - 1 - t.val)) * B) 0 0
   use 0
@@ -458,49 +453,49 @@ theorem running_parity_not_linear (T : ℕ) (hT : 2 ≤ T) :
   -- The RNN computes an affine function of inputs
   let inputs : Fin T → (Fin 1 → ℝ) := fun t => fun _ => bits t
   have h_inputs_bin : ∀ t, inputs t 0 = 0 ∨ inputs t 0 = 1 := h_bits
-  have h_rnn := h_computes inputs h_inputs_bin
-  -- The output at T-1 equals the linear combination
-  -- This follows from linear_state_is_sum applied to the final output
+  -- Get the RNN output equation (with let-bound idx)
+  have h_rnn_let := h_computes inputs h_inputs_bin
+  -- Extract the actual equality by unfolding the let
+  let idx : Fin T := ⟨T-1, Nat.sub_lt (Nat.lt_of_lt_of_le (by norm_num : 0 < 2) hT) one_pos⟩
+  have h_rnn : C.mulVec (stateFromZero A B T inputs) 0 = runningParity T inputs idx 0 := h_rnn_let
   -- Step 1: Use linear_state_is_sum to expand state
   have h_state_sum := linear_state_is_sum A B T inputs
   -- Step 2: The RNN output is C applied to this sum
-  -- C.mulVec (∑ t, inputContribution) = ∑ t, C.mulVec (inputContribution t)
   have h_output_sum : C.mulVec (stateFromZero A B T inputs) =
       ∑ t : Fin T, C.mulVec (inputContribution A B T t (inputs t)) := by
     rw [h_state_sum, Matrix.mulVec_sum]
   -- Step 3: Simplify each term
-  -- C.mulVec (A^(T-1-t) *ᵥ (B *ᵥ x)) = (C * A^(T-1-t) * B) *ᵥ x
   have h_term_eq : ∀ t : Fin T,
       (C.mulVec (inputContribution A B T t (inputs t))) 0 =
       (C * A ^ (T - 1 - t.val) * B) 0 0 * bits t := by
     intro t
     simp only [inputContribution, inputs]
     rw [Matrix.mulVec_mulVec, Matrix.mulVec_mulVec]
-    -- (C * A^k * B).mulVec (fun _ => bits t) 0 = (C * A^k * B) 0 0 * bits t
     simp only [Matrix.mulVec, dotProduct, Finset.univ_unique, Fin.default_eq_zero,
                Finset.sum_singleton, Matrix.mul_apply]
-    ring
-  -- Step 4: Connect to the parity form
-  -- runningParity at T-1 counts all inputs (s.val ≤ T-1 for all s : Fin T)
-  have h_parity_all : runningParity T inputs ⟨T-1, Nat.sub_lt (Nat.lt_of_lt_of_le (by norm_num : 0 < 2) hT) one_pos⟩ 0 =
+  -- Step 4: runningParity at T-1 counts all inputs
+  have h_parity_all : runningParity T inputs idx 0 =
       if (∑ t : Fin T, if bits t > 0.5 then 1 else 0) % 2 = 1 then 1 else 0 := by
-    simp only [runningParity, inputs]
-    congr 1
+    simp only [runningParity, inputs, idx]
     -- The sums are equal because ∀ t : Fin T, t.val ≤ T - 1
+    have h_sums_eq : (∑ t : Fin T, if (t : ℕ) ≤ T - 1 then if bits t > 0.5 then (1:ℕ) else 0 else 0) =
+        ∑ t : Fin T, if bits t > 0.5 then (1:ℕ) else 0 := by
+      apply Finset.sum_congr rfl
+      intro t _
+      have ht_lt : t.val < T := t.isLt
+      have ht_le : t.val ≤ T - 1 := Nat.lt_succ_iff.mp (by omega : t.val < T - 1 + 1)
+      simp [ht_le]
+    simp only [h_sums_eq]
+  -- Step 5: Transform the LHS to the affine form
+  have h_lhs_eq : (C.mulVec (stateFromZero A B T inputs)) 0 =
+      ∑ t : Fin T, (C * A ^ (T - 1 - t.val) * B) 0 0 * bits t := by
+    rw [h_output_sum]
+    rw [Finset.sum_apply]
     apply Finset.sum_congr rfl
     intro t _
-    have ht_le : t.val ≤ T - 1 := Nat.lt_succ_iff.mp t.isLt
-    simp [ht_le]
-  -- From h_rnn and the transformations, we get the affine representation
-  -- h_rnn: C.mulVec (stateFromZero A B T inputs) 0 = runningParity T inputs ⟨T-1, ...⟩ 0
-  -- We need to show the LHS equals ∑ t, w t * bits t
-  -- and show this equals parity
-  rw [h_output_sum] at h_rnn
-  simp only [h_term_eq] at h_rnn
-  rw [h_parity_all] at h_rnn
-  -- h_rnn now says: (∑ t, (C * A^(T-1-t) * B) 0 0 * bits t) = parity(bits)
-  -- This is exactly what we need: the LHS is the affine form
-  -- with w t = (C * A^(T-1-t) * B) 0 0 and c = 0
+    exact h_term_eq t
+  -- Combine: LHS = ∑ w_t * bits_t and RHS = parity
+  rw [h_lhs_eq, h_parity_all] at h_rnn
   simp only [add_zero]
   exact h_rnn.symm
 
@@ -567,7 +562,7 @@ theorem e88_nonlinear_distinguishes :
       linarith [this, heq]
   · -- S < 0 (since S ≠ 0 and not S > 0)
     push_neg at h
-    have hS_neg : S < 0 := lt_of_le_of_ne h hS.symm
+    have hS_neg : S < 0 := lt_of_le_of_ne h hS
     intro heq
     -- tanh(S) > S for S < 0 (by similar argument using concavity and tanh(-x) = -tanh(x))
     -- Or: tanh(S) = S implies tanh(-S) = -S, but -S > 0 and we showed tanh(x) < x for x > 0
