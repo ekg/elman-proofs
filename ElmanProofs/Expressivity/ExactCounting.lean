@@ -803,41 +803,26 @@ noncomputable def e88Iterate (α δ init : ℝ) : List ℝ → ℝ
   | [] => init
   | x :: xs => e88Iterate α δ (e88Update α δ init x) xs
 
-/-- E88 can compute parity using sign-flip dynamics.
-    The idea: with α small and δ < 0 (negative):
-    - When input = 0: tanh(α * S) ≈ S (preserves state)
-    - When input = 1: tanh(α * S + δ) can flip sign if |δ| is large enough
-    For parity: positive = even count, negative = odd count.
-    With α = 0.1, δ = -3, init = 1: each 1 input subtracts 3, causing sign flip. -/
-theorem e88_count_mod_2 :
-    ∃ (α δ init : ℝ), 0 < α ∧ α < 3 ∧ δ ≠ 0 ∧
-    ∀ inputs : List ℝ, (∀ x ∈ inputs, x = 0 ∨ x = 1) →
-      let final_state := e88Iterate α δ init inputs
-      (0 < final_state) ↔ ((inputs.filter (· > 0.5)).length % 2 = 0) := by
-  -- For parity via sign-flipping, use α small and δ < 0:
-  -- With α = 0.1, δ = -3, init = 1.0:
-  -- - Empty list: state = 1.0 > 0, count = 0 (even) ✓
-  -- - One 1: state = tanh(0.1 * 1 - 3) = tanh(-2.9) < 0, count = 1 (odd) ✓
-  -- - Two 1s: state = tanh(0.1 * tanh(-2.9) - 3) ≈ tanh(-0.099 - 3) = tanh(-3.099) < 0
-  --   Wait, this stays negative, not positive. Need to refine.
-  -- Better approach: use α = 2, δ = -4, init = 0.5
-  -- After 1: tanh(2*0.5 - 4) = tanh(-3) ≈ -0.995 < 0 ✓
-  -- After 2: tanh(2*(-0.995) - 4) = tanh(-5.99) ≈ -0.9999 < 0 ✗ (should be positive)
-  -- The dynamics saturate too strongly. This needs careful parameter tuning.
-  -- For now, we prove existence using a simpler observation:
-  -- If we allow δ < 0, the E88 architecture CAN in principle track parity,
-  -- but the exact parameters require numerical optimization.
-  -- We use δ = -3 to satisfy δ ≠ 0 and provide the structure.
-  use 0.1, -3, 1
-  constructor; norm_num
-  constructor; norm_num
-  constructor; norm_num
-  intro inputs _h_bin
-  simp only [e88Iterate, e88Update]
-  -- Full verification requires numerical bounds and induction.
-  -- The key is that tanh with negative δ * 1 contribution enables sign flipping.
-  -- Exact parameter tuning for parity is complex; this remains a sorry.
-  sorry
+/- **IMPOSSIBILITY ANALYSIS**: Scalar E88 parity tracking with bounded tanh.
+
+The naive conjecture was:
+  ∃ (α δ init), 0 < α < 3 ∧ δ ≠ 0 ∧ ∀ inputs, (final_state > 0) ↔ (even count)
+
+This is FALSE for scalar E88 because tanh saturation prevents sign oscillation:
+- With α = 0.1, δ = -3, init = 1:
+  - One 1: tanh(0.1 * 1 - 3) = tanh(-2.9) ≈ -0.994 < 0 ✓
+  - Two 1s: tanh(0.1 * (-0.994) - 3) ≈ tanh(-3.099) ≈ -0.996 < 0 ✗
+
+The problem: Once state is deeply negative, adding another negative δ keeps it negative.
+The tanh compression prevents the sign-flip needed for parity.
+
+**E88 CAN track parity with**:
+- Multi-dimensional state (orthogonal encoding)
+- Different architecture (not sign-based)
+- Carefully tuned parameters outside these constraints
+
+See BROKEN_THEOREMS_REVEAL_E88_VS_LINEAR.md for detailed analysis.
+-/
 
 /-! ## Part 7: E88 Can Count Mod 3 (Existence) -/
 
@@ -896,13 +881,118 @@ theorem tanh_multiple_fixed_points (α : ℝ) (hα : 1 < α) :
   -- We use S₁ = 0 and S₂ = c, but need c > 0
   by_cases hc0 : c = 0
   · -- c = 0 case: IVT gave us 0, but for α > 1 there's another fixed point in (0,1).
-    -- The derivative argument shows tanh(αx) > x for small x > 0 when α > 1.
-    -- Combined with tanh(α) < 1 at x = 1, IVT gives a root in (0, 1).
-    -- This requires formalizing the derivative limit argument.
-    -- For now, we use the existing IVT result with a manual witness.
-    -- Take x₀ small enough that tanh(α * x₀) > x₀ (true for small x by g'(0) = α - 1 > 0).
-    -- The formal proof requires careful limit analysis; we document the approach and sorry.
-    sorry
+    -- Strategy: g(x) = tanh(αx) - x has g'(0) = α - 1 > 0, so g(ε) > 0 for small ε.
+    -- Combined with g(1) < 0, IVT gives a root in (ε, 1).
+    let g : ℝ → ℝ := fun x => tanh (α * x) - x
+    have hα_pos : 0 < α := by linarith
+    have h_deriv_pos : 0 < α - 1 := by linarith
+    -- g is differentiable
+    have h_mul_diff : ∀ x, DifferentiableAt ℝ (fun y => α * y) x := fun x =>
+      (differentiableAt_id.const_mul α)
+    have h_g_diff : Differentiable ℝ g := by
+      intro x
+      apply DifferentiableAt.sub
+      · exact Activation.differentiable_tanh.differentiableAt.comp x (h_mul_diff x)
+      · exact differentiableAt_id
+    -- g'(0) = α - 1
+    have h_g_deriv_0 : deriv g 0 = α - 1 := by
+      have h1 : HasDerivAt (fun x => α * x) α 0 := by
+        convert (hasDerivAt_id 0).const_mul α using 1; ring
+      have h2 : HasDerivAt tanh 1 (α * 0) := by
+        simp only [mul_zero]
+        have hd := Activation.differentiable_tanh.differentiableAt.hasDerivAt (x := 0)
+        rw [Activation.deriv_tanh] at hd
+        simp only [tanh_zero, sq] at hd
+        convert hd using 2; ring
+      have h3 : HasDerivAt (fun x => tanh (α * x)) α 0 := by
+        have h := h2.comp 0 h1
+        simp only [Function.comp_apply, mul_zero, one_mul] at h
+        exact h
+      have h4 : HasDerivAt (fun x : ℝ => x) 1 0 := hasDerivAt_id 0
+      have h5 : HasDerivAt g (α - 1) 0 := h3.sub h4
+      exact h5.deriv
+    -- deriv g is continuous
+    have h_deriv_cont : Continuous (deriv g) := by
+      have h_eq : deriv g = fun x => α * (1 - (tanh (α * x))^2) - 1 := by
+        ext y
+        have h1 : HasDerivAt (fun x => α * x) α y := by
+          convert (hasDerivAt_id y).const_mul α using 1; ring
+        have h2 : HasDerivAt tanh (1 - (tanh (α * y))^2) (α * y) := by
+          have hd := Activation.differentiable_tanh.differentiableAt.hasDerivAt (x := α * y)
+          rw [Activation.deriv_tanh] at hd; exact hd
+        have h3 : HasDerivAt (fun x => tanh (α * x)) (α * (1 - (tanh (α * y))^2)) y := by
+          have h := h2.comp y h1
+          simp only [Function.comp_apply] at h
+          convert h using 1; ring
+        have h4 : HasDerivAt (fun x : ℝ => x) 1 y := hasDerivAt_id y
+        exact (h3.sub h4).deriv
+      rw [h_eq]
+      apply Continuous.sub
+      · apply Continuous.mul continuous_const
+        apply Continuous.sub continuous_const
+        apply Continuous.pow
+        exact h_tanh_cont.comp (continuous_const.mul continuous_id)
+      · exact continuous_const
+    -- By continuity, ∃ δ > 0 with deriv g x > (α-1)/2 for |x| < δ
+    have h_cont_at_0 : ContinuousAt (deriv g) 0 := h_deriv_cont.continuousAt
+    rw [Metric.continuousAt_iff] at h_cont_at_0
+    obtain ⟨δ, hδ_pos, hδ_ball⟩ := h_cont_at_0 ((α - 1)/2) (by linarith)
+    -- Pick x₀ = min(δ/2, 1/2) > 0
+    let x₀ : ℝ := min (δ/2) (1/2)
+    have hx₀_pos : x₀ > 0 := lt_min (by linarith) (by norm_num)
+    have hx₀_lt_δ : x₀ < δ := calc x₀ ≤ δ/2 := min_le_left _ _
+      _ < δ := by linarith
+    have hx₀_lt_1 : x₀ < 1 := calc x₀ ≤ 1/2 := min_le_right _ _
+      _ < 1 := by norm_num
+    -- g(0) = 0
+    have h_g_0 : g 0 = 0 := by simp only [g, mul_zero, tanh_zero, sub_self]
+    -- By MVT: g(x₀) - g(0) = g'(c) * (x₀ - 0) for some c ∈ (0, x₀)
+    have h_g_cont : Continuous g := by
+      apply Continuous.sub
+      · exact h_tanh_cont.comp (continuous_const.mul continuous_id)
+      · exact continuous_id
+    obtain ⟨c_mvt, ⟨hc_gt, hc_lt⟩, h_mvt⟩ := exists_deriv_eq_slope g hx₀_pos
+      h_g_cont.continuousOn h_g_diff.differentiableOn
+    -- c_mvt ∈ (0, x₀), so |c_mvt| < δ, so deriv g c_mvt > (α-1)/2
+    have hc_in_ball : dist c_mvt 0 < δ := by
+      rw [Real.dist_eq, sub_zero]
+      rw [abs_of_pos hc_gt]
+      exact lt_trans hc_lt hx₀_lt_δ
+    have h_deriv_c_close : dist (deriv g c_mvt) (deriv g 0) < (α - 1) / 2 := hδ_ball hc_in_ball
+    rw [h_g_deriv_0, dist_eq_norm, Real.norm_eq_abs] at h_deriv_c_close
+    have h_deriv_c_bound : deriv g c_mvt > (α - 1) / 2 := by
+      have := abs_lt.mp h_deriv_c_close
+      linarith
+    -- g(x₀) = g'(c_mvt) * x₀ > 0
+    have h_g_x0_pos : g x₀ > 0 := by
+      have h_ne : x₀ ≠ 0 := ne_of_gt hx₀_pos
+      have h1 : g x₀ = deriv g c_mvt * x₀ := by
+        simp only [sub_zero, h_g_0] at h_mvt
+        field_simp [h_ne] at h_mvt ⊢
+        linarith
+      rw [h1]
+      exact mul_pos (by linarith) hx₀_pos
+    -- g(1) = tanh(α) - 1 < 0
+    have h_g_1 : g 1 < 0 := by
+      simp only [g, mul_one]
+      have h := Activation.tanh_bounded α
+      have h1 : tanh α < 1 := (abs_lt.mp h).2
+      linarith
+    -- Apply IVT on [x₀, 1]
+    have h_x0_le_1 : x₀ ≤ 1 := le_of_lt hx₀_lt_1
+    have h_mem : (0 : ℝ) ∈ Set.Icc (g 1) (g x₀) := by
+      constructor
+      · exact le_of_lt h_g_1
+      · exact le_of_lt h_g_x0_pos
+    obtain ⟨c', hc'_mem, hc'_eq⟩ := intermediate_value_Icc' h_x0_le_1
+      h_g_cont.continuousOn h_mem
+    have hc'_pos : c' > 0 := lt_of_lt_of_le hx₀_pos hc'_mem.1
+    have hc'_fp : tanh (α * c') = c' := by
+      have : g c' = 0 := hc'_eq
+      simp only [g] at this
+      linarith
+    use 0, c'
+    exact ⟨hc'_pos, by simp [tanh_zero], hc'_fp⟩
   · -- c ≠ 0, so c > 0 (since c ∈ [0, 1])
     have hc_pos : c > 0 := by
       -- hc_mem : c ∈ [[0, 1]] = Set.uIcc 0 1 = Set.Icc (min 0 1) (max 0 1) = Set.Icc 0 1
@@ -951,38 +1041,27 @@ theorem tanh_basin_of_attraction (α : ℝ) (hα : 0 < α) (hα_lt : α < 1)
 
 /-! ## Part 9: Threshold Counting with Latching -/
 
-/-- E88 can detect when count exceeds a threshold, then latch into "alert" state.
-    The idea: each input 1 contributes positively to state via tanh accumulation.
-    When enough 1s are seen (count ≥ τ), the accumulated state exceeds 0.5.
-    This requires careful numerical analysis of tanh saturation. -/
-theorem e88_threshold_count (τ : ℕ) (_hτ : 0 < τ) :
-    ∃ (α δ init : ℝ), 0 < α ∧ α < 2 ∧ |δ| < 0.5 ∧ init = 0 ∧
-    ∀ T : ℕ, ∀ inputs : Fin T → ℝ, (∀ t, inputs t = 0 ∨ inputs t = 1) →
-      (∑ t : Fin T, if inputs t > 0.5 then 1 else 0) ≥ τ →
-      let final_state := (List.range T).foldl
-        (fun S t => if ht : t < T then e88Update α δ S (inputs ⟨t, ht⟩) else S) init
-      final_state > 0.5 := by
-  -- Provide witnesses: α = 1, δ = 0.4, init = 0
-  -- With these parameters, each input 1 adds ~0.4 to the argument of tanh
-  -- After τ inputs of 1, state approaches tanh(0.4τ)
-  -- For τ ≥ 2, tanh(0.8) ≈ 0.66 > 0.5
-  -- For τ = 1, tanh(0.4) ≈ 0.38 < 0.5, so we'd need different parameters
-  -- The existence depends on τ, which makes this hard to prove uniformly.
-  -- We use a simpler approach: for any τ, we can pick δ appropriately.
-  -- But δ must satisfy |δ| < 0.5 uniformly.
-  -- With α close to 2 and δ close to 0.5, the dynamics accumulate faster.
-  -- Full verification requires numerical bounds.
-  use 1.5, 0.4, 0
-  constructor; norm_num
-  constructor; norm_num
-  constructor; norm_num
-  constructor; rfl
-  intro T inputs _h_bin h_count
-  simp only [e88Update]
-  -- Proving the final state > 0.5 requires tracking the foldl through τ iterations
-  -- Each 1 input adds 0.4 to the tanh argument; tanh is bounded but accumulates
-  -- This is a non-trivial inductive argument requiring numerical bounds
-  sorry
+/- **IMPOSSIBILITY ANALYSIS**: E88 single-step threshold detection.
+
+The naive conjecture was:
+  ∃ (α δ init), 0 < α < 2 ∧ |δ| < 0.5 ∧ init = 0 ∧
+  ∀ T τ inputs, count ≥ τ → final_state > 0.5
+
+This is FALSE for τ = 1, T = 1 (single input reaching threshold):
+- With init = 0 and any |δ| < 0.5:
+  final_state = tanh(α * 0 + δ * 1) = tanh(δ)
+- Since |δ| < 0.5: tanh(δ) < tanh(0.5) ≈ 0.46 < 0.5
+
+The constraint |δ| < 0.5 combined with init = 0 prevents reaching 0.5 in one step.
+
+**E88 CAN detect thresholds when**:
+- τ ≥ 2 (multiple inputs allow accumulation)
+- T ≥ 2 with intervening 0s (α > 1 amplifies toward fixed point)
+- Example: one 1 then one 0 with α = 1.5 gives tanh(1.5 * tanh(0.4)) ≈ 0.52 > 0.5
+
+The universal quantifier "∀ T τ" makes the statement false. A correct formulation
+would require T ≥ 2 or τ ≥ 2. See `latched_threshold_persists` for what IS provable.
+-/
 
 /-- Once in latched (high) state, E88 stays there regardless of subsequent inputs.
     Key constraint: S > 1.7 ensures α * S > 1.7 with α ≥ 1, and with |δ * input| ≤ 0.2,
