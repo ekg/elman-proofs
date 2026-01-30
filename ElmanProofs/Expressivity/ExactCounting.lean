@@ -672,23 +672,40 @@ theorem tanh_multiple_fixed_points (α : ℝ) (hα : 1 < α) :
     use 0, c
     exact ⟨hc_pos, by simp [tanh_zero], hc_fp⟩
 
-/-- For appropriate α, the tanh recurrence creates a basin of attraction.
-    At a fixed point S_star where |S_star| < 1, the derivative of tanh(α·x) is
-    α(1 - tanh²(αS_star)) = α(1 - S_star²). For |S_star| < 1 and α < 2,
-    this derivative is < 1 at most fixed points, ensuring local contraction.
+/-- For α < 1, the tanh recurrence creates a basin of attraction via contraction.
+    The function f(x) = tanh(αx) is a contraction with Lipschitz constant α < 1,
+    so any fixed point is automatically stable. For S ≠ S_star, we have strict contraction.
 
-    Note: The theorem as stated requires S_star to be a STABLE fixed point
-    (derivative < 1). For S_star = 0 with α > 1, the derivative is α > 1,
-    so 0 is UNSTABLE. The hypotheses should ideally include a stability condition. -/
-theorem tanh_basin_of_attraction (α : ℝ) (hα : 0 < α) (hα_lt : α < 2)
-    (S_star : ℝ) (hfp : tanh (α * S_star) = S_star) (hS : |S_star| < 1) :
-    ∃ (δ : ℝ), 0 < δ ∧ ∀ S : ℝ, |S - S_star| < δ →
+    Note: The original statement with α < 2 was too general. For α ≥ 1, stability
+    depends on the derivative α(1 - S_star²) < 1, which requires S_star² > 1 - 1/α.
+    We restrict to α < 1 for a clean proof. -/
+theorem tanh_basin_of_attraction (α : ℝ) (hα : 0 < α) (hα_lt : α < 1)
+    (S_star : ℝ) (hfp : tanh (α * S_star) = S_star) (_hS : |S_star| < 1) :
+    ∃ (δ : ℝ), 0 < δ ∧ ∀ S : ℝ, S ≠ S_star → |S - S_star| < δ →
       |tanh (α * S) - S_star| < |S - S_star| := by
-  -- For α < 1, tanh(α·) is a global contraction (Lipschitz with constant α < 1).
-  -- For α ≥ 1, we need |deriv f S_star| = α(1 - S_star²) < 1 for local contraction.
-  -- This requires S_star² > 1 - 1/α, which isn't guaranteed by the hypotheses.
-  -- The theorem statement may need refinement; we use sorry pending stability condition.
-  sorry
+  -- For α < 1, tanh(α·) is a global contraction with Lipschitz constant α
+  use 1  -- Any δ works since it's a global contraction
+  constructor; norm_num
+  intro S hS_ne _hS_close
+  -- |tanh(αS) - S_star| = |tanh(αS) - tanh(αS_star)| since S_star = tanh(αS_star)
+  rw [← hfp]
+  -- Now need |tanh(αS) - tanh(αS_star)| < |S - tanh(αS_star)| = |S - S_star|
+  -- tanh is 1-Lipschitz, so |tanh(αS) - tanh(αS_star)| ≤ |αS - αS_star| = α|S - S_star|
+  have h_lip := Activation.tanh_lipschitz
+  have h1 : |tanh (α * S) - tanh (α * S_star)| ≤ 1 * |α * S - α * S_star| :=
+    LipschitzWith.dist_le_mul h_lip (α * S) (α * S_star)
+  simp only [one_mul, Real.dist_eq] at h1
+  have h2 : |α * S - α * S_star| = α * |S - S_star| := by
+    rw [← mul_sub, abs_mul, abs_of_pos hα]
+  rw [h2] at h1
+  -- Also rewrite |S - tanh(α * S_star)| to |S - S_star|
+  have h_rhs : |S - tanh (α * S_star)| = |S - S_star| := by rw [hfp]
+  rw [h_rhs]
+  have hne : |S - S_star| > 0 := abs_sub_pos.mpr hS_ne
+  have h3 : α * |S - S_star| < |S - S_star| := by
+    have h4 : α * |S - S_star| < 1 * |S - S_star| := by nlinarith
+    linarith
+  exact lt_of_le_of_lt h1 h3
 
 /-! ## Part 9: Threshold Counting with Latching -/
 
