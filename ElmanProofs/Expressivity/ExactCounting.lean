@@ -677,9 +677,120 @@ theorem count_mod_3_not_linear (T : ℕ) (hT : 3 ≤ T) :
       ∀ inputs : Fin T → (Fin 1 → ℝ), (∀ t, inputs t 0 = 0 ∨ inputs t 0 = 1) →
         (C.mulVec (Expressivity.stateFromZero A B T inputs)) 0 =
         countModNReal 3 (by norm_num) T (fun t => inputs t 0) ⟨T - 1, by omega⟩ := by
-  -- The proof constructs input sequences and uses linearity to derive contradiction.
-  -- Full verification requires computing card of filtered finsets for mod 3 counts.
-  sorry
+  -- Proof: ones_012 = one_at_0 + one_at_1 + one_at_2 pointwise.
+  -- By linearity: f(ones_012) = f(one_at_0) + f(one_at_1) + f(one_at_2) = 1 + 1 + 1 = 3.
+  -- But countMod3(ones_012) = 3 mod 3 = 0. Contradiction: 0 = 3.
+  intro ⟨n, A, B, C, h_f⟩
+  -- Define input patterns
+  let one_at_0 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 0 then 1 else 0
+  let one_at_1 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 1 then 1 else 0
+  let one_at_2 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 2 then 1 else 0
+  let ones_012 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 0 ∨ t.val = 1 ∨ t.val = 2 then 1 else 0
+  -- Binary constraints
+  have h_bin_0 : ∀ t, one_at_0 t 0 = 0 ∨ one_at_0 t 0 = 1 := by
+    intro t; simp only [one_at_0]; split_ifs <;> tauto
+  have h_bin_1 : ∀ t, one_at_1 t 0 = 0 ∨ one_at_1 t 0 = 1 := by
+    intro t; simp only [one_at_1]; split_ifs <;> tauto
+  have h_bin_2 : ∀ t, one_at_2 t 0 = 0 ∨ one_at_2 t 0 = 1 := by
+    intro t; simp only [one_at_2]; split_ifs <;> tauto
+  have h_bin_012 : ∀ t, ones_012 t 0 = 0 ∨ ones_012 t 0 = 1 := by
+    intro t; simp only [ones_012]; split_ifs <;> tauto
+  -- Compute mod 3 counts
+  -- one_at_i has count 1, so 1 mod 3 = 1
+  have mod3_0 : countModNReal 3 (by norm_num) T (fun t => one_at_0 t 0) ⟨T - 1, by omega⟩ = 1 := by
+    simp only [countModNReal, countModN, one_at_0]
+    have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 0 then (1 : ℝ) else 0) > 0.5)) = {⟨0, by omega⟩} := by
+      ext s; simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+      constructor
+      · intro ⟨_, h_gt⟩; split_ifs at h_gt with h0; exact Fin.ext h0; norm_num at h_gt
+      · intro h_eq; rw [h_eq]; simp only [Fin.val_zero, ↓reduceIte]; constructor <;> [omega; norm_num]
+    simp only [h_eq, Finset.card_singleton]; norm_cast
+  have mod3_1 : countModNReal 3 (by norm_num) T (fun t => one_at_1 t 0) ⟨T - 1, by omega⟩ = 1 := by
+    simp only [countModNReal, countModN, one_at_1]
+    have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 1 then (1 : ℝ) else 0) > 0.5)) = {⟨1, by omega⟩} := by
+      ext s; simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+      constructor
+      · intro ⟨_, h_gt⟩; split_ifs at h_gt with h1; exact Fin.ext h1; norm_num at h_gt
+      · intro h_eq; rw [h_eq]; simp only [Fin.val_one, ↓reduceIte]; constructor <;> [omega; norm_num]
+    simp only [h_eq, Finset.card_singleton]; norm_cast
+  have mod3_2 : countModNReal 3 (by norm_num) T (fun t => one_at_2 t 0) ⟨T - 1, by omega⟩ = 1 := by
+    simp only [countModNReal, countModN, one_at_2]
+    have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 2 then (1 : ℝ) else 0) > 0.5)) = {⟨2, by omega⟩} := by
+      ext s; simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+      constructor
+      · intro ⟨_, h_gt⟩; split_ifs at h_gt with h2; exact Fin.ext h2; norm_num at h_gt
+      · intro h_eq; rw [h_eq]; simp only [↓reduceIte]; constructor <;> [omega; norm_num]
+    simp only [h_eq, Finset.card_singleton]; norm_cast
+  -- ones_012 has count 3, so 3 mod 3 = 0
+  have mod3_012 : countModNReal 3 (by norm_num) T (fun t => ones_012 t 0) ⟨T - 1, by omega⟩ = 0 := by
+    simp only [countModNReal, countModN, ones_012]
+    have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 0 ∨ s.val = 1 ∨ s.val = 2 then (1 : ℝ) else 0) > 0.5)) =
+        {⟨0, by omega⟩, ⟨1, by omega⟩, ⟨2, by omega⟩} := by
+      ext s; simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_insert,
+        Finset.mem_singleton]
+      constructor
+      · intro ⟨_, h_gt⟩
+        split_ifs at h_gt with h012
+        · rcases h012 with h0 | h1 | h2
+          · left; exact Fin.ext h0
+          · right; left; exact Fin.ext h1
+          · right; right; exact Fin.ext h2
+        · norm_num at h_gt
+      · intro h_eq
+        rcases h_eq with h0 | h1 | h2
+        · rw [h0]; simp only [Fin.val_zero, or_self, ↓reduceIte]; constructor <;> [omega; norm_num]
+        · rw [h1]; simp only [Fin.val_one, or_true, ↓reduceIte]; constructor <;> [omega; norm_num]
+        · rw [h2]; simp only [↓reduceIte]; constructor <;> [omega; norm_num]
+    rw [h_eq]
+    have h_ne01 : (⟨0, by omega⟩ : Fin T) ≠ ⟨1, by omega⟩ := by simp
+    have h_ne02 : (⟨0, by omega⟩ : Fin T) ≠ ⟨2, by omega⟩ := by simp
+    have h_ne12 : (⟨1, by omega⟩ : Fin T) ≠ ⟨2, by omega⟩ := by simp
+    rw [Finset.card_insert_of_not_mem (by simp [h_ne01, h_ne02])]
+    rw [Finset.card_insert_of_not_mem (by simp [h_ne12])]
+    rw [Finset.card_singleton]; norm_cast
+  -- Apply linear RNN formula
+  have eq_0 := h_f one_at_0 h_bin_0
+  have eq_1 := h_f one_at_1 h_bin_1
+  have eq_2 := h_f one_at_2 h_bin_2
+  have eq_012 := h_f ones_012 h_bin_012
+  rw [mod3_0] at eq_0
+  rw [mod3_1] at eq_1
+  rw [mod3_2] at eq_2
+  rw [mod3_012] at eq_012
+  -- Key: ones_012 = one_at_0 + one_at_1 + one_at_2 (pointwise)
+  have h_sum : ∀ t j, ones_012 t j = one_at_0 t j + one_at_1 t j + one_at_2 t j := by
+    intro t j
+    simp only [ones_012, one_at_0, one_at_1, one_at_2]
+    rcases Decidable.em (t.val = 0) with h0 | h0 <;>
+    rcases Decidable.em (t.val = 1) with h1 | h1 <;>
+    rcases Decidable.em (t.val = 2) with h2 | h2 <;>
+    simp [h0, h1, h2] <;> omega
+  -- By linearity of state
+  have h_state_add : Expressivity.stateFromZero A B T ones_012 =
+      Expressivity.stateFromZero A B T one_at_0 +
+      Expressivity.stateFromZero A B T one_at_1 +
+      Expressivity.stateFromZero A B T one_at_2 := by
+    have h_eq : ones_012 = (fun t => one_at_0 t + one_at_1 t + one_at_2 t) := by
+      ext t j; exact h_sum t j
+    have h_eq2 : (fun t => one_at_0 t + one_at_1 t + one_at_2 t) =
+                 (fun t => (one_at_0 t + one_at_1 t) + one_at_2 t) := by
+      ext t j; ring
+    have h_add1 := Expressivity.state_additive A B T one_at_0 one_at_1
+    have h_add2 := Expressivity.state_additive A B T (fun t => one_at_0 t + one_at_1 t) one_at_2
+    rw [h_eq, h_eq2, h_add2, h_add1]
+  -- Apply C.mulVec
+  have h_output : (C.mulVec (Expressivity.stateFromZero A B T ones_012)) 0 =
+      (C.mulVec (Expressivity.stateFromZero A B T one_at_0)) 0 +
+      (C.mulVec (Expressivity.stateFromZero A B T one_at_1)) 0 +
+      (C.mulVec (Expressivity.stateFromZero A B T one_at_2)) 0 := by
+    rw [h_state_add]
+    simp only [Matrix.mulVec_add, Pi.add_apply]
+  -- Contradiction: 0 = 1 + 1 + 1 = 3
+  linarith [eq_0, eq_1, eq_2, eq_012, h_output]
 
 /-! ## Part 6: E88 Can Count Mod 2 (Parity) -/
 
@@ -784,11 +895,13 @@ theorem tanh_multiple_fixed_points (α : ℝ) (hα : 1 < α) :
   -- c ∈ [0, 1] and tanh(αc) = c
   -- We use S₁ = 0 and S₂ = c, but need c > 0
   by_cases hc0 : c = 0
-  · -- c = 0 case: IVT gave us 0 as fixed point, but for α > 1 there's another
-    -- The derivative of tanh(αx) - x at x = 0 is α - 1 > 0, so the function is
-    -- increasing at 0, meaning tanh(αε) > ε for small ε > 0.
+  · -- c = 0 case: IVT gave us 0, but for α > 1 there's another fixed point in (0,1).
+    -- The derivative argument shows tanh(αx) > x for small x > 0 when α > 1.
     -- Combined with tanh(α) < 1 at x = 1, IVT gives a root in (0, 1).
-    -- This requires formalizing the derivative argument.
+    -- This requires formalizing the derivative limit argument.
+    -- For now, we use the existing IVT result with a manual witness.
+    -- Take x₀ small enough that tanh(α * x₀) > x₀ (true for small x by g'(0) = α - 1 > 0).
+    -- The formal proof requires careful limit analysis; we document the approach and sorry.
     sorry
   · -- c ≠ 0, so c > 0 (since c ∈ [0, 1])
     have hc_pos : c > 0 := by
