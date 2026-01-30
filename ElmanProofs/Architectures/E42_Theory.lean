@@ -6,6 +6,8 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Data.Matrix.Basic
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.Analysis.SpecialFunctions.Exp
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import ElmanProofs.Expressivity.NumericalBounds
 
 /-!
 # E42 Theory: Why Linear Tied Self-Gating Works
@@ -233,7 +235,30 @@ This creates natural selectivity without explicit attention. -/
 theorem self_gate_superlinear (h : Real) (h_pos : h > 1) :
     self_gate h > h / 2 := by
   -- For h > 1: h^2 * sigmoid(h) > h * (1/2) since sigmoid(h) > 1/2 for h > 0
-  sorry  -- Technical proof involving sigmoid bounds
+  rw [self_gate_expanded]
+  -- sigmoid(h) = 1/(1 + exp(-h)) > 1/2 when h > 0
+  -- For h > 0: exp(-h) < 1, so 1 + exp(-h) < 2, so sigmoid(h) > 1/2
+  have h_sigmoid_gt_half : sigmoid h > 1/2 := by
+    simp only [sigmoid]
+    -- 1/(1 + exp(-h)) > 1/2 iff 2 > 1 + exp(-h) iff exp(-h) < 1 iff -h < 0 iff h > 0
+    have h_exp_neg : Real.exp (-h) < 1 := by
+      have h_neg : -h < 0 := neg_neg_of_pos (by linarith : h > 0)
+      rw [Real.exp_lt_one_iff]
+      exact h_neg
+    have h_denom_pos : 1 + Real.exp (-h) > 0 := by
+      have h_exp_pos : Real.exp (-h) > 0 := Real.exp_pos (-h)
+      linarith
+    have h_denom_lt_2 : 1 + Real.exp (-h) < 2 := by linarith
+    -- 1 / (1 + exp(-h)) > 1/2 iff 1 + exp(-h) < 2
+    rw [gt_iff_lt, one_div, one_div, inv_lt_inv₀ (by linarith : (0:Real) < 2) h_denom_pos]
+    exact h_denom_lt_2
+  -- h^2 * sigmoid(h) > h^2 * (1/2) = h * (h/2) > h * (1/2) = h/2 since h > 1
+  have h_sq_pos : h^2 > 0 := sq_pos_of_pos (by linarith : h > 0)
+  have h_ge_1 : h ≥ 1 := le_of_lt h_pos
+  calc h^2 * sigmoid h > h^2 * (1/2) := by nlinarith
+    _ = h * h / 2 := by ring
+    _ ≥ h * 1 / 2 := by nlinarith
+    _ = h / 2 := by ring
 
 /-! ## Part 7: Why Linear Recurrence Beats Tanh -/
 
@@ -250,7 +275,32 @@ noncomputable def tanh_deriv (x : Real) : Real := 1 - (tanh_act x)^2
     Over T timesteps, gradients decay as (tanh')^T -> 0 -/
 theorem tanh_saturation (x : Real) (h_large : |x| > 3) :
     tanh_deriv x < 0.1 := by
-  sorry  -- Follows from tanh bounds
+  -- For |x| > 3 > 2, |tanh(x)| > 0.96 (from NumericalBounds.tanh_ge_2_gt_096)
+  -- So tanh²(x) > 0.9216, and 1 - tanh²(x) < 0.0784 < 0.1
+  simp only [tanh_deriv, tanh_act]
+  have h_ge_2 : |x| ≥ 2 := by linarith
+  have h_tanh_large : |Real.tanh x| > 0.96 := by
+    rcases le_or_gt 0 x with hpos | hneg
+    · -- x ≥ 0 case
+      have hx' : x ≥ 2 := by rw [abs_of_nonneg hpos] at h_ge_2; exact h_ge_2
+      have h := NumericalBounds.tanh_ge_2_gt_096 x hx'
+      have h_pos : Real.tanh x > 0 := NumericalBounds.tanh_pos_of_pos (by linarith)
+      rw [abs_of_pos h_pos]
+      exact h
+    · -- x < 0 case
+      have hx' : -x ≥ 2 := by rw [abs_of_neg hneg] at h_ge_2; exact h_ge_2
+      have h := NumericalBounds.tanh_ge_2_gt_096 (-x) hx'
+      have h_pos : Real.tanh (-x) > 0 := NumericalBounds.tanh_pos_of_pos (by linarith)
+      have h_eq : Real.tanh x = -Real.tanh (-x) := by rw [Real.tanh_neg]; ring
+      rw [h_eq, abs_neg, abs_of_pos h_pos]
+      exact h
+  have h_sq_large : (Real.tanh x)^2 > 0.9216 := by
+    have h1 : (Real.tanh x)^2 = |Real.tanh x|^2 := by rw [sq_abs]
+    rw [h1]
+    have h2 : |Real.tanh x|^2 > 0.96^2 := sq_lt_sq' (by linarith) h_tanh_large
+    calc |Real.tanh x|^2 > 0.96^2 := h2
+      _ = 0.9216 := by norm_num
+  linarith
 
 /-- Linear recurrence has CONSTANT gradient through time.
     dh_t/dh_{t-1} = W  (constant, not dependent on activation)

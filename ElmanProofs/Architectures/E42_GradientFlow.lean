@@ -6,6 +6,9 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Analysis.SpecialFunctions.Exp
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import ElmanProofs.Expressivity.NumericalBounds
+import ElmanProofs.Activations.Lipschitz
 
 /-!
 # E42 Gradient Flow Analysis
@@ -62,7 +65,11 @@ theorem tanh_deriv_bounded (x : Real) : 0 < tanh_deriv x ∧ tanh_deriv x ≤ 1 
   · -- tanh²(x) < 1, so 1 - tanh²(x) > 0
     simp only [tanh_deriv, tanh_fn]
     -- tanh(x) ∈ (-1, 1), so tanh²(x) < 1
-    sorry  -- Technical: uses Real.tanh_lt_one and Real.neg_one_lt_tanh
+    have h_tanh_bounded := Activation.tanh_bounded x
+    have h_sq_lt_one : (Real.tanh x)^2 < 1 := by
+      rw [sq_lt_one_iff_abs_lt_one]
+      exact h_tanh_bounded
+    linarith
   · -- 1 - tanh²(x) ≤ 1 since tanh²(x) ≥ 0
     simp only [tanh_deriv, tanh_fn]
     have : (Real.tanh x)^2 ≥ 0 := sq_nonneg _
@@ -71,16 +78,57 @@ theorem tanh_deriv_bounded (x : Real) : 0 < tanh_deriv x ∧ tanh_deriv x ≤ 1 
 /-- For large |x|, tanh derivative approaches 0 -/
 theorem tanh_deriv_vanishes_at_large (x : Real) (h_large : |x| > 2) :
     tanh_deriv x < 0.15 := by
-  -- At x = 2, tanh(2) ≈ 0.964, so tanh'(2) ≈ 1 - 0.929 ≈ 0.07
-  sorry  -- Numerical bounds proof
+  -- At x = 2, tanh(2) > 0.96, so tanh'(2) = 1 - tanh²(2) < 1 - 0.96² = 1 - 0.9216 < 0.08
+  simp only [tanh_deriv, tanh_fn]
+  -- For |x| > 2, |tanh x| > 0.96
+  have h_tanh_large : |Real.tanh x| > 0.96 := by
+    have h_ge_2 : |x| ≥ 2 := le_of_lt h_large
+    rcases le_or_gt 0 x with hpos | hneg
+    · -- x ≥ 0 case
+      have hx' : x ≥ 2 := by rw [abs_of_nonneg hpos] at h_ge_2; exact h_ge_2
+      have h := NumericalBounds.tanh_ge_2_gt_096 x hx'
+      have h_pos : Real.tanh x > 0 := NumericalBounds.tanh_pos_of_pos (by linarith)
+      rw [abs_of_pos h_pos]
+      exact h
+    · -- x < 0 case
+      have hx' : -x ≥ 2 := by rw [abs_of_neg hneg] at h_ge_2; exact h_ge_2
+      have h := NumericalBounds.tanh_ge_2_gt_096 (-x) hx'
+      have h_pos : Real.tanh (-x) > 0 := NumericalBounds.tanh_pos_of_pos (by linarith)
+      have h_eq : Real.tanh x = -Real.tanh (-x) := by rw [Real.tanh_neg]; ring
+      rw [h_eq, abs_neg, abs_of_pos h_pos]
+      exact h
+  -- Since |tanh x| > 0.96, we have tanh²(x) > 0.96² = 0.9216
+  have h_sq_large : (Real.tanh x)^2 > 0.9216 := by
+    have h1 : (Real.tanh x)^2 = |Real.tanh x|^2 := by rw [sq_abs]
+    rw [h1]
+    have h2 : |Real.tanh x|^2 > 0.96^2 := sq_lt_sq' (by linarith) h_tanh_large
+    calc |Real.tanh x|^2 > 0.96^2 := h2
+      _ = 0.9216 := by norm_num
+  -- So 1 - tanh²(x) < 1 - 0.9216 = 0.0784 < 0.15
+  linarith
 
 /-- Gradient magnitude through T tanh layers can vanish exponentially -/
 theorem tanh_gradient_vanishing (T : Nat) (h_large : T > 10)
-    (deriv_bound : Real) (h_bound : deriv_bound < 0.9) :
-    -- If each tanh' term is bounded by deriv_bound < 1
+    (deriv_bound : Real) (h_nonneg : 0 ≤ deriv_bound) (h_bound : deriv_bound < 0.9) :
+    -- If each tanh' term is bounded by 0 ≤ deriv_bound < 0.9 (typical for tanh derivatives)
     -- Then product deriv_bound^T → 0 as T increases
     deriv_bound ^ T < 0.35 := by
-  sorry  -- Exponential decay proof
+  -- 0.9^11 ≈ 0.314 < 0.35
+  -- For 0 ≤ deriv_bound < 0.9 and T > 10, deriv_bound^T < 0.9^11 < 0.35
+  have h_T_ge : T ≥ 11 := Nat.succ_le_of_lt h_large
+  have h_lt_one : deriv_bound < 1 := by linarith
+  -- deriv_bound^T ≤ deriv_bound^11 since deriv_bound ∈ [0, 1) and T ≥ 11
+  have h_pow_mono : deriv_bound ^ T ≤ deriv_bound ^ 11 := by
+    have h_le_one : deriv_bound ≤ 1 := le_of_lt h_lt_one
+    exact pow_le_pow_of_le_one h_nonneg h_le_one h_T_ge
+  -- deriv_bound^11 < 0.9^11 since 0 ≤ deriv_bound < 0.9
+  have h_pow_lt : deriv_bound ^ 11 < 0.9 ^ 11 := by
+    have h_11_ne : (11 : ℕ) ≠ 0 := by norm_num
+    exact pow_lt_pow_left₀ h_bound h_nonneg h_11_ne
+  have h_0911 : (0.9 : Real) ^ 11 < 0.35 := by norm_num
+  calc deriv_bound ^ T ≤ deriv_bound ^ 11 := h_pow_mono
+    _ < 0.9 ^ 11 := h_pow_lt
+    _ < 0.35 := h_0911
 
 /-! ## Part 2: Linear Gradient Analysis -/
 
@@ -133,7 +181,9 @@ theorem linear_preserves_gradients_better (T : Nat) (W_norm : Real)
   simp only [linear_penalty, tanh_penalty]
   -- Need to show: 1 > avg_tanh_deriv ^ T
   -- This follows from 0 ≤ avg_tanh_deriv < 1 and T > 0
-  sorry  -- pow_lt_one proof; technical details
+  have h_T_ne : T ≠ 0 := Nat.ne_of_gt h_T
+  have h_pow_lt_one : avg_tanh_deriv ^ T < 1 := pow_lt_one₀ h_pos h_decay h_T_ne
+  linarith
 
 /-! ## Part 4: E42's Learned Spectral Radius
 

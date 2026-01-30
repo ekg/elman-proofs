@@ -59,20 +59,39 @@ def lowRankParams (d r : ℕ) : ℕ := 2 * d * r
     - Dense: d_dense² = P, so d_dense = √P
     - Low-rank: 2 * d_lr * r = P, so d_lr = P / (2r)
 
-    When r < √P / 2, we have d_lr > d_dense -/
-theorem lowRank_allows_larger_dim (P r : ℕ) (hr : r > 0) (hP : P > 0) :
+    When r < √P / 2, we have d_lr ≥ d_dense
+
+    Note: The inequality is non-strict (≥) because natural number division
+    rounds down, creating edge cases where equality holds. For sufficiently
+    large P relative to r, the inequality becomes strict in practice. -/
+theorem lowRank_allows_larger_dim (P r : ℕ) (hr : r > 0) (_hP : P > 0) :
     -- d_lowrank = P / (2r), d_dense = √P
-    -- d_lowrank > d_dense when P/(2r) > √P, i.e., √P > 2r, i.e., P > 4r²
-    P > 4 * r * r → P / (2 * r) > Nat.sqrt P := by
+    -- d_lowrank ≥ d_dense when √P * 2r ≤ P, which follows from P > 4r²
+    P > 4 * r * r → P / (2 * r) ≥ Nat.sqrt P := by
   intro hPr
-  -- We need P/(2r) > √P
-  -- This is equivalent to P > 2r·√P, i.e., √P > 2r, i.e., P > 4r²
-  have h1 : Nat.sqrt P < P / (2 * r) := by
-    have hr2 : 2 * r > 0 := by omega
-    -- √P < P/(2r) iff 2r·√P < P iff 4r²·P < P² (when P > 0)
-    -- Since P > 4r², we have √P > 2r, so 2r < √P < P/(2r) when P > 4r²
-    sorry -- Technical Nat.sqrt arithmetic
-  omega
+  have hr2 : 2 * r > 0 := by omega
+  -- We show √P ≤ P/(2r) using Nat.le_div_iff_mul_le
+  change Nat.sqrt P ≤ P / (2 * r)
+  rw [Nat.le_div_iff_mul_le hr2]
+  -- Goal: √P * 2r ≤ P
+  -- Case split on whether √P ≤ 2r or √P > 2r
+  by_cases h : Nat.sqrt P ≤ 2 * r
+  · -- Case 1: √P ≤ 2r
+    -- Then √P * 2r ≤ 2r * 2r = 4r² < P
+    calc Nat.sqrt P * (2 * r) ≤ (2 * r) * (2 * r) := by nlinarith
+      _ = 4 * r * r := by ring
+      _ ≤ P := by omega
+  · -- Case 2: √P > 2r
+    -- Then √P * 2r < √P * √P ≤ P
+    push_neg at h
+    have sqrt_sq_le : Nat.sqrt P ^ 2 ≤ P := Nat.sqrt_le' P
+    have h2 : Nat.sqrt P * (2 * r) < Nat.sqrt P * Nat.sqrt P := by nlinarith
+    have h3 : Nat.sqrt P * Nat.sqrt P = Nat.sqrt P ^ 2 := by ring
+    have h4 : Nat.sqrt P * (2 * r) < P := by
+      calc Nat.sqrt P * (2 * r) < Nat.sqrt P * Nat.sqrt P := h2
+        _ = Nat.sqrt P ^ 2 := h3
+        _ ≤ P := sqrt_sq_le
+    exact le_of_lt h4
 
 /-- E5 configuration: dim=1536, rank=270 -/
 structure E5Config where
