@@ -533,10 +533,139 @@ theorem count_mod_2_not_linear (T : ℕ) (hT : 2 ≤ T) :
       ∀ inputs : Fin T → (Fin 1 → ℝ), (∀ t, inputs t 0 = 0 ∨ inputs t 0 = 1) →
         (C.mulVec (Expressivity.stateFromZero A B T inputs)) 0 =
         countModNReal 2 (by norm_num) T (fun t => inputs t 0) ⟨T - 1, by omega⟩ := by
-  -- The proof constructs input sequences and uses linearity to derive contradiction.
-  -- Full verification requires computing card of filtered finsets for parity counts.
-  sorry
-
+  intro ⟨n, A, B, C, h_f⟩
+  -- Define four canonical input sequences
+  let input00 : Fin T → (Fin 1 → ℝ) := fun _ _ => 0
+  let input01 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 0 then 0 else if t.val = 1 then 1 else 0
+  let input10 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 0 then 1 else if t.val = 1 then 0 else 0
+  let input11 : Fin T → (Fin 1 → ℝ) := fun t _ => if t.val = 0 then 1 else if t.val = 1 then 1 else 0
+  -- All inputs are binary
+  have h_bin00 : ∀ t, input00 t 0 = 0 ∨ input00 t 0 = 1 := fun _ => Or.inl rfl
+  have h_bin01 : ∀ t, input01 t 0 = 0 ∨ input01 t 0 = 1 := by
+    intro t; simp only [input01]; split_ifs <;> tauto
+  have h_bin10 : ∀ t, input10 t 0 = 0 ∨ input10 t 0 = 1 := by
+    intro t; simp only [input10]; split_ifs <;> tauto
+  have h_bin11 : ∀ t, input11 t 0 = 0 ∨ input11 t 0 = 1 := by
+    intro t; simp only [input11]; split_ifs <;> tauto
+  -- parity(00) = 0 (0 ones, 0 mod 2 = 0)
+  have parity00 : countModNReal 2 (by norm_num) T (fun t => input00 t 0) ⟨T - 1, by omega⟩ = 0 := by
+    simp only [countModNReal, countModN, input00]
+    have h_count : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧ (0 : ℝ) > 0.5)).card = 0 := by
+      rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+      intro _ _; norm_num
+    simp only [h_count, Nat.zero_mod]
+    norm_cast
+  -- parity(01) = 1 (1 one at pos 1)
+  have parity01 : countModNReal 2 (by norm_num) T (fun t => input01 t 0) ⟨T - 1, by omega⟩ = 1 := by
+    simp only [countModNReal, countModN, input01]
+    have h_count : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 0 then (0 : ℝ) else if s.val = 1 then 1 else 0) > 0.5)).card = 1 := by
+      have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+          (if s.val = 0 then (0 : ℝ) else if s.val = 1 then 1 else 0) > 0.5)) = {⟨1, by omega⟩} := by
+        ext s
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+        constructor
+        · intro ⟨_, h_gt⟩
+          split_ifs at h_gt with h0 h1
+          · norm_num at h_gt
+          · exact Fin.ext h1
+          · norm_num at h_gt
+        · intro h_eq
+          rw [h_eq]
+          simp only [Fin.val_one, ↓reduceIte]
+          constructor
+          · omega
+          · norm_num
+      rw [h_eq, Finset.card_singleton]
+    simp only [h_count]
+    norm_cast
+  -- parity(10) = 1 (1 one at pos 0)
+  have parity10 : countModNReal 2 (by norm_num) T (fun t => input10 t 0) ⟨T - 1, by omega⟩ = 1 := by
+    simp only [countModNReal, countModN, input10]
+    have h_count : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 0 then (1 : ℝ) else if s.val = 1 then 0 else 0) > 0.5)).card = 1 := by
+      have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+          (if s.val = 0 then (1 : ℝ) else if s.val = 1 then 0 else 0) > 0.5)) = {⟨0, by omega⟩} := by
+        ext s
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+        constructor
+        · intro ⟨_, h_gt⟩
+          split_ifs at h_gt with h0 h1
+          · exact Fin.ext h0
+          · norm_num at h_gt
+          · norm_num at h_gt
+        · intro h_eq
+          rw [h_eq]
+          simp only [Fin.val_zero, ↓reduceIte]
+          constructor
+          · omega
+          · norm_num
+      rw [h_eq, Finset.card_singleton]
+    simp only [h_count]
+    norm_cast
+  -- parity(11) = 0 (2 ones, 2 mod 2 = 0)
+  have parity11 : countModNReal 2 (by norm_num) T (fun t => input11 t 0) ⟨T - 1, by omega⟩ = 0 := by
+    simp only [countModNReal, countModN, input11]
+    have h_count : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+        (if s.val = 0 then (1 : ℝ) else if s.val = 1 then 1 else 0) > 0.5)).card = 2 := by
+      have h_eq : (Finset.univ.filter (fun s : Fin T => s.val ≤ T - 1 ∧
+          (if s.val = 0 then (1 : ℝ) else if s.val = 1 then 1 else 0) > 0.5)) = {⟨0, by omega⟩, ⟨1, by omega⟩} := by
+        ext s
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_insert,
+          Finset.mem_singleton]
+        constructor
+        · intro ⟨_, h_gt⟩
+          split_ifs at h_gt with h0 h1
+          · left; exact Fin.ext h0
+          · right; exact Fin.ext h1
+          · norm_num at h_gt
+        · intro h_eq
+          rcases h_eq with h_eq | h_eq
+          · rw [h_eq]; simp only [Fin.val_zero, ↓reduceIte]; constructor <;> [omega; norm_num]
+          · rw [h_eq]; simp only [Fin.val_one, ↓reduceIte]; constructor <;> [omega; norm_num]
+      rw [h_eq]
+      have h_ne : (⟨0, by omega⟩ : Fin T) ≠ ⟨1, by omega⟩ := by simp
+      rw [Finset.card_insert_of_not_mem (by simp [h_ne]), Finset.card_singleton]
+    simp only [h_count]
+    norm_cast
+  -- Apply the linear RNN formula at each corner
+  have eq00 := h_f input00 h_bin00
+  have eq01 := h_f input01 h_bin01
+  have eq10 := h_f input10 h_bin10
+  have eq11 := h_f input11 h_bin11
+  rw [parity00] at eq00
+  rw [parity01] at eq01
+  rw [parity10] at eq10
+  rw [parity11] at eq11
+  -- Key: input00 + input11 = input01 + input10 (pointwise)
+  have h_inputs_sum : ∀ t j, input00 t j + input11 t j = input01 t j + input10 t j := by
+    intro t j
+    simp only [input00, input01, input10, input11]
+    split_ifs <;> ring
+  -- By linearity of state, the outputs satisfy the same relation
+  have h_state_add : Expressivity.stateFromZero A B T input00 + Expressivity.stateFromZero A B T input11 =
+      Expressivity.stateFromZero A B T input01 + Expressivity.stateFromZero A B T input10 := by
+    have h_sum : input00 + input11 = input01 + input10 := by
+      ext t j
+      exact h_inputs_sum t j
+    have h1 := Expressivity.state_additive A B T input00 input11
+    have h2 := Expressivity.state_additive A B T input01 input10
+    have h_sum_pw : (fun t => input00 t + input11 t) = (fun t => input01 t + input10 t) := by
+      ext t j
+      exact h_inputs_sum t j
+    rw [h_sum_pw] at h1
+    rw [← h1, ← h2]
+  -- Apply C.mulVec to both sides
+  have h_output_add : C.mulVec (Expressivity.stateFromZero A B T input00) +
+      C.mulVec (Expressivity.stateFromZero A B T input11) =
+      C.mulVec (Expressivity.stateFromZero A B T input01) +
+      C.mulVec (Expressivity.stateFromZero A B T input10) := by
+    rw [← Matrix.mulVec_add, ← Matrix.mulVec_add, h_state_add]
+  -- Evaluate at component 0
+  have h_comp := congrFun h_output_add 0
+  simp only [Pi.add_apply] at h_comp
+  -- Contradiction: 0 + 0 = 1 + 1 → 0 = 2
+  linarith [eq00, eq01, eq10, eq11, h_comp]
 /-- Count mod 3 is not linear.
     Similar to mod 2: ones_012 = one_at_0 + one_at_1 + one_at_2 (input 1 at positions 0,1,2).
     By linearity: f(ones_012) = f(one_at_0) + f(one_at_1) + f(one_at_2) = 1 + 1 + 1 = 3.
