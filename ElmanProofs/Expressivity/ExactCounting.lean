@@ -633,14 +633,44 @@ theorem e88_count_mod_3_existence :
     and g(2) < 0 (since tanh < 1). By IVT, there's a positive root. Similarly for negative. -/
 theorem tanh_multiple_fixed_points (α : ℝ) (hα : 1 < α) :
     ∃ (S₁ S₂ : ℝ), S₁ < S₂ ∧ tanh (α * S₁) = S₁ ∧ tanh (α * S₂) = S₂ := by
-  -- S = 0 is always a fixed point since tanh(0) = 0
-  have h_zero_fp : tanh (α * 0) = 0 := by simp [tanh_zero]
-  -- By IVT on g(x) = tanh(αx) - x, there exists a positive fixed point
-  -- g(0) = 0, g'(0) = α - 1 > 0, g(2) < 0, so by IVT ∃ root in (0, 2)
-  -- The full proof requires MVT to show g(ε) > 0 for small ε, then IVT.
-  -- This involves verifying continuity of deriv g and using Metric.continuousAt_iff.
-  -- We provide the existence via sorry, as the full proof requires intricate analysis.
-  sorry
+  -- Use S₁ = 0 (which is always a fixed point) and find S₂ > 0 via IVT.
+  -- For f(x) = tanh(αx): f(0) = 0, f(1) = tanh(α) < 1
+  -- The function is continuous and satisfies 0 ≤ f(0), f(1) ≤ 1
+  -- By exists_mem_uIcc_isFixedPt, ∃ c ∈ [0, 1] with f(c) = c
+  -- tanh is continuous because tanh = sinh / cosh and both are continuous with cosh > 0
+  have h_tanh_cont : Continuous (fun x : ℝ => tanh x) := by
+    have h1 : Continuous sinh := continuous_sinh
+    have h2 : Continuous cosh := continuous_cosh
+    have h3 : ∀ x : ℝ, cosh x ≠ 0 := fun x => (cosh_pos x).ne'
+    rw [show (fun x => tanh x) = fun x => sinh x / cosh x by ext; exact tanh_eq_sinh_div_cosh _]
+    exact h1.div h2 h3
+  have h_cont : ContinuousOn (fun x => tanh (α * x)) (Set.uIcc 0 1) := by
+    apply Continuous.continuousOn
+    exact h_tanh_cont.comp (continuous_const.mul continuous_id)
+  have h_f0 : (0 : ℝ) ≤ tanh (α * 0) := by simp [tanh_zero]
+  have h_f1 : tanh (α * 1) ≤ 1 := by
+    have := Activation.tanh_bounded (α * 1)
+    exact le_of_lt (abs_lt.mp this).2
+  obtain ⟨c, hc_mem, hc_fp⟩ := exists_mem_uIcc_isFixedPt h_cont h_f0 h_f1
+  -- c ∈ [0, 1] and tanh(αc) = c
+  -- We use S₁ = 0 and S₂ = c, but need c > 0
+  by_cases hc0 : c = 0
+  · -- c = 0 case: IVT gave us 0 as fixed point, but for α > 1 there's another
+    -- The derivative of tanh(αx) - x at x = 0 is α - 1 > 0, so the function is
+    -- increasing at 0, meaning tanh(αε) > ε for small ε > 0.
+    -- Combined with tanh(α) < 1 at x = 1, IVT gives a root in (0, 1).
+    -- This requires formalizing the derivative argument.
+    sorry
+  · -- c ≠ 0, so c > 0 (since c ∈ [0, 1])
+    have hc_pos : c > 0 := by
+      -- hc_mem : c ∈ [[0, 1]] = Set.uIcc 0 1 = Set.Icc (min 0 1) (max 0 1) = Set.Icc 0 1
+      rw [Set.uIcc_of_le (by norm_num : (0 : ℝ) ≤ 1)] at hc_mem
+      -- Now hc_mem : c ∈ Set.Icc 0 1, which means 0 ≤ c ∧ c ≤ 1
+      rcases lt_or_eq_of_le hc_mem.1 with h | h
+      · exact h
+      · exact absurd h.symm hc0
+    use 0, c
+    exact ⟨hc_pos, by simp [tanh_zero], hc_fp⟩
 
 /-- For appropriate α, the tanh recurrence creates a basin of attraction.
     At a fixed point S_star where |S_star| < 1, the derivative of tanh(α·x) is
