@@ -99,6 +99,9 @@ All proofs are mechanically verified in Lean 4, providing mathematical certainty
 #include "05-e23-vs-e88.typ"
 #include "06-separation.typ"
 #include "07-implications.typ"
+#include "08-tc0-bounds.typ"
+#include "09-output-feedback.typ"
+#include "10-multi-pass-rnn.typ"
 
 // Final page
 #pagebreak()
@@ -116,6 +119,11 @@ The formal proofs are available in the ElmanProofs repository:
 - `RunningParity.lean` — Parity impossibility
 - `E23_DualMemory.lean` — E23 formalization
 - `E88_MultiHead.lean` — E88 formalization
+- `OutputFeedback.lean` — Emergent tape memory and CoT equivalence
+- `TC0Bounds.lean` — TC0 circuit complexity bounds
+- `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC0 < E88
+- `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
+- `MultiPassRNN.lean` — Multi-pass RNN computational class
 
 #v(2em)
 
