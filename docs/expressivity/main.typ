@@ -102,13 +102,15 @@ All proofs are mechanically verified in Lean 4, providing mathematical certainty
 #include "08-tc0-bounds.typ"
 #include "09-output-feedback.typ"
 #include "10-multi-pass-rnn.typ"
+#include "11-experimental-results.typ"
+#include "12-formal-system.typ"
 
 // Final page
 #pagebreak()
 
 = References
 
-The formal proofs are available in the ElmanProofs repository:
+The formal proofs are available in the ElmanProofs repository (`github.com/ekg/elman-proofs`):
 
 - `LinearCapacity.lean` — Linear RNN state capacity
 - `LinearLimitations.lean` — Core impossibility results
@@ -124,12 +126,14 @@ The formal proofs are available in the ElmanProofs repository:
 - `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC0 < E88
 - `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
 - `MultiPassRNN.lean` — Multi-pass RNN computational class
+- `RecurrenceLinearity.lean` — Architecture classification by recurrence type
 
 #v(2em)
 
 #align(center)[
   #text(size: 9pt, style: "italic")[
     Document generated from ElmanProofs Lean 4 formalizations. \
-    All theorems mechanically verified.
+    All core expressivity theorems mechanically verified. \
+    See Section 12 for verification details.
   ]
 ]
