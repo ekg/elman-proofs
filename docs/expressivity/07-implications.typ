@@ -89,8 +89,17 @@ Based on the proofs, we predict:
 === Principle 1: Match Architecture to Task
 Linear-temporal models excel at pattern matching and aggregation. Nonlinear-temporal models excel at sequential decision-making. Use the right tool.
 
-=== Principle 2: Depth is Not a Panacea
+=== Principle 2: Depth is Not a Panacea (Curvature in the Wrong Dimension)
 Adding layers helps linear-temporal models, but cannot overcome fundamental limitations. For tasks requiring $T$ sequential decisions, you need temporal nonlinearity.
+
+#block(
+  fill: rgb("#fff0f7"),
+  stroke: rgb("#cc3399"),
+  inset: 10pt,
+  radius: 4pt,
+)[
+  *The Geometric View*: Depth adds curvature _between layers_ ($O(D)$). Temporal nonlinearity adds curvature _through time_ ($O(T)$). These dimensions are orthogonal. Adding more layers is *curvature in the wrong dimension*---it cannot substitute for temporal nonlinearity any more than adding width can substitute for depth.
+]
 
 === Principle 3: Saturation is a Feature
 E88's tanh saturation is not a numerical problem---it's the mechanism enabling binary memory. Design around it, don't fight it.
@@ -121,8 +130,19 @@ The community needs benchmarks that cleanly separate architectures:
 
 The proofs establish a fundamental principle: *where nonlinearity enters the computation determines what can be computed*.
 
-- Linear temporal dynamics: efficient, limited to depth $D$
-- Nonlinear temporal dynamics: more compute, depth $D times T$
+#block(
+  fill: rgb("#f0f7ff"),
+  stroke: rgb("#3366cc"),
+  inset: 12pt,
+  radius: 4pt,
+)[
+  *The Core Insight*: Curvature in the temporal dimension is computationally irreplaceable.
+
+  - Linear temporal dynamics: efficient, limited to depth $D$ (curvature between layers)
+  - Nonlinear temporal dynamics: more compute, depth $D times T$ (curvature through time + layers)
+
+  Depth and temporal nonlinearity are orthogonal---they curve computation in different directions.
+]
 
 For language modeling at scale, both approaches may suffice. For algorithmic reasoning, temporal nonlinearity is provably necessary.
 

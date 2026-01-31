@@ -73,10 +73,10 @@ The central results come from these files:
   $ h_T = sum_(t=0)^(T-1) A^(T-1-t) B x_t $
 
   Key theorems:
-  - `linear_state_is_sum`: State at time $T$ is exactly the weighted sum
-  - `state_additive`: State is additive in inputs
-  - `state_scalar`: State is homogeneous in scalar multiplication
-  - `reachable_dim_bound`: Reachable states have dimension at most $n$
+  - `linear_state_is_sum` (line 72): State at time $T$ is exactly the weighted sum
+  - `state_additive` (line 112): State is additive in inputs
+  - `state_scalar` (line 133): State is homogeneous in scalar multiplication
+  - `reachable_dim_bound` (line 221): Reachable states have dimension at most $n$
 ]
 
 #block(
@@ -177,11 +177,11 @@ The central results come from these files:
   *RecurrenceLinearity.lean* (390 lines)
 
   Classifies architectures by recurrence type:
-  - `minGRU_is_linear_in_h`: MinGRU is linear in $h$: $h_t = (1-z_t) dot h_(t-1) + z_t dot tilde(h)_t$
-  - `e1_is_nonlinear_in_h`: E1 is nonlinear in $h$: $h_t = tanh(W dot h_(t-1) + ...)$
-  - `mamba2_is_linear_in_h`: Mamba2 SSM is linear in $h$: $h_t = A(x) dot h_(t-1) + B(x) dot x_t$
-  - `within_layer_depth`: Linear = 1 composition, nonlinear = $T$ compositions (line 215)
-  - `e1_more_depth_than_minGRU`: E1 has more composition depth than MinGRU
+  - `minGRU_is_linear_in_h` (line 110): MinGRU is linear in $h$: $h_t = (1-z_t) dot h_(t-1) + z_t dot tilde(h)_t$
+  - `e1_is_nonlinear_in_h` (line 148): E1 is nonlinear in $h$: $h_t = tanh(W dot h_(t-1) + ...)$
+  - `mamba2_is_linear_in_h` (line 171): Mamba2 SSM is linear in $h$: $h_t = A(x) dot h_(t-1) + B(x) dot x_t$
+  - `within_layer_depth` (line 215): Linear = 1 composition, nonlinear = $T$ compositions
+  - `e1_more_depth_than_minGRU` (line 226): E1 has more composition depth than MinGRU
 
   This explains the hierarchy: *"Nonlinearity flows down (through layers), not forward (through time)."*
 ]
@@ -203,6 +203,12 @@ The core expressivity proofs are *fully verified*---no axiom holes, no `sorry` s
     [TanhSaturation.lean], [$checkmark$ Complete], [tanhRecurrence_unique_fixedpoint],
     [BinaryFactRetention.lean], [$checkmark$ Complete], [linear_contribution_decays],
     [RecurrenceLinearity.lean], [$checkmark$ Complete], [mamba2_is_linear_in_h, within_layer_depth],
+    [TC0Bounds.lean], [$checkmark$ Complete], [e88_exceeds_TC0_depth, transformer_in_TC0],
+    [TC0VsUnboundedRNN.lean], [$checkmark$ Complete], [main_hierarchy (line 371), e88_depth_unbounded (line 127)],
+    [OutputFeedback.lean], [$checkmark$ Complete], [feedback_rnn_simulates_bounded_TM (line 282), emergent_tape_hierarchy (line 912)],
+    [MultiPass.lean], [$checkmark$ Complete], [e88_multipass_exceeds_linear (line 457), multipass_hierarchy (line 749)],
+    [ComputationalClasses.lean], [$checkmark$ Complete], [e23_unbounded_tape_simulates_TM],
+    [ExactCounting.lean], [$checkmark$ Complete], [e88_count_mod_3_existence (line 834)],
   ),
   caption: [Verification status of core expressivity proofs. All central results are machine-checked.],
 )

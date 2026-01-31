@@ -125,7 +125,7 @@ The formal proofs are available in the ElmanProofs repository (`github.com/ekg/e
 - `TC0Bounds.lean` — TC0 circuit complexity bounds
 - `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC0 < E88
 - `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
-- `MultiPassRNN.lean` — Multi-pass RNN computational class
+- `MultiPass.lean` — Multi-pass RNN computational class
 - `RecurrenceLinearity.lean` — Architecture classification by recurrence type
 
 #v(2em)

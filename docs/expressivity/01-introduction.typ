@@ -50,6 +50,28 @@ The central result can be stated simply:
   The gap is a factor of $T$---the sequence length.
 ]
 
+=== The Curvature Dimension Insight
+
+A geometric way to understand this: *curvature in the temporal dimension is computationally irreplaceable*.
+
+#block(
+  fill: rgb("#fff0f7"),
+  stroke: rgb("#cc3399"),
+  inset: 12pt,
+  radius: 4pt,
+)[
+  *Curvature in the Wrong Dimension*:
+
+  - *Depth* adds curvature _between layers_ (composition depth $O(D)$)
+  - *Temporal nonlinearity* adds curvature _through time_ (composition depth $O(T)$)
+
+  Adding more layers is *curvature in the wrong dimension*.
+
+  No amount of inter-layer nonlinearity can substitute for within-timestep nonlinear state evolution. The dimensions are orthogonal in their computational contributions.
+]
+
+This explains the fundamental asymmetry: a 100-layer linear-temporal model cannot compute what a 1-layer nonlinear-temporal model computes, because the two architectures curve the computation in different directions. Time-steps are not interchangeable with layers when it comes to sequential dependencies.
+
 This explains why certain tasks that seem simple to humans---counting, parity, state tracking---defeat even very deep linear-temporal models. These tasks require $T$ sequential nonlinear decisions. Depth provides $D$ decisions. When $T > D$, the task becomes impossible.
 
 #figure(
