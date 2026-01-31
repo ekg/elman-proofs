@@ -156,7 +156,8 @@ The formal proofs are available in the ElmanProofs repository (`github.com/ekg/e
 - `TC0Bounds.lean` — TC⁰ circuit complexity bounds for Transformers
 - `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC⁰ < E88
 - `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
-- `MultiPass.lean` — Multi-pass RNN computational class
+- `MultiPass.lean` — Multi-pass RNN computational class with tape modification (~2000 lines)
+- `E88MultiPass.lean` — E88 multi-pass depth hierarchy and random access theorems
 - `RecurrenceLinearity.lean` — Architecture classification by recurrence type
 
 #v(2em)
