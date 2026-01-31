@@ -330,21 +330,44 @@ theorem feedback_rnn_simulates_bounded_TM (T : ℕ) (hT : T > 0) :
           if config.headPos.val = i.val - numStates then 1 else 0
         else 0
     -- Define decoding: extract TM config from RNN state and tape
+    -- For head position: find the index i in [numStates, numStates + T) where state(i) = 1
     let decode : (Fin stateDim → ℝ) → (Fin T → Fin outputDim → ℝ) → BoundedTMConfig numStates T numSymbols :=
       fun state _tape =>
         -- Find the TM state (index of 1 in first numStates components)
         let tmState : Fin numStates := ⟨0, hn⟩  -- Simplified: actual decoding would search
-        -- Find the head position (index of 1 in next T components)
-        let headPos : Fin T := ⟨0, hT⟩  -- Simplified
+        -- Find the head position: decode one-hot from state[numStates..numStates+T)
+        let headPos : Fin T :=
+          if h : ∃ j : Fin T, state ⟨numStates + j.val, by omega⟩ = 1
+          then h.choose
+          else ⟨0, hT⟩
         -- Tape contents from output history
         let tapeContents : Fin T → Fin numSymbols := fun _ => ⟨0, hk⟩
         { tmState := tmState, headPos := headPos, tape := tapeContents }
     use encode, decode
     intro config
-    -- The key property: head position is encoded in state components [numStates, numStates + T)
-    -- For the simplified decode, this trivially holds for headPos = 0
-    -- A full proof would show the one-hot decoding is correct
-    sorry  -- Requires showing one-hot decoding recovers head position
+    -- Show: (decode (encode config) ...).headPos = config.headPos
+    simp only [decode, encode]
+    -- The encoded state has a 1 at position numStates + config.headPos.val
+    have h_exists : ∃ j : Fin T, (encode config) ⟨numStates + j.val, by omega⟩ = 1 := by
+      use config.headPos
+      simp only [encode]
+      -- Check the if conditions for index numStates + config.headPos.val
+      have h_not_lt : ¬ (numStates + config.headPos.val < numStates) := by omega
+      have h_lt2 : numStates + config.headPos.val < numStates + T := by
+        have := config.headPos.isLt; omega
+      simp only [h_not_lt, ↓reduceDIte, h_lt2, Nat.add_sub_cancel_left, ↓reduceIte]
+    rw [dif_pos h_exists]
+    -- h_exists.choose must be config.headPos since that's where the 1 is
+    have h_unique : ∀ j : Fin T, (encode config) ⟨numStates + j.val, by omega⟩ = 1 → j = config.headPos := by
+      intro j hj
+      simp only [encode] at hj
+      have h_not_lt : ¬ (numStates + j.val < numStates) := by omega
+      have h_lt2 : numStates + j.val < numStates + T := by have := j.isLt; omega
+      simp only [h_not_lt, ↓reduceDIte, h_lt2, Nat.add_sub_cancel_left] at hj
+      split_ifs at hj with heq
+      · exact Fin.ext heq.symm
+      · norm_num at hj
+    exact h_unique _ h_exists.choose_spec
 
 /-- **State encodes head position**: The RNN state has sufficient dimension to
     track head position as a one-hot encoding over T possible positions. -/
