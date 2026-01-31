@@ -104,6 +104,10 @@ All proofs are mechanically verified in Lean 4, providing mathematical certainty
 #include "10-multi-pass-rnn.typ"
 #include "11-experimental-results.typ"
 #include "12-formal-system.typ"
+#include "13-theory-practice-gap.typ"
+#include "14-composition-depth-text.typ"
+#include "15-uncanny-valley-reasoning.typ"
+#include "16-depth-examples.typ"
 
 // Final page
 #pagebreak()
