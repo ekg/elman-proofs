@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-77",
+  "executor": "claude",
+  "pid": 611428,
+  "started_at": "2026-01-30T19:38:50.299826357+00:00",
+  "task_id": "define-computational-classes",
+  "timeout": null
+}

@@ -1,0 +1,17 @@
+I've completed the task. Here's a summary of what was fixed:
+
+## Summary: Fixed 2 sorries in E23_DualMemory.lean
+
+### 1. `softmax_nonneg` (line 126-132)
+**Theorem**: Softmax outputs are non-negative: `softmax scores i ≥ 0`
+
+**Proof strategy**: Since `softmax scores i = exp(scores i) / Σ exp(scores j)`, and both numerator and denominator are positive (exp is always positive), the result is non-negative. Used `div_nonneg` with `Real.exp_pos` and `Finset.sum_nonneg`.
+
+### 2. `hard_attention_is_tm_write` (line 742-762)
+**Theorem**: With hard (one-hot) attention, replacement write becomes exact slot replacement - matching TM write semantics.
+
+**Proof strategy**: Split on whether `slot = target_slot`:
+- If equal: `one_hot slot = 1`, so `(1-1)*old + 1*new = new`
+- If not equal: `one_hot slot = 0`, so `(1-0)*old + 0*new = old`
+
+Used `split_ifs`, `if_pos`/`if_neg`, and `ring` for the arithmetic.

@@ -1,0 +1,35 @@
+I have completed Section 11: Experimental Results. Here's a summary of what was created:
+
+**Section 11 Contents** (`docs/expressivity/11-experimental-results.typ`):
+
+1. **CMA-ES Hyperparameter Search** (§11.2)
+   - Methodology: 480M params, 10 min training, The Pile byte-level data
+   - Search spaces for E88, Mamba2, and Transformer architectures
+
+2. **Main Results Table** (§11.3)
+   - Mamba2: 1.271 loss (best)
+   - FLA-GDN: 1.273
+   - E88: 1.407
+   - Transformer: 1.505
+   - Key finding: Empirical results invert the theoretical hierarchy
+
+3. **E88-Specific Findings** (§11.4)
+   - Optimal config: 68 heads, n_state=16, depth=23
+   - Ablation studies showing linear ≈ tanh state on language modeling
+
+4. **Multi-Head Benchmark (E75/E87)** (§11.5)
+   - E75 parameter scan showing stability boundaries
+   - Sparse routing (E87) underperforms dense multi-head
+
+5. **Running Parity Validation** (§11.6)
+   - Theoretical predictions documented
+   - Noted that dedicated parity experiments not yet conducted
+
+6. **Theory-Practice Gap Analysis** (§11.7)
+   - Why Mamba2 wins: parallel scan, input-dependent selectivity, numerical stability
+   - Implications for architecture design
+
+7. **Summary and Design Principles** (§11.9-11.10)
+   - Many small heads > few large heads
+   - Dense > sparse at current scales
+   - Benchmark recommendations for validating expressivity hierarchy

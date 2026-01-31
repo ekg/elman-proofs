@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-7",
+  "executor": "claude",
+  "pid": 3977596,
+  "started_at": "2026-01-29T16:53:24.120600977+00:00",
+  "task_id": "formalize-binary-fact",
+  "timeout": null
+}

@@ -1,0 +1,9 @@
+Task complete. I've consolidated all findings into `OPEN_QUESTIONS_RESOLUTION.md` which resolves the three open questions:
+
+**Q1 (Depth compensation):** NO — D-layer Mamba2 has composition depth D, while D-layer E88 has depth D×T. The gap is a factor of sequence length T.
+
+**Q2 (Separation example):** YES — Running threshold count and temporal XOR chain are computable by 1-layer E88 but not by any D-layer Mamba2 for sufficiently long sequences (T > 2^D).
+
+**Q3 (Practical implications):** NUANCED — The theoretical separation is real and provable, but for D≥32 and typical language sequences, depth may compensate in practice. The gap would manifest most clearly in algorithmic reasoning tasks requiring temporal decision sequences.
+
+The resolution document references all the analysis files (Q1, Q2, Q3 analyses), the Lean proofs in `LinearLimitations.lean`, `MultiLayerLimitations.lean`, and `RecurrenceLinearity.lean`, and the E88 empirical findings.

@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-48",
+  "executor": "lean-fix",
+  "pid": 263297,
+  "started_at": "2026-01-30T15:01:07.451889757+00:00",
+  "task_id": "fix-tanh-multiple",
+  "timeout": null
+}

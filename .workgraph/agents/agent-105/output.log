@@ -1,0 +1,21 @@
+The task is complete. I've restyled sections 9 and 10 of the expressivity document with traditional mathematical style:
+
+**Section 9 (Output Feedback) changes:**
+- Removed all colored boxes with rounded corners
+- Added proper `#import "traditional-math-style.typ": *`
+- Stated the **Emergent Tape Theorem** clearly with a full proof explaining why output feedback creates $O(T)$ memory
+- Used traditional theorem/definition/proof environments
+- Added narrative connection to Section 8 (circuit complexity)
+- Used `#centerrule`, `#mediumrule`, `#keyinsight`, and `#simpletable` for visual structure
+- Added `#leanfile` footnote references
+
+**Section 10 (Multi-Pass RNN) changes:**
+- Removed colored box definitions at the top
+- Applied traditional math styling throughout
+- Clearly stated the k-Pass Random Access theorem with proof
+- Used proper theorem/definition/corollary/proposition/remark environments
+- Fixed Typst syntax (`lfloor`/`rfloor` → `floor()`)
+- Added narrative flow connecting to Section 9 and forward to later sections
+- Included the Complete Hierarchy theorem with proof
+
+Both sections now compile successfully and follow the style guide principles: narrative prose, traditional math formatting, lean references as footnotes, and no colored boxes.

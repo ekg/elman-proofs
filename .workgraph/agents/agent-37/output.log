@@ -1,0 +1,8 @@
+The task is complete. The `linear_rnn_continuous_per_t` theorem was already fully proven in ExactCounting.lean (lines 249-302). The proof demonstrates that for a linear RNN, the output at any fixed position t is a continuous function of the full input sequence by:
+
+1. Showing the truncation function is continuous (each coordinate is either a projection or constant)
+2. Showing `stateFromZero` is continuous via `linear_state_is_sum`, expressing it as a finite sum of continuous matrix/input terms
+3. Showing `C.mulVec` is continuous using `continuous_matrix_mulVec`
+4. Composing these continuous functions
+
+The file builds successfully with no errors.

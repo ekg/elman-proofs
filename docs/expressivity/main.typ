@@ -49,7 +49,7 @@
   #v(0.5em)
   #text(size: 18pt)[Temporal Nonlinearity vs Depth]
   #v(1em)
-  #text(size: 14pt, style: "italic")[A Formal Analysis of E88, Mamba2, FLA, and GDN]
+  #text(size: 14pt, style: "italic")[Where Should Nonlinearity Live?]
   #v(2em)
   #text(size: 11pt)[ElmanProofs Contributors]
   #v(0.5em)
@@ -79,15 +79,15 @@
 ]
 #v(1em)
 
-This document presents a formal analysis of expressivity differences between sequence model architectures, focusing on where nonlinearity enters the computation. We prove that models with _linear temporal dynamics_ (Mamba2, Fast Linear Attention, Gated Delta Networks) have fundamentally limited expressivity compared to models with _nonlinear temporal dynamics_ (E88).
+Every sequence model must answer a fundamental question: where should nonlinearity live? The answer determines computational limits that no amount of scaling can overcome.
 
-The key results:
-- Linear-temporal models have composition depth $D$ (layer count), regardless of sequence length
-- E88-style models have composition depth $D times T$ (layers times timesteps)
-- Functions like running parity and threshold counting are _provably impossible_ for linear-temporal models
-- E88's tanh saturation creates stable fixed points enabling binary memory
+This document develops the theory of _recurrence linearity_ and its consequences. We prove that models with linear temporal dynamics---Mamba2, Fast Linear Attention, Gated Delta Networks---are mathematically constrained in ways that models with nonlinear temporal dynamics are not. A $D$-layer linear-temporal model has composition depth $D$, regardless of sequence length. An E88-style model with nonlinear recurrence has composition depth $D times T$, where $T$ is the sequence length. The gap is multiplicative.
 
-All proofs are mechanically verified in Lean 4, providing mathematical certainty about these architectural limitations.
+The consequences are concrete. Functions like running parity and threshold counting are provably impossible for linear-temporal models at any depth. E88 computes them with a single layer. The separation is not empirical---it is mathematical, verified in Lean 4 with no gaps in the proofs.
+
+We also confront the tension between theory and practice: despite E88's provably greater expressivity, Mamba2 achieves better perplexity on language modeling benchmarks. This apparent contradiction resolves once we distinguish what an architecture _can compute_ from what it _learns efficiently_. The theoretical hierarchy concerns ultimate limits; training dynamics determine what happens within those limits.
+
+The document traces a journey from the fundamental question---where should nonlinearity live?---through the mathematical machinery of linear recurrence, the impossibility results, E88's escape via tanh saturation, the circuit complexity perspective, output feedback and emergent tape, and finally to the practical implications. The reader emerges with a complete understanding of the expressivity hierarchy among modern sequence models.
 
 #v(2em)
 
@@ -104,30 +104,57 @@ All proofs are mechanically verified in Lean 4, providing mathematical certainty
 #include "10-multi-pass-rnn.typ"
 #include "11-experimental-results.typ"
 #include "12-formal-system.typ"
-#include "13-theory-practice-gap.typ"
+// 13-theory-practice-gap.typ - merged into 11
 #include "14-composition-depth-text.typ"
-#include "15-uncanny-valley-reasoning.typ"
+// 15-uncanny-valley-reasoning.typ - merged into 14
 #include "16-depth-examples.typ"
 
-// Final page
+// Conclusion
+#pagebreak()
+
+= Conclusion
+
+We began with a question: where should nonlinearity live? The answer, we have seen, determines fundamental computational limits.
+
+Transformers place nonlinearity between layers. State-space models like Mamba2 do the same, but process time linearly within each layer. E88 places nonlinearity in time itself, with $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$ compounding across timesteps.
+
+These choices create a strict hierarchy:
+$ "Linear SSM" subset.neq "TC"^0 "(Transformer)" subset.neq "E88" subset.neq "E23 (UTM)" $
+
+Linear-temporal models fall below TC⁰---they cannot compute even parity. Transformers sit at TC⁰, with constant depth. E88 exceeds TC⁰, its depth growing with sequence length. E23 achieves full Turing completeness through explicit tape.
+
+The separation is witnessed by concrete functions. Running parity: impossible for any linear-temporal model, achievable by single-layer E88. Threshold: impossible for linear (continuous functions cannot equal discontinuous ones), achievable by E88 via saturation. The proofs are complete, verified in Lean 4, with no gaps.
+
+Yet theory is not practice. Mamba2 outperforms E88 on language modeling despite being provably less expressive. The resolution: expressivity determines what _can_ be computed with unlimited resources; benchmarks measure what is learned in fixed time on specific tasks. The theory tells us about limits; training dynamics tell us what happens within those limits.
+
+The practical implications follow from the theory. For tasks whose composition depth is bounded by $D = 32$, linear-temporal models suffice---and train faster. For algorithmic reasoning, state tracking, and any task requiring temporal decisions, the linear-temporal limitation bites. Depth adds nonlinearity in the wrong dimension; only temporal nonlinearity provides depth through time.
+
+Chain-of-thought, the emergent tape, and output feedback all work because they provide working memory---not magical reasoning ability. When a model writes output and reads it back, it creates external storage that overcomes fixed state limitations. This is computation, not cognition.
+
+The reader now understands the hierarchy of sequence models. Linear-temporal architectures are fast and sufficient for most natural language. Nonlinear-temporal architectures are slower but strictly more powerful. The choice depends on the task. For pattern aggregation, linear suffices. For sequential reasoning, nonlinearity is mathematically required.
+
+The question of where nonlinearity should live has an answer: it depends on what you need to compute. And now we know, with mathematical certainty, what each choice can and cannot do.
+
 #pagebreak()
 
 = References
 
 The formal proofs are available in the ElmanProofs repository (`github.com/ekg/elman-proofs`):
 
-- `LinearCapacity.lean` — Linear RNN state capacity
-- `LinearLimitations.lean` — Core impossibility results
-- `MultiLayerLimitations.lean` — Depth vs temporal nonlinearity
-- `TanhSaturation.lean` — Saturation dynamics
-- `BinaryFactRetention.lean` — E88 vs linear memory
-- `ExactCounting.lean` — Threshold and counting
-- `RunningParity.lean` — Parity impossibility
-- `E23_DualMemory.lean` — E23 formalization
-- `E88_MultiHead.lean` — E88 formalization
+- `LinearCapacity.lean` — Linear RNN state as weighted sum of inputs
+- `LinearLimitations.lean` — Core impossibility results: threshold, XOR, parity
+- `MultiLayerLimitations.lean` — Multi-layer extension of impossibility results
+- `TanhSaturation.lean` — Saturation dynamics, bifurcation, latching
+- `ExactCounting.lean` — Threshold and counting impossibility/possibility
+- `RunningParity.lean` — Parity impossibility and E88 construction
+- `E23_DualMemory.lean` — E23 tape-based memory formalization
+- `MatrixStateRNN.lean` — E88 matrix state formalization
+- `MultiHeadTemporalIndependence.lean` — Head independence theorem
+- `E23vsE88Comparison.lean` — Direct comparison of E23 and E88 capabilities
+- `AttentionPersistence.lean` — Bifurcation and fixed point analysis
 - `OutputFeedback.lean` — Emergent tape memory and CoT equivalence
-- `TC0Bounds.lean` — TC0 circuit complexity bounds
-- `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC0 < E88
+- `TC0Bounds.lean` — TC⁰ circuit complexity bounds for Transformers
+- `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC⁰ < E88
 - `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
 - `MultiPass.lean` — Multi-pass RNN computational class
 - `RecurrenceLinearity.lean` — Architecture classification by recurrence type
@@ -138,6 +165,6 @@ The formal proofs are available in the ElmanProofs repository (`github.com/ekg/e
   #text(size: 9pt, style: "italic")[
     Document generated from ElmanProofs Lean 4 formalizations. \
     All core expressivity theorems mechanically verified. \
-    See Section 12 for verification details.
+    To verify: clone the repository and run `lake build`.
   ]
 ]

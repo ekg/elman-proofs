@@ -1,0 +1,23 @@
+I've successfully completed the task. Here's a summary of what was done:
+
+## Summary
+
+**Fixed the `tc0_cannot_parity` sorry in `ElmanProofs/Architectures/E22_PracticalUTM.lean`**
+
+The theorem proves that no linear threshold function can compute parity for n=2 (the classic XOR non-separability result).
+
+### Proof Strategy
+
+1. **Define the four XOR inputs**: `(false, false)`, `(false, true)`, `(true, false)`, `(true, true)`
+
+2. **Key algebraic insight**: For any linear function L(x,y) = w₀·x + w₁·y + b:
+   - L(0,0) + L(1,1) = L(0,1) + L(1,0) = w₀ + w₁ + 2b
+
+3. **Case analysis**:
+   - If L(0,0) > 0: threshold outputs true, but parity(0,0) = false → wrong
+   - If L(1,1) > 0: threshold outputs true, but parity(1,1) = false → wrong  
+   - If both L(0,0) ≤ 0 and L(1,1) ≤ 0: then L(0,1) + L(1,0) ≤ 0, so at least one of L(0,1), L(1,0) ≤ 0
+     - This means at least one of threshold(0,1), threshold(1,0) = false
+     - But parity(0,1) = parity(1,0) = true → wrong
+
+This covers all cases, showing that for any linear threshold function, at least one of the four XOR inputs will give the wrong answer.

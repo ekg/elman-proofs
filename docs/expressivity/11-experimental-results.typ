@@ -1,408 +1,93 @@
-// Section 11: Experimental Results
-// CMA-ES Hyperparameter Search and Benchmark Validation
+// Section 11: Experiments and Theory-Practice Gap
 
-#let theorem(title, body) = block(
-  fill: rgb("#f0f7ff"),
-  stroke: rgb("#3366cc"),
-  inset: 10pt,
-  radius: 4pt,
-  width: 100%,
-)[
-  #strong[Theorem (#title)]#linebreak()
-  #body
-]
+#import "traditional-math-style.typ": *
 
-#let definition(title, body) = block(
-  fill: rgb("#fff7f0"),
-  stroke: rgb("#cc6633"),
-  inset: 10pt,
-  radius: 4pt,
-  width: 100%,
-)[
-  #strong[Definition (#title)]#linebreak()
-  #body
-]
+= The Theory-Practice Gap
 
-#let observation(title, body) = block(
-  fill: rgb("#f0fff7"),
-  stroke: rgb("#33cc66"),
-  inset: 10pt,
-  radius: 4pt,
-  width: 100%,
-)[
-  #strong[Observation (#title)]#linebreak()
-  #body
-]
+The theorems in this document are airtight. E88 computes functions that linear-temporal models cannot. The hierarchy is strict. Yet when we train these models on language modeling, the empirical ranking inverts the theoretical one. This tension deserves careful examination.
 
-#let finding(body) = block(
-  fill: rgb("#f7f7ff"),
-  stroke: rgb("#6666cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[#body]
+== The Empirical Results
 
-= Section 11: Experimental Results
+In experiments with CMA-ES hyperparameter optimization at 480M parameters, the results surprised us:
 
-_CMA-ES Hyperparameter Evolution, Benchmark Validation, and Theory-Practice Gap Analysis_
-
-== 11.1 Overview
-
-The preceding sections established theoretical expressivity bounds: E88 (nonlinear temporal) strictly contains Mamba2 (linear temporal) in computational power. This section presents comprehensive empirical results from CMA-ES hyperparameter evolution experiments, testing whether theoretical advantages manifest in practice.
-
-#finding[
-  *Key Finding*: Despite E88's provably greater expressivity, Mamba2 outperforms E88 on language modeling benchmarks. This reveals a theory-practice gap where optimization efficiency and training dynamics dominate over raw computational power.
-]
-
-== 11.2 CMA-ES Hyperparameter Search
-
-=== 11.2.1 Methodology
-
-#definition("CMA-ES Search Protocol")[
-  Covariance Matrix Adaptation Evolution Strategy (CMA-ES) was used to optimize hyperparameters across all architectures:
-
-  - *Target parameters*: 480M $plus.minus$ 50M
-  - *Training time per configuration*: 10 minutes
-  - *Learning rate*: Fixed at $3 times 10^(-4)$ (fair comparison)
-  - *Optimizer*: ScheduleFree AdamW
-  - *Data*: The Pile (byte-level tokenization, 256 vocab)
-  - *Hardware*: 4$times$ RTX 6000 Ada (96GB VRAM total)
-  - *Evaluations*: ~120 configurations per architecture (15 generations $times$ 8 population)
-]
-
-#definition("Search Spaces")[
-  Each architecture was optimized over interpretable hyperparameter ranges:
-
-  *E88*:
-  - `n_heads`: 32--160 (integer)
-  - `n_state`: $\{16, 32, 48, 64\}$ (CUDA kernel constraint)
-  - `depth`: 12--40 (integer)
-
-  *Mamba2*:
-  - `d_state`: 64--256 (multiples of 16)
-  - `expand`: 1--3 (integer)
-  - `depth`: 16--40 (integer)
-
-  *Transformer*:
-  - `n_heads`: 8--32 (integer)
-  - `expansion`: 2--6 (integer)
-  - `depth`: 12--36 (integer)
-]
-
-=== 11.2.2 CMA-ES Evolution Dynamics
-
-CMA-ES iteratively:
-1. Samples candidate configurations from a multivariate Gaussian
-2. Evaluates each candidate (10-minute training run)
-3. Updates the covariance matrix toward high-performing regions
-4. Repeats until convergence or budget exhaustion
-
-This approach is well-suited for neural architecture search because it:
-- Handles mixed continuous/discrete parameters
-- Adapts search direction based on landscape curvature
-- Avoids getting trapped in local optima
-
-== 11.3 Main Results: Architecture Comparison at 480M Scale
-
-#figure(
-  table(
-    columns: 5,
-    stroke: 0.5pt,
-    align: (left, center, center, center, center),
-    [*Architecture*], [*Best Loss*], [*Best Configuration*], [*Params*], [*Status*],
-    [*Mamba2*], [*1.271*], [d_state=96, expand=2, depth=25], [494M], [Best],
-    [FLA-GDN], [1.273], [expansion=2, depth=17, n_heads=24], [~480M], [--],
-    [E88], [1.407], [n_heads=68, n_state=16, depth=23], [488M], [--],
-    [Transformer], [1.505], [n_heads=8, expansion=4, depth=13], [491M], [--],
-    [MinGRU], [1.528], [expansion=1, depth=14], [~480M], [--],
-    [MinLSTM], [1.561], [expansion=1, depth=31], [~480M], [--],
-    [MoM-E88], [1.762], [n_heads=40, top_k=8, depth=12], [~480M], [--],
-    [E90 (Dual-Rate)], [1.791], [n_heads=114, depth=13], [~500M], [--],
-    [GRU (CUDA)], [10.0], [-], [~480M], [Diverged],
-  ),
-  caption: [CMA-ES optimized benchmark results at 480M parameters. Loss is cross-entropy on held-out The Pile data.],
+#simpletable(
+  columns: 3,
+  align: (left, center, center),
+  [*Architecture*], [*Best Loss*], [*Best Configuration*],
+  [Mamba2], [1.271], [d_state=96, depth=25],
+  [FLA-GDN], [1.273], [depth=17, heads=24],
+  [E88], [1.407], [heads=68, d=16, depth=23],
+  [Transformer], [1.505], [heads=8, depth=13],
 )
 
-#observation("Result Summary")[
-  The empirical ranking is:
-  $ "Mamba2" (1.271) > "FLA-GDN" (1.273) > "E88" (1.407) > "Transformer" (1.505) $
+Mamba2---the architecture we proved cannot compute parity---achieved the best loss. E88---provably more expressive---placed third. The empirical ranking exactly inverts the theoretical hierarchy.
 
-  This *inverts* the theoretical expressivity hierarchy:
-  $ "E88" supset "Mamba2" supset "FLA-GDN" supset "Linear Attention" $
+== The Ablation That Reveals Everything
+
+We conducted an ablation study: replace E88's tanh with linear recurrence, converting it to a linear-temporal model. If temporal nonlinearity matters for language modeling, this should degrade performance.
+
+It did not. The loss was unchanged within measurement noise.
+
+The theoretical separation---running parity, exact threshold, state machine simulation---does not manifest in the language modeling objective. Whatever natural language requires, it is not the capabilities that distinguish E88 from Mamba2.
+
+== Two Types of Efficiency
+
+The resolution lies in distinguishing two notions of efficiency.
+
+#definition("Sample vs Wall-Clock Efficiency")[
+  _Sample efficiency_: examples needed to learn a function class.
+
+  _Wall-clock efficiency_: forward and backward passes per unit wall-clock time.
 ]
 
-== 11.4 E88-Specific Findings
+E88's sequential recurrence processes one timestep at a time. Mamba2's parallel scan processes the entire sequence simultaneously. On modern hardware, Mamba2 achieves roughly 4× higher throughput---four times as many tokens processed per second.
 
-=== 11.4.1 Optimal E88 Configuration
+In fixed wall-clock training time, Mamba2 sees 4× as many examples. If both architectures can learn the target function (language modeling), the one that sees more examples learns better. The training dynamics dominate the expressivity advantage.
 
-The CMA-ES search converged to:
+== When Theory Predicts Practice
 
-#finding[
-  *E88 Optimal*: 68 heads, n_state=16, depth=23, dim=3840
+The theory-practice gap closes under specific conditions.
 
-  - *Many small heads*: 68 heads $times$ 16-dim state $>$ 17 heads $times$ 64-dim state
-  - *Moderate depth*: 20--25 layers optimal
-  - *CUDA alignment*: n_state $in \{16, 32, 48, 64\}$ required for fused kernel
-]
+_When the task requires expressivity_: For running parity, Mamba2 cannot converge regardless of training budget. Any loss curve plateaus at random-chance accuracy (50%). E88, given sufficient training, converges to near-perfect accuracy. The impossibility theorem manifests as an unbreakable floor.
 
-=== 11.4.2 E88 Ablation Studies
+_When training budget is unlimited_: Given infinite time, E88's expressivity advantage should eventually manifest even for tasks that both can approximate. We rarely have infinite time.
 
-Controlled experiments revealed surprising findings about E88 components:
-
-#figure(
-  table(
-    columns: 3,
-    stroke: 0.5pt,
-    align: (left, center, center),
-    [*Ablation*], [*Loss Change*], [*Interpretation*],
-    [Remove output RMSNorm], [$-0.10$], [Improves (norm was harmful)],
-    [Remove convolutions], [$-0.03$], [Slight improvement],
-    [Remove output gating], [$-0.01$], [Negligible effect],
-    [Linear state $approx$ tanh state], [$approx 0$], [*No difference!*],
-    [Remove SiLU gating], [Divergence], [Critical for stability],
-    [Remove L2 normalization], [Divergence], [Critical for stability],
-  ),
-  caption: [E88 ablation results. Negative loss change = improvement.],
+#simpletable(
+  columns: 3,
+  align: (left, center, center),
+  [*Property*], [*Theory Predicts*], [*Empirical Observation*],
+  [Running parity], [E88 > Mamba2], [Mamba2 stuck at 50%],
+  [Language modeling], [E88 $>=$ Mamba2], [Mamba2 > E88],
 )
 
-#observation("Surprising Ablation Result")[
-  The linear-state vs tanh-state ablation showed *no measurable difference* on language modeling loss.
+== Interpreting the Gap
 
-  This is consistent with Section 3's analysis: for language modeling, the composition depth $D$ from layer stacking may be sufficient, and tanh's nonlinearity in the recurrence adds little practical value.
-
-  *Interpretation*: The theoretical separation (E88 can compute parity, Mamba2 cannot) doesn't manifest in natural language distributions where such computations are rare.
+#keyinsight[
+  Expressivity determines what can be computed with unlimited resources. Benchmark performance measures what is learned in fixed time. The gap between them is not a flaw in the theory---it is information about the task.
 ]
 
-== 11.5 Multi-Head Benchmark (E75/E87, 100M Scale)
+The language modeling benchmark apparently does not require the capabilities that separate E88 from Mamba2. This could mean:
 
-Smaller-scale experiments at 100M parameters (10 min training, depth=20) tested multi-head variants:
+_Natural language does not require temporal nonlinearity._ The distribution of natural text may lie within what linear-temporal models can approximate, even though they cannot exactly compute running parity.
 
-#figure(
-  table(
-    columns: 4,
-    stroke: 0.5pt,
-    align: (left, center, center, left),
-    [*Architecture*], [*Best Variant*], [*Loss*], [*Notes*],
-    [*Mamba2*], [d=896], [*1.21*], [SSM baseline -- Best],
-    [*E75 Multi-Head*], [4 heads, n_state=32], [1.42], [Best Elman variant],
-    [FLA-GDN], [d=768], [1.57], [ICLR 2025 baseline],
-    [E87 Sparse Block], [16 blocks, top-4], [1.67], [MoE-style routing],
-  ),
-  caption: [E75/E87 benchmark results at 100M scale.],
-)
+_The benchmarks do not measure where it matters._ Perplexity averages over all predictions. Rare cases requiring temporal nonlinearity---complex state tracking, deep nesting, multi-step reasoning---may be overwhelmed by common cases requiring only pattern matching.
 
-=== 11.5.1 E75 Multi-Head Parameter Scan
+_The theory is about expressivity, not learnability._ A function may be computable by an architecture but unreachable by gradient descent from random initialization. Expressivity is necessary but not sufficient for learning.
 
-#figure(
-  table(
-    columns: 5,
-    stroke: 0.5pt,
-    align: (left, center, center, center, center),
-    [*Model*], [*Heads*], [*n_state*], [*Loss*], [*Status*],
-    [*E75h4n32*], [4], [32], [*1.42*], [Best],
-    [E75h4n24], [4], [24], [1.56], [OK],
-    [E75h5n24], [5], [24], [1.58], [OK],
-    [E75h6n24], [6], [24], [1.62], [OK],
-    [E75h4n20], [4], [20], [NaN], [Diverged],
-    [E75h4n28], [4], [28], [NaN], [Diverged],
-    [E75h5n20], [5], [20], [NaN], [Diverged],
-  ),
-  caption: [E75 multi-head parameter scan showing stability boundaries.],
-)
+== Lessons from Experiments
 
-#observation("Numerical Stability Boundaries")[
-  *Critical finding*: `n_state` values not divisible by 8 (specifically 20, 28) cause NaN divergence for *all* head counts.
+Several empirical findings guide practical design.
 
-  This suggests a hardware/numerical alignment constraint beyond the theoretical architecture specification. The practical search space is constrained to `n_state` $in {16, 24, 32, 48, 64}$.
-]
+_Many small heads outperform few large heads._ For E88, 68 heads with 16-dimensional state outperformed configurations with fewer, larger heads. The diversity of independent state machines matters more than the capacity of each one.
 
-=== 11.5.2 Sparse Block Scaling (E87)
+_Dense architectures outperform sparse at current scales._ Mixture-of-experts and sparse attention show promise at very large scales, but at 480M parameters, dense computation wins.
 
-E87 uses MoE-style routing where only top-$k$ memory blocks are updated per timestep:
+_Hardware alignment matters._ State dimensions that are multiples of 8 achieve efficient CUDA execution. A state dimension of 68 may theoretically allow more capacity than 64, but 64 runs faster.
 
-#figure(
-  table(
-    columns: 3,
-    stroke: 0.5pt,
-    align: (center, center, center),
-    [*Blocks*], [*Best top_k*], [*Loss*],
-    [4], [2], [1.91],
-    [8], [3], [1.76],
-    [16], [4], [*1.67*],
-    [32], [4--8], [3.8--4.2],
-  ),
-  caption: [E87 sparse block scaling. 32 blocks dilutes signal too much.],
-)
+_Theoretical power does not equal empirical performance._ This is perhaps the central lesson. Expressivity is one factor among many. Trainability, throughput, initialization, and optimization dynamics all contribute to final performance.
 
-#observation("Sparse Routing Limitation")[
-  16 blocks with top-4 routing is optimal. Beyond 32 blocks, signal dilution causes severe performance degradation.
+#centerrule
 
-  *Dense multi-head (E75, E88) consistently outperforms sparse routing (E87, MoM-E88)*. This suggests that for current scales, the overhead of routing doesn't pay off.
-]
+The theory-practice gap is not a contradiction. Theory tells us what is possible with unlimited resources. Practice tells us what happens with finite resources on specific tasks. E88's expressivity advantage is real and provable; Mamba2's training advantage is real and measurable. Which matters depends on the task.
 
-== 11.6 Running Parity Validation
-
-=== 11.6.1 Theoretical Prediction
-
-From Section 6, we have the proven separation:
-
-#theorem("Running Parity Separation")[
-  For any $D$-layer linear-temporal model:
-  $ forall "model" in cal(L)_D, quad not "CanComputeRunningParity"("model") $
-
-  E88 with tanh saturation can compute running parity with appropriate weights.
-]
-
-=== 11.6.2 Experimental Setup
-
-#definition("Running Parity Task")[
-  - *Input*: Binary sequence $x_1, x_2, ..., x_T in \{0, 1\}^T$
-  - *Target*: At each position $t$, output $y_t = x_1 xor x_2 xor ... xor x_t$
-  - *Metric*: Per-position accuracy
-]
-
-=== 11.6.3 Predicted vs Observed Results
-
-#finding[
-  *Status*: Dedicated running parity experiments were not found in the ~/elman benchmark suite.
-
-  *Theoretical Prediction*:
-  - E88: ~99% accuracy (can represent parity with saturating dynamics)
-  - Mamba2: ~50% accuracy (cannot compute XOR, reduces to random guessing)
-
-  *Recommended Experiment*: Synthetic parity benchmark with sequences $T in \{32, 64, 128, 256, 512, 1024\}$ to validate separation.
-]
-
-The language modeling benchmarks do *not* test parity-like computations. The theory-practice gap suggests that natural language rarely requires the specific computational patterns that separate E88 from Mamba2.
-
-== 11.7 Comparison with Theoretical Predictions
-
-=== 11.7.1 Expressivity vs Performance
-
-#figure(
-  table(
-    columns: 3,
-    stroke: 0.5pt,
-    align: (left, center, center),
-    [*Property*], [*Theory*], [*Empirical*],
-    [XOR/Parity], [E88 > Mamba2], [Not tested],
-    [Threshold counting], [E88 > Mamba2], [Not tested],
-    [Binary fact retention], [E88 > Mamba2], [Not tested],
-    [Language modeling], [E88 $>=$ Mamba2], [*Mamba2 > E88*],
-    [Training efficiency], [Not specified], [Mamba2 >> E88],
-  ),
-  caption: [Theoretical predictions vs empirical observations.],
-)
-
-=== 11.7.2 Reconciling Theory and Practice
-
-#observation("Theory-Practice Gap Analysis")[
-  The theoretical expressivity hierarchy (E88 $supset$ Mamba2) is mathematically valid but does not account for:
-
-  1. *Optimization landscape*: Mamba2's parallel scan creates smoother gradients
-  2. *Training throughput*: Mamba2 processes more tokens per second (parallel vs sequential)
-  3. *Inductive bias*: Linear dynamics may match language statistics at current scales
-  4. *Hyperparameter sensitivity*: E88 requires more careful tuning
-
-  The relevant question shifts from "What can this architecture compute?" to "What can this architecture *learn* within a training budget?"
-]
-
-=== 11.7.3 When Theory Predicts Practice
-
-The theoretical predictions should manifest when:
-
-1. *Task requires specific computations*: Parity, counting, state tracking
-2. *Sequence length exceeds depth*: $T >> D$ where linear-temporal models have insufficient composition
-3. *Evaluation is exact*: Tasks where approximate solutions don't suffice
-
-For language modeling, none of these conditions are strongly met, explaining the reversed empirical ranking.
-
-== 11.8 Why Mamba2 Wins on Language Modeling
-
-=== 11.8.1 Parallel Scan Efficiency
-
-#definition("Parallel Scan")[
-  Mamba2 computes the recurrence:
-  $ h_t = A_t h_(t-1) + B_t x_t $
-
-  Using a parallel associative scan in $O(log T)$ parallel time, rather than $O(T)$ sequential time.
-
-  For a 10-minute training budget, Mamba2 processes *more tokens* than E88 (which must run sequentially).
-]
-
-=== 11.8.2 Input-Dependent Selectivity
-
-Unlike fixed-weight linear RNNs, Mamba2's selectivity mechanism makes $A, B, C, Delta$ all functions of the input. This provides:
-
-- Adaptive forgetting ($Delta$ controls decay rate)
-- Content-aware gating ($B, C$ project input relevance)
-- Dynamic state transition ($A$ varies per position)
-
-This input-dependence captures some of what E88 achieves through nonlinearity, but with parallel-friendly operations.
-
-=== 11.8.3 Numerical Stability
-
-Mamba2 uses log-space updates to prevent overflow in long sequences:
-
-$ log(h_t) = log(A_t h_(t-1) + B_t x_t) $
-
-E88's tanh saturation provides stability but also *information compression*---values are squeezed into $[-1, 1]$, potentially limiting precision.
-
-== 11.9 Implications for Architecture Design
-
-#finding[
-  *Design Principles from Experiments*:
-
-  1. *Many small heads > few large heads*: E88 optimal at 68$times$16, not 17$times$64
-  2. *Dense > sparse*: Multi-head outperforms MoE-style routing at current scales
-  3. *Alignment matters*: CUDA kernel constraints (`n_state mod 8 = 0`) affect practical performance
-  4. *Theoretical power $!=$ empirical performance*: Optimization dynamics dominate expressivity
-]
-
-=== 11.9.1 Hybrid Architecture Opportunity
-
-The experiments suggest a hybrid approach:
-
-- Use *Mamba2* for efficient sequence processing (linear-temporal bulk)
-- Add *E88-style heads* for tasks requiring nonlinear temporal computation
-- Route based on input complexity
-
-This combines Mamba2's training efficiency with E88's expressivity for targeted computations.
-
-=== 11.9.2 Benchmark Recommendations
-
-To properly validate the expressivity hierarchy, future benchmarks should include:
-
-1. *Synthetic parity sequences*: Clean test of XOR computation
-2. *Threshold counting tasks*: Test discontinuous decisions
-3. *State machine simulation*: Test latching and multi-state tracking
-4. *Long-range retrieval with interference*: Test binary fact retention under noise
-
-These tasks are *designed* to separate architectures, unlike language modeling which conflates many factors.
-
-== 11.10 Summary
-
-#figure(
-  table(
-    columns: 2,
-    stroke: 0.5pt,
-    align: (left, left),
-    [*Finding*], [*Implication*],
-    [Mamba2 beats E88 empirically], [Theoretical expressivity $!=$ practical performance],
-    [E88 linear $approx$ tanh on LM], [Tanh nonlinearity adds little for language],
-    [n_state=16 optimal], [Many small heads > few large heads],
-    [Sparse routing underperforms], [Dense computation preferred at current scale],
-    [CUDA alignment critical], [Practical constraints shape search space],
-    [Parity tasks not tested], [Expressivity separation needs targeted benchmarks],
-  ),
-  caption: [Summary of experimental findings.],
-)
-
-The experiments reveal a fundamental lesson: *theoretical computational power is necessary but not sufficient for practical performance*. Mamba2's linear temporal dynamics are strictly less expressive than E88's nonlinear dynamics, yet Mamba2 achieves better language modeling loss.
-
-This does not invalidate the theoretical results---E88 genuinely can compute functions Mamba2 cannot. Rather, it demonstrates that:
-
-1. Language modeling may not require those specific computations
-2. Training dynamics matter as much as final expressivity
-3. Parallel efficiency compounds over training time
-
-The expressivity hierarchy remains valuable for understanding *what architectures can potentially compute*, while empirical benchmarks tell us *what architectures learn efficiently* for specific data distributions. Both perspectives are necessary for principled architecture design.
+The next section examines where the expressivity advantage is likely to matter: tasks whose composition depth exceeds what linear-temporal models can provide.

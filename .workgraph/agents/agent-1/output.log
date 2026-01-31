@@ -1,0 +1,27 @@
+## Task Complete
+
+I've completed the analysis of multi-layer SSM expressivity bounds. The deliverable document is at `docs/Q1_MULTILAYER_SSM_EXPRESSIVITY.md`.
+
+### Key Findings
+
+**Main Result:** Depth does NOT compensate for linear temporal dynamics.
+
+**The Core Argument:**
+
+1. **Each layer with linear temporal dynamics** computes a linear function of its input sequence, regardless of what those inputs are (even if they're complex nonlinear features from lower layers)
+
+2. **The top layer** must output discontinuous functions (like threshold) if they're required, but linear combinations of inputs are always continuous
+
+3. **Composition depth comparison:**
+   - D-layer Mamba2: total depth = D (one composition per layer)
+   - D-layer E88: total depth = D×T (T temporal compositions per layer)
+
+4. **Separation result:** The running threshold function `τ_t = 1 if Σ_{s≤t} x_s > θ` requires outputting a discontinuous function at each timestep. No linear-temporal layer can do this, regardless of input sophistication.
+
+### Why the Counter-Argument Fails
+
+The counter-argument said: "Lower layers provide nonlinearly-mixed features to upper layers."
+
+**This doesn't help because:** The final layer still takes a linear combination of its inputs. Whether those inputs are `x_t` or `complex_feature(x_0,...,x_t)`, the linear combination cannot produce a discontinuous output.
+
+**E88's advantage:** With `S := tanh(αS + δk^T)`, each timestep adds one tanh composition. After T steps, there are T nested nonlinearities—each capable of implementing a decision boundary.

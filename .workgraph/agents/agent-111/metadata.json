@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-111",
+  "executor": "claude",
+  "pid": 1121822,
+  "started_at": "2026-01-31T19:35:57.142212237+00:00",
+  "task_id": "formalize-multi-pass",
+  "timeout": null
+}

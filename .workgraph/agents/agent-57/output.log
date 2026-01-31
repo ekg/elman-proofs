@@ -1,0 +1,27 @@
+I have completed the task. Here's a summary:
+
+## Summary
+
+**Fixed 2 sorries in `ElmanProofs/Architectures/GatedDeltaRule.lean`**
+
+The `gradient_bounded_through_time` theorem (lines 183-194) had two `sorry` placeholders that I replaced with a complete proof.
+
+### The theorem
+Proves that when folding a list of gate values (each in (0,1)) by multiplication starting from 1, the result is:
+- Strictly positive (`0 <`)  
+- At most 1 (`≤ 1`)
+
+### The proof technique
+Used a **generalized induction** approach:
+1. Strengthened the induction hypothesis to track bounds on the accumulator
+2. For any `acc` with `0 < acc ≤ 1`, prove bounds on `foldl (...) acc gates`
+3. Base case: accumulator bounds are preserved  
+4. Inductive case: `acc * g.val` stays in bounds because:
+   - Product of positives is positive
+   - `acc * g.val ≤ 1 * g.val = g.val < 1`
+
+### Verification
+- No more `sorry` in the file (verified with `grep`)
+- The proof compiles cleanly (tested in isolation)
+
+Note: There are other pre-existing compilation errors in this file (lines 121, 152, 225, 226, 260, 261) related to different proofs, but those were not the `sorry` placeholders I was asked to fix.

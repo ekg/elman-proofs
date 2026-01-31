@@ -1,0 +1,8 @@
+**Section 6: Separation Results** is complete. All 6 key predictions are formalized with complete proofs (no sorries) across:
+
+- **BinaryFactRetention.lean** - Binary retention, parity, tanh saturation fundamentals
+- **ExactCounting.lean** - Exact counting mod n, running threshold impossibility  
+- **MultiHeadTemporalIndependence.lean** - E88 head independence
+- **AttentionPersistence.lean** - Alert state latching and persistence
+
+The next available task is **section-7-practical-2 - Section 7: Practical Implications**. Would you like me to claim and work on that next?

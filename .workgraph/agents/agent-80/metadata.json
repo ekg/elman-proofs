@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-80",
+  "executor": "claude",
+  "pid": 709278,
+  "started_at": "2026-01-30T20:49:58.999913357+00:00",
+  "task_id": "formalize-tc0-vs",
+  "timeout": null
+}

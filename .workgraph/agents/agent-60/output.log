@@ -1,0 +1,22 @@
+I've successfully fixed the 2 sorries in E79_CoupledMemory.lean:
+
+## Summary
+
+### 1. `orthogonal_keys_independent` theorem (line 317-358)
+**Problem**: The theorem stated that writing with one key doesn't affect retrieval with an orthogonal key, but the proof was `sorry`.
+
+**Solution**: Proved by showing that when you add an outer product `outer(delta, k2)` to matrix S and retrieve with k1 (where k1 ⊥ k2), the outer product contribution is zero:
+- `(outer delta k2) *ᵥ k1` at index i equals `Σⱼ (delta_i * k2_j) * k1_j`
+- Factor out the constant: `delta_i * Σⱼ k2_j * k1_j`
+- The sum `Σⱼ k2_j * k1_j = inner(k1, k2) = 0` by the orthogonality hypothesis
+- Therefore the contribution is `delta_i * 0 = 0`
+
+### 2. `kLevelUpdate` function (line 401-415)
+**Problem**: The function was defined with `sorry` instead of actual implementation.
+
+**Solution**: Implemented the K-level hierarchy update:
+- Added `computeResiduals` function that computes residuals at each level using the formula: `residual_i = v - Σⱼ≤i (M_j @ k_j)`
+- Implemented `kLevelUpdate` to apply delta rule updates at each level: `M_i_new = α_i · M_i + outer(residual_i, k_i)`
+- Returns the updated hierarchy and all residuals
+
+The file now compiles with **0 sorries** and the full project builds successfully.

@@ -1,0 +1,45 @@
+I have completed the task. Here's a summary of what was created:
+
+## Summary: Attention Persistence Formalization
+
+Created `/home/erikg/elman-proofs/ElmanProofs/Expressivity/AttentionPersistence.lean` with the following key formalizations:
+
+### Main Results
+
+**1. Fixed Point Analysis (Part 2)**
+- `zero_is_fixed_point`: Zero is always a fixed point of tanh(αS)
+- `unique_fixed_point_for_small_alpha`: For α ≤ 1, zero is the only fixed point  
+- `nonzero_fixed_point_exists`: For α > 1, nonzero fixed points exist (IVT argument)
+
+**2. Fixed Point Stability (Part 3)**
+- `tanhRecur_deriv`: Derivative formula: d/dS[tanh(αS)] = α·(1 - tanh²(αS))
+- `fixed_point_stability`: At fixed points with |S| > 0.9, the derivative is < 1 (stability)
+
+**3. Alert State Basin (Part 4)**
+- `isAlert`: Definition of alert state (|S| > threshold θ)
+- `alertBasin`: Set of states that remain alert under iteration
+- `alert_basin_nonempty`: Alert basin is non-empty for appropriate α, θ
+- `alert_forward_invariant`: Alert states remain alert under tanh iteration
+
+**4. Perturbation Robustness (Part 5)**  
+- `latched_state_robust`: States near ±1 stay near ±1 under small perturbations
+- `alert_persists_under_perturbation`: Using Lipschitz property of tanh
+
+**5. Linear Systems Contrast (Part 6)**
+- `linear_fixed_point_is_zero`: Only 0 is a fixed point for α ≠ 1
+- `linear_state_decays`: For |α| < 1, states decay to 0
+- `linear_state_explodes`: For |α| > 1, states explode
+- `linear_cannot_latch`: Summary of why linear systems cannot latch
+
+**6. Main Theorems (Parts 7-9)**
+- `attention_persistence_main`: Combines all properties showing E88 can persist
+- `e88_head_stays_alert`: E88 heads stay alert under small inputs
+- `e88_vs_linear_attention_persistence`: Summary comparison theorem
+
+### Key Insight Formalized
+
+The file formalizes the mathematical foundation of **attention persistence**:
+- Tanh saturation creates stable fixed points near ±1
+- Once a head enters an "alert" state (|S| close to 1), it persists
+- Small input perturbations cannot knock the state out of the alert region
+- Linear systems cannot achieve this - they either decay or explode

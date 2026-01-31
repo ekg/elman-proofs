@@ -1,0 +1,9 @@
+I've successfully fixed the sorry in `MultiHeadTemporalIndependence.lean`. 
+
+The theorem `e88_head_simulates_fsm` required proving that an encoding/decoding scheme exists for finite state machine simulation. The original proof had a sorry because the decoder was hardcoded to return 0, making the roundtrip property `decode(encode(q)) = q` false for any `q ≠ 0`.
+
+The fix uses a simpler encoding where:
+- `encode q` creates a matrix with all entries equal to `q.val` (as a real number)
+- `decode S` reads the `(0,0)` entry and uses `Classical.choose` to find the corresponding `Fin n` element
+
+The proof shows that `Classical.choose` correctly recovers `q` because `q.val` cast to ℝ uniquely determines `q` via `Nat.cast_injective`.

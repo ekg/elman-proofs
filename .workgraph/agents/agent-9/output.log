@@ -1,0 +1,34 @@
+I've completed the task. Here's a summary of what was created:
+
+## Summary: ExactCounting.lean
+
+Created `/home/erikg/elman-proofs/ElmanProofs/Expressivity/ExactCounting.lean` with formalization of **exact counting vs magnitude thresholding** capabilities.
+
+### Key Theorems
+
+**Linear Systems Cannot Threshold Per-Timestep:**
+- `running_threshold_discontinuous`: Running threshold is discontinuous in inputs
+- `linear_rnn_continuous_per_t`: Linear RNN output at each t is continuous
+- `linear_cannot_running_threshold`: Main theorem - linear RNNs cannot compute running threshold
+
+**Exact Counting Requires Nonlinearity:**
+- `exact_count_detection_not_linear`: Detecting "exactly k ones" is not linear
+- `count_mod_2_not_linear`: Parity (count mod 2) not linearly computable
+- `count_mod_3_not_linear`: Count mod 3 not linearly computable
+
+**E88 Can Count Exactly (Mod Small n):**
+- `e88_count_mod_2`: E88 can compute parity via sign-flip dynamics
+- `e88_count_mod_3_existence`: E88 can count mod 3 with appropriate basins
+- `tanh_multiple_fixed_points`: Tanh saturation creates discrete attractors
+- `tanh_basin_of_attraction`: States converge to fixed points
+
+**Threshold Counting via Latching:**
+- `e88_threshold_count`: E88 can detect when count exceeds threshold
+- `latched_threshold_persists`: Once threshold is crossed, state latches
+
+**Summary Theorem:**
+- `exact_counting_separation`: Combines the three key results showing the fundamental separation between E88 (can count exactly) and linear-temporal systems (Mamba2, cannot threshold)
+
+### Key Insight
+
+The file formalizes that linear systems can only compute **continuous** functions of inputs, but counting problems require **discrete** decisions. E88's tanh creates the necessary discontinuities via saturation, enabling exact counting that Mamba2 fundamentally cannot achieve.

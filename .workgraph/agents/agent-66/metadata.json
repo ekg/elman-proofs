@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-66",
+  "executor": "claude",
+  "pid": 381369,
+  "started_at": "2026-01-30T16:54:47.315593417+00:00",
+  "task_id": "fix-2-sorries-5",
+  "timeout": null
+}

@@ -1,140 +1,68 @@
 // Section 3: The Linear-Temporal Limitation
-// What Mamba2, FLA, and GDN Cannot Do
+
+#import "traditional-math-style.typ": *
 
 = The Linear-Temporal Limitation
 
-This section establishes what models with linear temporal dynamics cannot compute. The results apply to Mamba2, Fast Linear Attention, Gated Delta Networks, and any architecture where within-layer state evolution is a linear function of time.
+Armed with the mathematical machinery, we can now catalogue what linear-temporal models cannot do. The results are not merely theoretical curiosities---they apply directly to Mamba2, Fast Linear Attention, Gated Delta Networks, and every architecture built on linear state-space foundations.
 
-== The Core Limitation
+== The Architectures in Question
 
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Main Theorem (MultiLayerLimitations.lean)*: A $D$-layer model with linear temporal dynamics at each layer cannot compute any function requiring more than $D$ levels of nonlinear composition---regardless of sequence length $T$.
-]
+To see why these limitations matter, we must first recognize how widespread linear temporal dynamics are. The modern sub-quadratic revolution rests on a shared insight: if the state evolution is linear in the hidden state, the entire sequence can be processed in parallel via associative scan.
 
-The intuition: each layer contributes at most one level of nonlinear composition (the inter-layer activation). Time steps within a layer do not add composition depth because the temporal aggregation is linear.
+Mamba2's core recurrence is $h_t = A h_(t-1) + B x_t$, which unfolds to $h_T = sum_t A^(T-t) B x_t$. The matrices $A$ and $B$ may depend on the input at each step, but the state remains a linear function of past states. This is what enables the parallel scan---and what constrains the computation.
 
-== Linear Temporal Dynamics: The Definition
+Fast Linear Attention computes the output as $"Output" = q dot.op (sum_i k_i times.o v_i)$, a linear combination of key-value outer products. Gated Delta Networks update state as $S' = S + (v - S k) k^top$, which is linear in $S$. Despite their different motivations---selective state spaces, linear attention, delta rule learning---they share the same fundamental constraint.
 
-A layer has *linear temporal dynamics* if its state at time $T$ is:
+== The Threshold Barrier
 
-$ h_T^L = sum_(t <= T) W(t, T) dot y_t^(L-1) $
+Running threshold is perhaps the simplest function that linear-temporal models cannot compute. The task: output 1 when the cumulative sum of inputs exceeds a threshold, output 0 otherwise.
 
-where $W(t, T)$ are weight matrices and $y^(L-1)$ is the output of the previous layer. The key property: $h_T^L$ is a _linear function_ of the input sequence $y^(L-1)$.
+#theorem("Running Threshold")[
+  No $D$-layer linear-temporal model computes running threshold. The output of such a model is a continuous function of its inputs; threshold is discontinuous.
+]#leanfile("ExactCounting.lean:344")
 
-Examples of linear temporal dynamics:
-- *SSM*: $h_t = A h_(t-1) + B x_t$, giving $h_T = sum A^(T-t) B x_t$
-- *Linear attention*: $"out" = sum (q dot k_i) v_i = q dot (sum k_i times.o v_i)$
-- *Gated delta*: Despite "gating," the delta rule is linear in query
+The proof is almost too simple. A linear combination of inputs is continuous. Threshold has a jump discontinuity. Continuous functions cannot equal discontinuous ones. Adding layers does not help---the composition of linear-temporal layers with nonlinear activations produces a continuous output, not a discontinuous one.
 
-== The Multi-Layer Case
+This impossibility extends to any function with a hard decision boundary. Binary classification, exact counting, flip detection---all require the output to jump between discrete values. Linear-temporal models can only approximate such jumps with smooth transitions.
 
-Consider a $D$-layer model. Let $phi$ be the inter-layer nonlinearity (e.g., SiLU, GeLU). The output of layer $L$ is:
+== The Parity Barrier
 
-$ y_t^L = phi(h_t^L) = phi(sum_(s <= t) W_s^L y_s^(L-1)) $
+Running parity presents a different obstacle. The task: at each position, output the XOR of all inputs so far. Unlike threshold, parity is not about discontinuity---it is about the algebraic structure of XOR.
 
-Even with nonlinear $phi$, the function computed has bounded complexity:
+#theorem("Running Parity")[
+  No linear-temporal model computes $y_t = x_1 xor dots xor x_t$. Parity violates the affine identity: $f(0,0) + f(1,1) = 0 eq.not 2 = f(0,1) + f(1,0)$.
+]#leanfile("RunningParity.lean:200")
 
-#block(
-  fill: rgb("#f0f7ff"),
-  stroke: rgb("#3366cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (Composition Depth Bound)*: The output $y_T^D$ of a $D$-layer linear-temporal model can be expressed as a composition of at most $D$ nonlinear functions applied to linear combinations of inputs.
-]
+The proof invokes the same algebraic argument we saw for XOR on two inputs. Affine functions satisfy $f(a) + f(b) = f(c) + f(d)$ when $a + b = c + d$. Parity does not. Therefore parity is not affine, and linear-temporal outputs are affine.
 
-This is in stark contrast to E88, where each timestep adds a nonlinear composition:
+Parity has a distinguished role in complexity theory. It is the canonical function separating AC⁰ from TC⁰---adding threshold gates to constant-depth circuits allows parity to be computed. For linear-temporal models, parity is impossible at _any_ depth.
 
-$ S_t = tanh(alpha S_(t-1) + delta k_t) = tanh(alpha tanh(alpha tanh(...) + ...) + ...) $
+== The Capability Boundary
 
-After $T$ steps, E88 has $T$ nested $tanh$ applications---composition depth $T$, not $1$.
+We can summarize the landscape in a single table. The separation is stark: functions that seem computationally trivial---parity, threshold, state machine simulation---are provably beyond the reach of linear-temporal architectures.
 
-== Concrete Impossibility Results
-
-=== Running Threshold
-
-*Task*: Output $1$ if $sum_(t <= T) x_t > tau$, else $0$.
-
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (ExactCounting.lean)*: No $D$-layer linear-temporal model can compute running threshold for any $D$.
-
-  *Proof sketch*: Running threshold has a discontinuity when the sum crosses $tau$. But $D$-layer models with linear temporal dynamics output continuous functions (composition of continuous functions). Continuous functions cannot have discontinuities.
-]
-
-=== Running Parity
-
-*Task*: Output the parity (XOR) of all inputs seen so far: $y_t = x_1 xor x_2 xor ... xor x_t$.
-
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (RunningParity.lean)*: No linear-temporal model can compute running parity.
-
-  *Proof*: Parity violates the affine constraint. For any affine function $f$:
-  $ f(0,0) + f(1,1) = f(0,1) + f(1,0) $
-
-  But parity gives: $0 + 0 eq.not 1 + 1$. Since linear-temporal outputs are affine in inputs, parity is impossible.
-]
-
-=== XOR Chain
-
-*Task*: Compute $y_t = x_1 xor x_2 xor ... xor x_t$ at each position.
-
-This requires $T-1$ nonlinear decisions (each XOR is nonlinear). With composition depth $D$, a linear-temporal model can make at most $D$ decisions. For $T > D$, it fails.
-
-== The Depth Compensation Fallacy
-
-A common belief: "Just add more layers." But our proofs show this doesn't work:
-
-#figure(
-  table(
-    columns: 4,
-    stroke: 0.5pt,
-    align: (left, center, center, center),
-    [*Task*], [*Required Depth*], [*D-layer Linear*], [*1-layer E88*],
-    [Running threshold], [1 (but discontinuous)], [Impossible], [Possible],
-    [Running parity], [$T$ (sequence length)], [Impossible], [Possible],
-    [FSM simulation], [$|Q|$ (state count)], [Limited], [Full],
-  ),
-  caption: [Depth cannot compensate for linear temporal dynamics on these tasks.],
+#simpletable(
+  columns: 4,
+  align: (left, center, center, center),
+  [*Task*], [*Why Impossible*], [*D-layer Linear*], [*1-layer E88*],
+  [Running threshold], [Discontinuous], [No], [Yes],
+  [Running parity], [Non-affine], [No], [Yes],
+  [FSM simulation], [State count], [Limited], [Full],
 )
 
-The key insight: *time does not create composition depth for linear systems*. The matrix $A^T$ is still just one linear operation, no matter how large $T$ is. But $tanh^T$ (E88's $T$ nested tanh applications) has true composition depth $T$.
+The rightmost column anticipates the next section. E88, with a single layer of nonlinear temporal dynamics, computes all three. The contrast is not empirical---it is mathematical. These are theorems, not benchmarks.
 
-== Mamba2, FLA, GDN: Where They Stand
+== When Linear Suffices
 
-All three architectures have linear temporal dynamics:
+The limitations we have catalogued do not doom linear-temporal models. For many practical tasks, linear suffices.
 
-- *Mamba2*: $h_t = A_t h_(t-1) + B_t x_t$ with input-dependent $A_t, B_t$. Still linear in $h$.
-- *FLA*: Linear attention is linear in query: $"out" = q dot M$ where $M = sum k_i times.o v_i$.
-- *GDN*: Delta rule $S' = S + (v - S k) k^T$ is linear in $S$.
+Natural language has a characteristic depth distribution. Most sentences require parsing depth 2--5; complex center-embedded clauses push to 7--10; the extreme tail reaches 20--25. A 32-layer model with $D = 32$ exceeds most natural language requirements. The linear-temporal scan processes the entire sequence in parallel, achieving throughput that sequential nonlinear recurrence cannot match.
 
-The input-dependent gating in Mamba2 doesn't help---it makes $A_t, B_t$ depend on $x_t$, but the recurrence remains linear in the state. Similarly, GDN's selective update is linear despite its "gated" name.
+The limitation matters when depth is constrained (embedded systems, latency-sensitive applications), when tasks inherently require temporal decisions (counting, parity, state tracking), or when algorithmic reasoning is needed (following explicit procedures, simulating automata). For these problems, no amount of linear-temporal depth suffices. The gap is fundamental.
 
-== When Linear Temporal Models Suffice
+#centerrule
 
-For language modeling with $D >= 32$ layers, the practical gap may be small:
+We have established the boundary. Linear-temporal models---Mamba2, FLA, GDN, and their relatives---are mathematically constrained. Threshold, parity, and state tracking lie beyond their reach, regardless of depth. The constraint is not a bug to be fixed; it is a consequence of the design choice to make time flow linearly.
 
-- Typical language complexity: ~25 levels of nesting
-- $D = 32$ provides sufficient composition depth
-- Linear temporal models are often faster (simpler operations)
-
-The limitation matters for:
-- Algorithmic reasoning (counting, parity, state tracking)
-- Tasks requiring temporal decisions
-- Small-$D$ deployments where depth is constrained
-
-The next section shows how E88's temporal nonlinearity overcomes these limitations.
+The question becomes: how does E88 escape? What is it about $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$ that crosses the boundary we have just drawn?

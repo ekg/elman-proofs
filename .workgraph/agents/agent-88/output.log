@@ -1,0 +1,24 @@
+I've completed task `write-section-08`. Here's a summary of what was created:
+
+## Section 08: TC0 Circuit Complexity Bounds
+
+Created `/home/erikg/elman-proofs/docs/expressivity/08-tc0-bounds.typ` covering:
+
+### Content
+1. **TC⁰ Definition** - Constant-depth threshold circuits with MAJORITY gates
+2. **Transformers are TC⁰-bounded** - Citing Merrill et al. 2022
+3. **Mamba2/SSMs cannot compute PARITY** - SSMs with nonnegative gates lack oscillatory dynamics
+4. **E88 with unbounded T exceeds TC⁰** - Depth grows as D×T, exceeding any constant
+5. **Corrected hierarchy**: Linear SSM ⊊ TC⁰ (Transformers) ⊊ E88 (unbounded T) ⊆ RE
+
+### Key Theorems Referenced
+- `TC0Bounds.lean`: `transformer_in_TC0`, `e88_exceeds_TC0_depth`
+- `TC0VsUnboundedRNN.lean`: `linear_ssm_cannot_parity`, `e88_depth_unbounded`, `main_hierarchy`
+- `LinearLimitations.lean`: `linear_cannot_xor`
+- `ExactCounting.lean`: `e88_count_mod_3_existence`
+
+### Main Result
+The section demonstrates that the naive "Transformer > SSM > RNN" hierarchy is **reversed** for expressivity:
+- E88 > Transformers > Mamba2 (for counting, parity, threshold detection)
+
+Updated `main.typ` to include Section 08 and added TC⁰-related Lean files to the references.

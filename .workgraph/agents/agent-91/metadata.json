@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-91",
+  "executor": "claude",
+  "pid": 899090,
+  "started_at": "2026-01-31T04:20:04.263359507+00:00",
+  "task_id": "complete-all-multi",
+  "timeout": null
+}

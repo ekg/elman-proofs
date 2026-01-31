@@ -1,0 +1,17 @@
+I've completed task 1-2-document. 
+
+## Summary
+
+I created comprehensive documentation at `docs/BROKEN_THEOREMS_REVEAL_E88_VS_LINEAR.md` that analyzes what the broken theorems (sorries) in the Lean proofs reveal about the mathematical separation between E88 (with temporal tanh nonlinearity) and linear RNNs like Mamba2.
+
+**Key findings documented:**
+
+1. **Fixed Point Existence (α > 1 required)**: The `alertBasin_nonempty` theorem fails for α ≤ 1 because E88 behaves like a contracting linear system in that regime - both converge to 0.
+
+2. **Forward Invariance Bounds (θ < S*(α) required)**: The latching/persistence theorems fail when the threshold θ exceeds the nonzero fixed point S*(α). This reveals a fundamental quantitative bound on E88's latching precision.
+
+3. **Input Triggering Asymmetry**: The `strong_input_triggers_alert` theorem failures reveal E88's self-gating behavior - saturated states resist perturbation, which is impossible for linear systems.
+
+4. **Continuity as Separation**: The fully-proven `linear_cannot_running_threshold` theorem shows the core separation: linear RNNs produce continuous outputs (polynomial in inputs), while E88's nested tanh creates discontinuous threshold decisions.
+
+The documentation provides parameter recommendations (α ∈ [1.5, 2.0], θ < 0.8) and explains why the E88sh16n32 configuration works well empirically.

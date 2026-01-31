@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-81",
+  "executor": "claude",
+  "pid": 804063,
+  "started_at": "2026-01-30T22:23:41.249328457+00:00",
+  "task_id": "complete-all-remaining",
+  "timeout": null
+}

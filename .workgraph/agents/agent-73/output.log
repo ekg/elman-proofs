@@ -1,0 +1,44 @@
+I have completed the task **section-4-e88-2 - Section 4: E88 Temporal Nonlinearity**.
+
+## Summary of Deliverables
+
+I created `/home/erikg/elman-proofs/docs/expressivity/04-e88.typ`, a comprehensive 9-page Typst document covering E88's temporal nonlinearity expressivity. The document includes:
+
+### Content Structure
+
+1. **E88 Architecture** - Definition of state update rule with tanh nonlinearity and multi-head structure
+
+2. **Tanh Saturation Properties** - Bounded output, derivative vanishing at saturation
+
+3. **Fixed Point Analysis** - Zero fixed point always exists; nonzero fixed points exist for α > 1; uniqueness proofs
+
+4. **Binary Fact Latching** - E88 can latch states while linear systems decay as α^t
+
+5. **Exact Counting and Parity** - Running threshold discontinuity; count mod 2/3 not linear; XOR impossibility
+
+6. **Running Parity** - Parity not affine; linear RNNs cannot compute it; multi-layer models also cannot
+
+7. **Head Independence** - Each E88 head is an independent state machine; no inter-head interaction during recurrence
+
+8. **Attention Persistence** - Alert state latching; basin of attraction; threshold persistence
+
+9. **Separation Summary** - Formal theorem showing E88 separates from linear-temporal models
+
+10. **Comparison Table** - E88 vs Mamba2/linear-temporal capabilities
+
+### Key Properties Formalized
+
+- Tanh saturation creates stable fixed points (α > 1)
+- Binary retention: E88 latches, Mamba2's linear state decays as α^t  
+- Exact counting: E88's nested tanh can count mod small n; Mamba2 cannot threshold
+- Running parity: parity(x₁,...,xₜ) extends XOR proof
+- Head independence: Each E88 head runs independent temporal dynamics
+- Attention persistence: E88 head can enter "alert" state and stay there
+
+All referenced Lean theorems compile successfully and are located in:
+- `ElmanProofs/Expressivity/TanhSaturation.lean`
+- `ElmanProofs/Expressivity/AttentionPersistence.lean`
+- `ElmanProofs/Expressivity/ExactCounting.lean`
+- `ElmanProofs/Expressivity/BinaryFactRetention.lean`
+- `ElmanProofs/Expressivity/RunningParity.lean`
+- `ElmanProofs/Expressivity/MultiHeadTemporalIndependence.lean`

@@ -1,0 +1,23 @@
+Task completed. Here's a summary of what was done:
+
+## Summary: Section 09 - Output Feedback and Emergent Tape
+
+**Deliverable created:** `docs/expressivity/09-output-feedback.typ`
+
+**Key content:**
+1. **Transformer CoT as random-access tape** - Attention provides O(1) access to any position in the "tape" of previously generated tokens
+2. **RNN feedback as sequential tape** - Feedback creates O(T) memory but with sequential access (O(T) to reach any position)
+3. **Scratchpad/working memory formalization** - Explicit model of write-and-read computation  
+4. **E88+feedback vs fixed E88 separation** - Palindrome recognition as the witness problem (O(1) vs O(T) memory)
+5. **CoT equivalence to explicit tape** - Chain-of-thought is computationally equivalent to bounded tape memory
+
+**Complete hierarchy:**
+```
+Fixed Mamba2 < Fixed E88 < E88+Feedback ≈ Transformer+CoT < E23
+```
+
+**Files modified:**
+- Created `docs/expressivity/09-output-feedback.typ` 
+- Updated `docs/expressivity/main.typ` to include Section 09 and add OutputFeedback.lean reference
+
+**References:** All theorems reference `ElmanProofs/Expressivity/OutputFeedback.lean` which contains the formal Lean proofs.

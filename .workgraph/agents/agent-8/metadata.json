@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-8",
+  "executor": "claude",
+  "pid": 3994544,
+  "started_at": "2026-01-29T17:05:12.788319327+00:00",
+  "task_id": "formalize-multi-head",
+  "timeout": null
+}

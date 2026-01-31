@@ -1,0 +1,33 @@
+I've completed the research task on E88 vs Transformer TC0 bounds. Here's a summary of the findings:
+
+## Key Results
+
+### 1. Transformers are TC0-Bounded (Merrill et al. 2022)
+- Saturated transformers can be simulated by constant-depth threshold circuits
+- TC0 is an upper bound on the formal languages they recognize
+- Hard attention transformers are even weaker (AC0-bounded)
+
+### 2. Linear SSMs (Mamba2) Cannot Compute PARITY
+- SSMs with nonnegative gates (exponential/sigmoid parameterizations) cannot recognize PARITY
+- This places them below TC0 in expressive power for oscillatory tasks
+- The limitation: nonnegative eigenvalues cannot oscillate to track count mod 2
+
+### 3. E88 Exceeds TC0 with Unbounded Time
+- E88's compositional depth: D layers × T timesteps = O(D×T)
+- Transformers/Mamba2: constant depth D (independent of T)
+- As T→∞, E88 can compute functions requiring unbounded circuit depth
+- TC0 is constant depth, so E88 (unbounded T) > TC0
+
+### Formal Hierarchy
+```
+Linear SSM (Mamba2) ⊊ TC0 (Transformers) ⊊ E88 (unbounded T) ⊆ P
+```
+
+### Deliverables Created
+1. **Research document**: `docs/E88_VS_TC0_RESEARCH.md` - comprehensive analysis with citations
+2. **Lean formalization**: `ElmanProofs/Expressivity/TC0Bounds.lean` - formal proofs of key results
+
+### Practical Implications
+- For typical language modeling (T < 100K), the TC0 vs E88 gap may not manifest
+- For algorithmic reasoning, code execution, and formal math, E88's temporal nonlinearity could be crucial
+- The separation is witnessed by iterated operations (counting mod n, parity chains) that require depth scaling with sequence length

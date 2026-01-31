@@ -1,0 +1,35 @@
+{
+  "agents": {
+    "agent-115": {
+      "id": "agent-115",
+      "pid": 1203841,
+      "task_id": "formalize-e88-multi",
+      "executor": "claude",
+      "started_at": "2026-01-31T21:32:56.406232357+00:00",
+      "last_heartbeat": "2026-01-31T21:32:56.406232357+00:00",
+      "status": "starting",
+      "output_file": ".workgraph/agents/agent-115/output.log"
+    },
+    "agent-116": {
+      "id": "agent-116",
+      "pid": 1207746,
+      "task_id": "formalize-tape-modification",
+      "executor": "claude",
+      "started_at": "2026-01-31T21:32:57.528105627+00:00",
+      "last_heartbeat": "2026-01-31T21:32:57.528105627+00:00",
+      "status": "starting",
+      "output_file": ".workgraph/agents/agent-116/output.log"
+    },
+    "agent-114": {
+      "id": "agent-114",
+      "pid": 1203517,
+      "task_id": "final-document-assembly-3",
+      "executor": "claude",
+      "started_at": "2026-01-31T21:32:55.149257707+00:00",
+      "last_heartbeat": "2026-01-31T21:32:55.149257707+00:00",
+      "status": "starting",
+      "output_file": ".workgraph/agents/agent-114/output.log"
+    }
+  },
+  "next_agent_id": 117
+}

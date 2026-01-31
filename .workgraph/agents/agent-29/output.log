@@ -1,0 +1,1 @@
+Task complete. The `NumericalBounds.lean` file contains fully-proven numerical bounds for exp and tanh with no `sorry` statements. All proofs build successfully.

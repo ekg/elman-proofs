@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-96",
+  "executor": "claude",
+  "pid": 967453,
+  "started_at": "2026-01-31T12:11:59.801696397+00:00",
+  "task_id": "final-document-review",
+  "timeout": null
+}

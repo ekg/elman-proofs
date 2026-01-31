@@ -1,0 +1,43 @@
+I've completed Section 7: Practical Implications. Here's a summary of what was created:
+
+## Summary: `ElmanProofs/Expressivity/PracticalImplications.lean`
+
+This file synthesizes the theoretical results from the expressivity analysis into practical guidance for architecture selection and task design.
+
+### Key Components:
+
+1. **Task Classification** (`TemporalComplexity` enum)
+   - Linear: Tasks computable by linear aggregation (language modeling, copy tasks)
+   - Threshold: Tasks requiring threshold decisions (algorithmic reasoning)
+   - Counting: Tasks requiring exact counting
+   - Parity: Tasks requiring parity tracking
+   - StateMachine: Tasks requiring FSM-like behavior (code execution, state tracking)
+
+2. **Architecture Suitability** (`canHandleComplexity` function)
+   - Proves linear-temporal architectures (Mamba2, SSMs) can only handle linear complexity
+   - Proves nonlinear-temporal architectures (E88) can handle all complexity types
+
+3. **Practical Regime Analysis** (`PracticalRegime`, `inCompensationRegime`)
+   - For D=32 layers, depth compensates for all practical sequences (T ≤ 2^32)
+   - Proves typical LLM regimes (D=32, T=100000) are in the compensation regime
+
+4. **Separation Requirements** 
+   - `running_threshold_requires_nonlinearity`: Links to MultiLayerLimitations
+   - `parity_requires_nonlinearity`: Proves inline using model constant output vs varying parity
+
+5. **Binary Fact Retention** (`latching_favors_nonlinear`)
+   - E88's tanh saturation enables states close to ±1 that persist
+   - Linear systems decay: α^t → 0 for |α| < 1 (fully proved)
+
+6. **Architecture Selection** (`recommendedArchitecture`)
+   - Language modeling: Either works (linear is faster)
+   - Algorithmic reasoning: Nonlinear recommended
+   - Code execution/state tracking: Nonlinear recommended
+   - Copy/associative recall: Linear suffices
+
+7. **Main Practical Results**
+   - `separation_is_real_but_task_dependent`: The theoretical gap exists but may not appear in typical language modeling
+   - `architecture_choice_task_dependent`: Choice depends on task type
+   - `latching_is_key_differentiator`: Tanh saturation is the key capability difference
+
+The file builds successfully with only minor style warnings.

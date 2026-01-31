@@ -1,0 +1,8 @@
+Task 3-1-prove is complete. The theorem `tanh_11_gt_08 : tanh 1.1 > 0.8` was already fully proved in `ElmanProofs/Expressivity/AttentionPersistence.lean:883-909` using the helper lemma `exp_2_2_gt_9` which proves `exp 2.2 > 9`.
+
+The proof strategy follows the pattern established in `NumericalBounds.lean`:
+1. Use the identity `tanh(x) = (exp(2x) - 1) / (exp(2x) + 1)`
+2. For `tanh(1.1) > 0.8`, need `exp(2.2) > (1+0.8)/(1-0.8) = 9`
+3. Prove `exp(2.2) > 9` by decomposing: `exp(2.2) = exp(2) * exp(0.2) > 7.389 * 1.22 > 9`
+4. The `exp(2)` bound comes from `(exp 1)² > 2.718² > 7.389`
+5. The `exp(0.2)` bound uses the quadratic Taylor bound `exp x ≥ 1 + x + x²/2`

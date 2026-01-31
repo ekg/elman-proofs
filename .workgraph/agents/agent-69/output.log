@@ -1,0 +1,7 @@
+I have successfully fixed all 3 sorries in `ElmanProofs/Dynamics/GradientFlow.lean`:
+
+1. **`linearRNN_closed_form`** (line 93-141): Proved the closed-form expression for linear RNN state after T steps using induction. The key insight is that h_T = W^T·h₀ + Σₖ W^(T-1-k)·xₖ, which required careful manipulation of matrix power sums and the `simp_rw [Matrix.mulVec_mulVec]` tactic.
+
+2. **`jacobian_linear_rnn`** (line 148-163): Proved that the Jacobian of the linear RNN step with respect to the hidden state is the weight matrix W. The key was showing that `linearStep W h' x = W.mulVec h' + x` is an affine function, so its Fréchet derivative is just the linear part W. Used `fderiv_add_const` and the fact that continuous linear maps have fderiv equal to themselves.
+
+3. **`powerlaw_condition_number`** (line 300-321): Proved that if singular values follow a power law σᵢ = i^(-α), then the condition number κ = σ₁/σᵣ = r^α. The proof involves showing σ₀ = 1 (since 1^(-α) = 1) and σᵣ₋₁ = r^(-α), then using `Real.rpow_neg` to show 1/r^(-α) = r^α.

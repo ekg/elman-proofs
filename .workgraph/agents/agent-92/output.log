@@ -1,0 +1,48 @@
+I've completed the task. Here's a summary of what was found:
+
+## CMA-ES Experimental Results Summary
+
+**Location**: Created comprehensive documentation at `docs/CMAES_EXPERIMENTAL_RESULTS.md`
+
+### Key Findings
+
+**Benchmark Results (480M parameters, 10min training):**
+
+| Architecture | Best Loss | Notes |
+|--------------|-----------|-------|
+| **Mamba2** | **1.271** | Linear SSM - BEST |
+| FLA-GDN | 1.273 | Near tied with Mamba2 |
+| **E88** | 1.407 | Nonlinear Elman |
+| Transformer | 1.505 | LLaMA-style |
+| MinGRU | 1.528 | Minimal gated RNN |
+| MinLSTM | 1.561 | Minimal LSTM |
+| MoM-E88 | 1.762 | Sparse routing variant |
+| E90 | 1.791 | Dual-rate memory |
+
+### Theory vs Practice Discrepancy
+
+The experiments reveal a **contradiction** with the theoretical expressivity hierarchy:
+
+- **Theory**: E88 ⊃ Mamba2 (tanh enables nonlinear computation; linear RNNs can't compute XOR)
+- **Practice**: Mamba2 (1.271) beats E88 (1.407) by ~10%
+
+**Possible explanations**:
+1. Mamba2's parallel scan enables more training tokens per minute
+2. Linear dynamics may have smoother optimization landscape
+3. Language modeling may not require E88's extra expressivity at current scales
+
+### Running Parity Experiments
+
+**Not found** - No dedicated parity task experiments exist in ~/elman. The XOR/parity proofs are theoretical (in Lean) but lack empirical validation.
+
+### Optimal Configurations
+
+- **E88**: n_heads=68, n_state=16, depth=23 (many small heads best)
+- **Mamba2**: d_state=96, expand=2, depth=25
+
+### Key Artifacts
+
+- CMA-ES results: `~/elman/benchmark_results/cmaes_*/results.json`
+- Search script: `~/elman/cmaes_search.py`
+- E88 ablations: `~/elman/E88_ABLATION_NOTES.md`
+- E75/E87 comparison: `~/elman-proofs/E75_E87_MULTIHEAD_BENCHMARK.md`

@@ -1,0 +1,11 @@
+I have successfully completed the task:
+
+**Summary:**
+- Fixed the sorry at line 682 in `ElmanProofs/Expressivity/ExactCounting.lean`
+- The theorem `count_mod_3_not_linear` now has a complete proof showing that counting mod 3 cannot be computed by a linear RNN
+- The proof constructs 4 input sequences (input000, input100, input010, input001, input111) and uses the linearity property `state_additive` to derive a contradiction:
+  - By linearity: f(input111) = f(input100) + f(input010) + f(input001) = 1 + 1 + 1 = 3
+  - But count mod 3: input111 has 3 ones, so 3 mod 3 = 0
+  - Contradiction: 0 = 3
+- The proof compiles successfully (remaining errors are unrelated to this theorem)
+- Marked task `final-fix-sorry` as done in workgraph

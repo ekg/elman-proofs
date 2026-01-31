@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-97",
+  "executor": "claude",
+  "pid": 973252,
+  "started_at": "2026-01-31T12:14:52.398176097+00:00",
+  "task_id": "execute-all-incorporation",
+  "timeout": null
+}

@@ -1,0 +1,14 @@
+**Section 3: Linear-Temporal Limitation - COMPLETE**
+
+All 6 key predictions have been formalized with complete proofs (no sorries) across the Expressivity module:
+
+| Prediction | File | Key Theorems |
+|------------|------|--------------|
+| **Tanh saturation/latching** | TanhSaturation.lean | `tanhRecurrence_unique_fixedpoint`, `e88_latched_state_persists` |
+| **Binary retention gap** | BinaryFactRetention.lean | `e88_retains_large_state`, `linearSSM_decays_without_input`, `parity_not_affine` |
+| **Exact counting** | ExactCounting.lean | `running_threshold_discontinuous`, `linear_cannot_running_threshold`, `count_mod_3_not_linear` |
+| **Running parity** | RunningParity.lean | `parity_T_not_affine`, `linear_cannot_running_parity`, `multilayer_parity_impossibility` |
+| **Head independence** | MultiHeadTemporalIndependence.lean | `e88_head_update_independent`, `e88_heads_do_not_interact` |
+| **Attention persistence** | AttentionPersistence.lean | `nonzero_fixed_point_exists`, `positive_fixed_point_unique`, `alert_state_is_absorbing` |
+
+**Fixed during this session:** BinaryFactRetention.lean had several proof errors (incorrect `hx.2.2` projections after simp, mismatched `Nat.lt_succ_iff` types, goal structure issues). All have been resolved and the file now builds successfully.

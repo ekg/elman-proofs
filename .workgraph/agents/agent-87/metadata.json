@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-87",
+  "executor": "claude",
+  "pid": 871527,
+  "started_at": "2026-01-31T03:19:19.831828057+00:00",
+  "task_id": "write-deep-introduction",
+  "timeout": null
+}

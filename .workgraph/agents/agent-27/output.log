@@ -1,0 +1,28 @@
+## Summary
+
+I completed the root cause analysis of the 21 remaining sorries in the ElmanProofs/Expressivity directory. Here are the key findings:
+
+### Root Causes Identified
+
+1. **Incorrect Theorem Statements (~10 sorries)** - The PRIMARY issue
+   - Several theorems are **mathematically false** as stated
+   - Missing `α > 1` hypothesis in `alert_basin_nonempty` 
+   - Missing `θ < S*(α)` constraint in forward invariance theorems
+   - Example: For α=1.01 and θ=0.9, the fixed point S*≈0.1 < θ, making the theorem false
+
+2. **Missing Numerical Bounds (~2 sorries)**
+   - Need `tanh(0.575) > 0.5` and similar
+   - Provable via exp definition: tanh(x) = (exp(2x)-1)/(exp(2x)+1)
+
+3. **Existence Proofs Needing Constructions (~9 sorries)**
+   - Continuity lemmas need Mathlib's matrix continuity API
+   - E88 counting proofs need explicit parameter constructions
+   - Fixed point proofs need IVT arguments
+
+### Updated Documentation
+
+I updated `docs/SORRY_INVENTORY.md` with:
+- Current sorry count (21, down from original 57)
+- Detailed line-by-line analysis
+- Root cause categorization
+- Recommended fix strategy prioritized by impact

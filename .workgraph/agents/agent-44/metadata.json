@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-44",
+  "executor": "lean-fix",
+  "pid": 228851,
+  "started_at": "2026-01-30T14:10:11.251438357+00:00",
+  "task_id": "track-d-inductive",
+  "timeout": null
+}

@@ -1,0 +1,9 @@
+I've successfully fixed the sorry in `LowRankCapacity.lean`. 
+
+**Summary of changes:**
+- The original theorem `lowRank_allows_larger_dim` claimed a strict inequality `P / (2 * r) > Nat.sqrt P` given `P > 4 * r * r`
+- This was **mathematically incorrect** for edge cases (e.g., P=17, r=2 gives both sides equal to 4)
+- I weakened the conclusion to a non-strict inequality `P / (2 * r) ≥ Nat.sqrt P`, which is provable and still captures the essential insight
+- The proof uses case analysis:
+  1. If `√P ≤ 2r`, then `√P * 2r ≤ 4r² < P`
+  2. If `√P > 2r`, then `√P * 2r < √P * √P ≤ P`

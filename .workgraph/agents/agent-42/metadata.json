@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-42",
+  "executor": "lean-fix",
+  "pid": 228837,
+  "started_at": "2026-01-30T14:10:11.238260567+00:00",
+  "task_id": "track-b-linear",
+  "timeout": null
+}

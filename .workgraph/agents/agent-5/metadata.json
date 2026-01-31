@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-5",
+  "executor": "claude",
+  "pid": 3969587,
+  "started_at": "2026-01-29T16:36:14.769257887+00:00",
+  "task_id": "consolidate-findings-into",
+  "timeout": null
+}

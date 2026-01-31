@@ -1,0 +1,19 @@
+I've completed the task. Here's a summary of what was done:
+
+**Section 10: Multi-Pass RNN Model** has been written and added to the expressivity document.
+
+The section covers all the required content:
+
+1. **k passes = O(k) soft random access**: Formalized how k-pass RNNs can access any position with cost O(k) passes using a 3-phase approach (mark, locate, retrieve)
+
+2. **Tape modification between passes**: Defined inter-pass tape operations including read, transform, and virtual insert/delete
+
+3. **E88 multi-pass computational class**: Introduced MULTIPASS(k, T) and E88-MULTIPASS(k) computational classes, positioned in the hierarchy between single-pass E88 and full feedback models
+
+4. **Comparison: Transformer O(T) parallel vs RNN k-pass O(kT) sequential**: Detailed table comparing access patterns, time complexity, and parallelism with task-specific efficiency analysis
+
+5. **Practical tradeoffs**: Hardware efficiency metrics showing when to prefer Transformers (many random accesses, high parallelism) vs k-Pass RNNs (few random accesses, memory-limited hardware)
+
+Files created/modified:
+- Created: `docs/expressivity/10-multi-pass-rnn.typ`
+- Modified: `docs/expressivity/main.typ` (added include for section 10 and reference)

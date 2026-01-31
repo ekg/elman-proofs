@@ -1,0 +1,13 @@
+I've successfully fixed all 3 sorries in E26_ParallelDualMemory.lean:
+
+1. **`e26_work_bounded`** - Proved that working memory remains bounded (|tanh(x)| < 1) by directly applying `Activation.tanh_bounded`
+
+2. **`e26_tape_bounded`** - Proved that tape remains bounded under sparse replacement write by showing:
+   - sparsemax produces attention weights in [0, 1]
+   - The sparse write is a convex combination: `(1-α)*old + α*new`
+   - Applied triangle inequality and the convexity bound
+
+3. **`attention_cost_small`** - Proved the arithmetic inequality 2ND ≤ D²/2 for N ≤ 64, D ≥ 256:
+   - First established 4N ≤ D (since 4×64 = 256 ≤ D)
+   - Converted to natural division using `Nat.le_div_iff_mul_le`
+   - Applied `linarith` to complete the arithmetic

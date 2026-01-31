@@ -1,0 +1,45 @@
+I have completed the task. Here's a summary of what was added to `ElmanProofs/Expressivity/MultiPass.lean`:
+
+## Summary of Additions
+
+### 1. **Tape Modification Formalizations** (formalize-tape-modification)
+
+- **`tapeInsert_length`**: Proves insertion increases tape length by 1
+- **`tapeDelete_length`**: Proves deletion decreases tape length by 1  
+- **`tapeInsert_structure`**: Shows the structural property of insertion
+- **`tapeInsert_headPos`**: Formalizes head position adjustment
+- **`applyModifications`**: Sequence of tape modifications
+- **`TMConfig`, `TMTransition`, `tmStep`**: Full Turing machine simulation framework
+- **`TapeGrowthClass`**: Classification of computational power by tape growth
+- **`tapeGrowthToChomskyLevel`**: Mapping to Chomsky hierarchy
+- **`unbounded_most_expressive`**: Unbounded tape gives RE computational class
+
+### 2. **E88 Multi-Pass Formalizations** (formalize-e88-multi)
+
+- **`e88StateComposition`**: T-fold nested tanh composition
+- **`e88TotalDepth`**: k × T total depth for k passes
+- **`e88_multipass_accumulates`**: More passes = more computation
+- **`e88MultiPassState`**: Recursive multi-pass state evolution
+- **`e88MultiPassState_well_defined`**: Well-definedness proof
+- **`e88_multipass_running_ops`**: E88 can implement running operations
+- **`E88MultiHeadMultiPass`**: Multi-head multi-pass structure
+- **`e88MultiHeadMultiPassCompute`**: Multi-head computation
+- **`e88_multihead_multipass_depth`**: Depth analysis for multi-head
+- **`e88_1pass_exceeds_D_linear`**: 1-pass E88 exceeds D-layer linear SSM
+
+### 3. **RNN k-Pass vs Transformer CoT Comparison** (compare-multi-pass)
+
+- **`ComputationalClass`**: TC⁰, NC¹, LogSpace, PTime, RE
+- **`transformer_in_TC0`**: Transformers are TC⁰-bounded
+- **`bounded_rnn_in_logspace`**: RNNs with bounded state are LogSpace
+- **`e88_exceeds_tc0`**: E88 can exceed TC⁰ for long sequences
+- **`TransformerWithCoT`**: Transformer with Chain-of-Thought configuration
+- **`transformerCoTComputation`**: CoT effective computation
+- **`e88KPassComputation`**: E88 k-pass computation
+- **`cot_increases_width_not_depth`**: CoT adds width not depth
+- **`e88_more_sequential_than_transformer`**: E88 has more sequential depth
+- **`rnn_simulates_cot`**: RNN k-pass simulates CoT
+- **`cot_cannot_simulate_rnn_state`**: State persistence difference
+- **`comparison_summary`**: Full comparison table
+
+The file grew from ~509 lines to 840 lines with comprehensive formalizations. All proofs compile without errors or sorries.

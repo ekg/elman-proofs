@@ -1,0 +1,26 @@
+Task completed. I've created a traditional math style file for Typst at `docs/expressivity/traditional-math-style.typ`.
+
+**Summary of the style file:**
+
+The style provides traditional LaTeX-style theorem environments with:
+
+1. **No colored boxes** - Uses simple block spacing and optional horizontal rules instead of rounded colored boxes
+2. **Italic theorem statements** - Theorems, lemmas, corollaries, propositions have italic body text (traditional math style)
+3. **Proper proof formatting** - *Proof.* in italic followed by body and filled QED square ($\blacksquare$); also `#proof-sketch` with hollow square
+4. **Sans-serif font maintained** - Compatible with DejaVu Sans as set in main.typ
+5. **Lean references as footnotes** - `#leanref("File.lean:42", "theorem name")` creates a footnote instead of inline code blocks
+6. **Visual elements** - Horizontal rules (`#lightrule`, `#mediumrule`, `#heavyrule`), `#keyinsight` for emphasized quotes
+
+**Usage:**
+```typst
+#import "traditional-math-style.typ": *
+#show: setup-traditional-style
+
+#theorem("State as Weighted Sum")[
+  For a linear RNN starting from $h_0 = 0$, the state at time $T$ is $h_T = sum_(t=0)^(T-1) A^(T-1-t) B x_t$.
+]#leanref("LinearCapacity.lean:72", "theorem linear_state_is_sum")
+
+#proof[
+  By induction on $T$. The base case follows from $h_0 = 0$.
+]
+```

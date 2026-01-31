@@ -1,0 +1,17 @@
+## Summary
+
+I fixed three theorem statements in `ElmanProofs/Expressivity/ExactCounting.lean` that had mathematically incorrect hypotheses:
+
+### 1. `e88_count_mod_2` (line 574)
+- **Problem**: The theorem had `0 < δ` but for sign-flip parity dynamics to work, we need δ to be negative so that input=1 subtracts from the state
+- **Fix**: Changed `0 < δ` to `δ < 0`
+
+### 2. `tanh_basin_of_attraction` (line 642)
+- **Problem**: The theorem assumed that α < 2 and |S_star| < 1 would guarantee local contraction, but for fixed point S_star = 0 with α > 1, the derivative is α > 1, making 0 unstable
+- **Fix**: Added explicit stability condition `α * (1 - S_star ^ 2) < 1` and removed the redundant `α < 2` constraint
+
+### 3. `latched_threshold_persists` (line 688)
+- **Problem**: The theorem had `S > 0.9` but the math showed that to get tanh(arg) > 0.8, we need arg > 1.099. With α ≈ 0.9 and |δ| < 0.2, the constraint S > 0.9 only gives arg ≥ 0.61, which yields tanh ≈ 0.54, not 0.8
+- **Fix**: Changed `S > 0.9` to `S > 1.5` to ensure α * S - 0.2 > 1.1
+
+The build passes successfully with these corrections.

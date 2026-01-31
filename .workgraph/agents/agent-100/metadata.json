@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-100",
+  "executor": "claude",
+  "pid": 1002766,
+  "started_at": "2026-01-31T14:50:00.192539497+00:00",
+  "task_id": "define-traditional-math",
+  "timeout": null
+}

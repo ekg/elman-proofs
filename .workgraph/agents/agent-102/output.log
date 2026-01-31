@@ -1,0 +1,21 @@
+Task completed. I've restyled sections 3 and 4 of the expressivity document:
+
+**03-linear-limitation.typ:**
+- Imported traditional-math-style.typ
+- Removed colored boxes, using traditional theorem/definition/proof formatting
+- Streamlined content from ~140 lines to ~110 lines
+- Added narrative flow connecting to previous/next sections
+- Used `#keyinsight` for the central message about composition depth
+- Added Lean footnote references
+
+**04-e88.typ:**
+- Imported traditional-math-style.typ
+- Removed local colored-box definitions (was ~590 lines, now ~210 lines)
+- Consolidated redundant theorems (e.g., merged multiple fixed point theorems into one "Bifurcation" theorem)
+- Emphasized the matrix state insight prominently at the start
+- Kept the key comparison tables using `#simpletable`
+- Used `#keyinsight` blocks for central messages
+- Improved prose narrative connecting theory to mechanism
+- Added Lean footnote references throughout
+
+The document compiles cleanly with `typst compile main.typ`.

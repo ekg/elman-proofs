@@ -1,0 +1,33 @@
+I've completed the task. Here's a summary of what was created:
+
+## Summary
+
+Created **`docs/expressivity/12-formal-system.typ`** - a comprehensive section describing the Lean 4 formal verification system for the expressivity document.
+
+### Content Overview:
+
+1. **Why Formal Verification Matters** - Contrasts machine-checked proofs vs. typical ML paper arguments, explaining what "mathematical certainty" means
+
+2. **Repository Structure** - Table showing the organization of `ElmanProofs/`:
+   - `Expressivity/` - core theorems
+   - `Architectures/` - E1, E88, Mamba2 formalizations
+   - `Activations/`, `Dynamics/`, etc.
+
+3. **Key Proof Files** - Detailed descriptions of:
+   - `LinearCapacity.lean` - state is weighted sum of inputs
+   - `LinearLimitations.lean` - linear cannot compute threshold/XOR
+   - `MultiLayerLimitations.lean` - depth doesn't compensate
+   - `RunningParity.lean` - parity impossibility
+   - `TanhSaturation.lean` - saturation dynamics
+   - `BinaryFactRetention.lean` - latching vs decay
+   - `RecurrenceLinearity.lean` - architecture classification
+
+4. **Proof Verification Status** - Table showing core expressivity proofs are fully verified (no sorries)
+
+5. **How to Read the Lean Code** - Brief guide for non-Lean users (syntax, common patterns, type annotations)
+
+6. **Building and Verifying** - Instructions for cloning and building the proofs
+
+7. **What Formal Verification Guarantees** - Clear statement of what machine-checked proofs provide (and don't provide)
+
+The section emphasizes that this is the "gold standard" - mathematical certainty, not sketch-level arguments - and references `github.com/ekg/elman-proofs` throughout.

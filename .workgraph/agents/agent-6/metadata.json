@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-6",
+  "executor": "claude",
+  "pid": 3977581,
+  "started_at": "2026-01-29T16:53:23.252661927+00:00",
+  "task_id": "formalize-tanh-saturation",
+  "timeout": null
+}

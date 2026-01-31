@@ -1,0 +1,9 @@
+I have successfully fixed all 4 sorries in E23_DualMemory.lean:
+
+1. **`softmax_sums_to_one`**: Proved that softmax outputs sum to 1 by showing `Σᵢ (exp(xᵢ) / Σⱼ exp(xⱼ)) = 1` using `mul_inv_cancel₀`.
+
+2. **`softmax_le_one`**: Proved that each softmax output is at most 1 by showing `exp(xᵢ) ≤ Σⱼ exp(xⱼ)` using `Finset.single_le_sum`.
+
+3. **`replacement_write_bounded`**: Proved that convex combinations of bounded values stay bounded using the triangle inequality and the fact that `(1-α)*|old| + α*|new| ≤ (1-α)*M + α*M = M`.
+
+4. **`attention_read_bounded`**: Proved that attention-weighted sums of bounded values are bounded using `Finset.abs_sum_le_sum_abs` and the fact that softmax weights sum to 1.

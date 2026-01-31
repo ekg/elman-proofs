@@ -1,0 +1,7 @@
+The task `track-b-linear` is complete. I successfully:
+
+1. **Fixed `count_mod_2_not_linear`** (formerly at line 537): Proved that parity counting cannot be computed by a linear RNN using the affine identity. The proof constructs input sequences `one_at_0` and `one_at_1`, shows by linearity that `output(one_at_0 + one_at_1) = output(one_at_0) + output(one_at_1)`, then demonstrates a contradiction: countMod2 gives 0 for the sum (2 mod 2 = 0) but 1+1=2 from the individual outputs.
+
+2. **Fixed `count_mod_3_not_linear`** (formerly at line 552): Similar proof for mod 3 counting using three basis input sequences, showing `0 = 1 + 1 + 1 = 3` contradiction.
+
+Note: The build has some errors in other theorems (around line 1025, related to `Real.tanh_nonneg`), but those are outside the scope of this track-b-linear task.

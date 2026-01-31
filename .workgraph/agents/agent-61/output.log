@@ -1,0 +1,11 @@
+All 4 sorries in `ResidualRecurrence.lean` have been fixed:
+
+1. **`standard_gradient_is_power`** (line 79): Used `List.prod_eq_foldl` and `List.prod_replicate` to show `(List.replicate T W).foldl (· * ·) 1 = W ^ T`
+
+2. **`standard_gradient_exponential_decay`** (line 103): Used `pow_lt_pow_right_of_lt_one₀` from Mathlib to show that for `0 < r < 1`, `r^T2 < r^T1` when `T1 < T2`
+
+3. **`gate_product_bounded` first sorry** (line 332→369): Added helper lemma `foldl_mul_start` and `list_prod_pos` to prove `0 < gates.foldl (· * ·) 1`
+
+4. **`gate_product_bounded` second sorry** (line 334→372): Added helper lemmas `list_prod_nonneg` and `list_prod_le_one` to prove `gates.foldl (· * ·) 1 ≤ 1`
+
+The file now compiles with no sorries (only some unused variable warnings which are expected for stub theorems).

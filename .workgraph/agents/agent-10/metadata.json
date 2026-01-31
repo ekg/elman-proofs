@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-10",
+  "executor": "claude",
+  "pid": 4007909,
+  "started_at": "2026-01-29T17:08:58.599782357+00:00",
+  "task_id": "formalize-running-parity",
+  "timeout": null
+}

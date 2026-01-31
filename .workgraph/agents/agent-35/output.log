@@ -1,0 +1,29 @@
+Task completed. Here's a summary of what was accomplished:
+
+## Summary: Task 3-3-use - Using NumericalBounds to fix numerical sorries
+
+### Files Modified:
+
+1. **ElmanProofs/Architectures/E42_GradientFlow.lean**
+   - Added imports for `NumericalBounds` and `Lipschitz`
+   - Fixed `tanh_deriv_bounded`: proved using `Activation.tanh_bounded`
+   - Fixed `tanh_deriv_vanishes_at_large`: proved using `NumericalBounds.tanh_ge_2_gt_096` with proper case analysis for positive/negative x
+   - Fixed `tanh_gradient_vanishing`: proved using `pow_le_pow_of_le_one` and `pow_lt_pow_left₀` (added `h_nonneg` hypothesis since tanh derivatives are non-negative)
+   - Fixed `linear_preserves_gradients_better`: proved using `pow_lt_one₀`
+
+2. **ElmanProofs/Architectures/E42_Theory.lean**
+   - Added imports for `NumericalBounds`
+   - Fixed `self_gate_superlinear`: proved sigmoid > 1/2 using `Real.exp_lt_one_iff`
+   - Fixed `tanh_saturation`: proved using `NumericalBounds.tanh_ge_2_gt_096` with case analysis
+
+3. **ElmanProofs/Expressivity/TanhSaturation.lean**
+   - Fixed `tanh(23/40) > 1/2` proof using `NumericalBounds.exp_1_gt_2718` and `Real.add_one_lt_exp`
+   - Fixed incorrect reference `Real.tanh_strictMono` → `Activation.tanh_strictMono`
+
+### Key Techniques Used:
+- `NumericalBounds.tanh_ge_2_gt_096`: For |x| ≥ 2, tanh x > 0.96
+- `NumericalBounds.tanh_pos_of_pos`: tanh x > 0 when x > 0
+- `NumericalBounds.exp_1_gt_2718`: exp 1 > 2.718
+- `Real.exp_lt_one_iff`: exp x < 1 ↔ x < 0
+- `Activation.tanh_bounded`: |tanh x| < 1
+- `pow_le_pow_of_le_one`, `pow_lt_pow_left₀`, `pow_lt_one₀` for exponential decay proofs

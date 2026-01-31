@@ -1,0 +1,78 @@
+digraph "Full Workgraph" {
+  rankdir=TB;
+  node [fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=8];
+
+  subgraph cluster_iteration_1 {
+    label="Iteration 1";
+    style=dashed;
+    color=blue;
+    "iteration-1-fix-6" [label="Fix sorries in MultiLayerLimitations....", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-verify" [label="Verify completion or spawn ITERATION-2", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-scan" [label="Scan and categorize all sorries", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-fix" [label="Fix sorries in TanhSaturation.lean", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-fix-4" [label="Fix sorries in RunningParity.lean", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-fix-3" [label="Fix sorries in ExactCounting.lean", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-build" [label="Build and test all Lean files", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-fix-2" [label="Fix sorries in BinaryFactRetention.lean", shape=box, style=filled, fillcolor=lightgreen];
+    "iteration-1-fix-5" [label="Fix sorries in AttentionPersistence.lean", shape=box, style=filled, fillcolor=lightgreen];
+  }
+
+  subgraph cluster_iteration_2 {
+    label="Iteration 2";
+    style=dashed;
+    color=blue;
+    "iteration-2-fix-5" [label="Fix sorries in RunningParity.lean (2 ...", shape=box, style=filled, fillcolor=white];
+    "iteration-2-fix" [label="Fix sorries in ExactCounting.lean (27...", shape=box, style=filled, fillcolor=yellow];
+    "iteration-2-fix-3" [label="Fix sorries in TanhSaturation.lean (7...", shape=box, style=filled, fillcolor=white];
+    "iteration-2-build" [label="Build and verify", shape=box, style=filled, fillcolor=white];
+    "iteration-2-fix-4" [label="Fix sorries in MultiLayerLimitations....", shape=box, style=filled, fillcolor=white];
+    "iteration-2-fix-2" [label="Fix sorries in AttentionPersistence.l...", shape=box, style=filled, fillcolor=yellow];
+  }
+
+  subgraph cluster_other {
+    label="Other Tasks";
+    style=dashed;
+    color=gray;
+    "write-multilayerlimitations-lean" [label="Write MultiLayerLimitations.lean exte...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-tanh-saturation" [label="Formalize tanh saturation/latching dy...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-binary-fact" [label="Formalize binary fact retention (E88 ...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-running-parity" [label="Formalize running parity impossibilit...", shape=box, style=filled, fillcolor=lightgreen];
+    "consolidate-findings-into" [label="Consolidate findings into OPEN_QUESTI...", shape=box, style=filled, fillcolor=lightgreen];
+    "q2-find-separation" [label="Q2: Find separation example (1-layer ...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-multi-head" [label="Formalize multi-head temporal indepen...", shape=box, style=filled, fillcolor=lightgreen];
+    "q3-design-synthetic" [label="Q3: Design synthetic benchmark for te...", shape=box, style=filled, fillcolor=lightgreen];
+    "q1-analyze-multi" [label="Q1: Analyze multi-layer SSM expressiv...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-exact-counting" [label="Formalize exact counting vs magnitude...", shape=box, style=filled, fillcolor=lightgreen];
+    "complete-separation-theorems" [label="Complete separation theorems: concret...", shape=box, style=filled, fillcolor=lightgreen];
+    "formalize-attention-persistence" [label="Formalize attention persistence (aler...", shape=box, style=filled, fillcolor=lightgreen];
+  }
+
+  "q1-analyze-multi" -> "write-multilayerlimitations-lean";
+  "formalize-tanh-saturation" -> "formalize-running-parity";
+  "q1-analyze-multi" -> "consolidate-findings-into";
+  "q2-find-separation" -> "consolidate-findings-into";
+  "q3-design-synthetic" -> "consolidate-findings-into";
+  "iteration-1-scan" -> "iteration-1-fix-6";
+  "formalize-binary-fact" -> "formalize-multi-head";
+  "q1-analyze-multi" -> "q3-design-synthetic";
+  "q2-find-separation" -> "q3-design-synthetic";
+  "iteration-1-build" -> "iteration-1-verify";
+  "formalize-tanh-saturation" -> "formalize-exact-counting";
+  "iteration-1-scan" -> "iteration-1-fix";
+  "iteration-1-scan" -> "iteration-1-fix-4";
+  "iteration-1-scan" -> "iteration-1-fix-3";
+  "iteration-1-fix" -> "iteration-1-build";
+  "iteration-1-fix-2" -> "iteration-1-build";
+  "iteration-1-fix-3" -> "iteration-1-build";
+  "iteration-1-fix-4" -> "iteration-1-build";
+  "iteration-1-fix-5" -> "iteration-1-build";
+  "iteration-1-fix-6" -> "iteration-1-build";
+  "formalize-exact-counting" -> "complete-separation-theorems";
+  "formalize-running-parity" -> "complete-separation-theorems";
+  "formalize-attention-persistence" -> "complete-separation-theorems";
+  "iteration-1-scan" -> "iteration-1-fix-2";
+  "iteration-1-scan" -> "iteration-1-fix-5";
+  "formalize-tanh-saturation" -> "formalize-attention-persistence";
+  "formalize-binary-fact" -> "formalize-attention-persistence";
+}

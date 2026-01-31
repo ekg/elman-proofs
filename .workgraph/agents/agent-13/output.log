@@ -1,0 +1,24 @@
+I've completed the scan task. Here's a summary:
+
+## Sorry Inventory Summary
+
+**Total sorries found: 57** across 8 files in `ElmanProofs/Expressivity/`
+
+### By Difficulty:
+- **EASY (13)**: Simple arithmetic, finset calculations, direct lemma applications
+- **MEDIUM (25)**: Case analysis, induction, continuity arguments, bound calculations
+- **HARD (19)**: Requires MVT/IVT, Banach fixed point theorem, complex fixed point analysis
+
+### By File:
+| File | Count |
+|------|-------|
+| ExactCounting.lean | 28 |
+| AttentionPersistence.lean | 10 |
+| TanhSaturation.lean | 9 |
+| BinaryFactRetention.lean | 4 |
+| MultiLayerLimitations.lean | 4 |
+| RunningParity.lean | 2 |
+| LowRankCapacity.lean | 1 |
+| MultiHeadTemporalIndependence.lean | 1 |
+
+The full categorized inventory with specific proof approaches is in `docs/SORRY_INVENTORY.md`.

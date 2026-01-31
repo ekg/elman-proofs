@@ -1,0 +1,23 @@
+The task is complete. I successfully fixed the `count_mod_2_not_linear` sorry in `ElmanProofs/Expressivity/ExactCounting.lean`. 
+
+## Summary
+
+The proof shows that count mod 2 (parity) cannot be computed by a linear RNN by using a classic XOR impossibility argument:
+
+1. **Define 4 input sequences**: input00 (all zeros), input01 (1 at position 1), input10 (1 at position 0), input11 (1s at positions 0 and 1)
+
+2. **Compute parity values**:
+   - parity(00) = 0 (0 mod 2 = 0)
+   - parity(01) = 1 (1 mod 2 = 1) 
+   - parity(10) = 1 (1 mod 2 = 1)
+   - parity(11) = 0 (2 mod 2 = 0)
+
+3. **Use key linearity property**: input00 + input11 = input01 + input10 pointwise
+
+4. **Apply state additivity**: By `Expressivity.state_additive`, the linear RNN state is additive, so:
+   - state(input00) + state(input11) = state(input01) + state(input10)
+
+5. **Derive contradiction**: If the linear RNN computes parity, then:
+   - 0 + 0 = 1 + 1 → 0 = 2
+
+This contradiction proves that no linear RNN can compute count mod 2.

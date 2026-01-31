@@ -1,151 +1,76 @@
 // Section 7: Practical Implications
-// When to Use What
+
+#import "traditional-math-style.typ": *
 
 = Practical Implications
 
-The formal results have concrete implications for architecture selection, benchmark design, and understanding model capabilities.
+The theorems we have established are mathematically precise. But mathematics alone does not build systems. When does the hierarchy matter for practice?
 
-== Architecture Selection by Task Type
+== Matching Architecture to Task
 
-#figure(
-  table(
-    columns: 4,
-    stroke: 0.5pt,
-    align: (left, center, center, left),
-    [*Task Type*], [*Linear-Temporal*], [*E88*], [*Recommendation*],
-    [Language modeling], [Good], [Good], [Linear (faster)],
-    [Long-range dependencies], [OK with depth], [Excellent], [E88 for $D < 32$],
-    [Counting/arithmetic], [Poor], [Good], [E88],
-    [State tracking], [Poor], [Good], [E88],
-    [Code execution], [Limited], [Good], [E88],
-    [Retrieval/recall], [Good], [Good], [Either],
-    [Parity/XOR chains], [Impossible], [Possible], [E88 required],
-  ),
-  caption: [Architecture recommendations by task type.],
-)
+The fundamental insight translates into a design principle: match the architecture's computational class to the task's requirements.
 
-== The Depth Compensation Regime
+#definition("Task Classification")[
+  _Pattern aggregation_: tasks that combine information from multiple positions without sequential dependencies. Examples include language modeling (predicting the next token), retrieval (finding relevant documents), and classification (mapping sequence to label). Linear-temporal models suffice.
 
-For language modeling, linear-temporal models may suffice if depth is adequate:
-
-#block(
-  fill: rgb("#f7f7ff"),
-  stroke: rgb("#6666cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Practical Rule*: If $D >= 32$ and the task doesn't require temporal decisions (counting, parity, state tracking), linear-temporal models are competitive and often faster.
-
-  *Formalized* (PracticalImplications.lean): For $D = 32$, the compensation regime covers sequences up to $T = 2^32$---far beyond practical lengths.
+  _Sequential decision tasks_: tasks where each decision depends on previous decisions. Examples include counting (tracking a running sum), state tracking (simulating a finite automaton), and parity computation. Temporal nonlinearity is mathematically required.
 ]
 
-The gap matters when:
-- Depth is constrained ($D < 25$)
-- Tasks require temporal decisions
-- Algorithmic reasoning is needed
+The classification is not always obvious from the task description. "Summarize this document" seems like pattern aggregation, but if the summary requires tracking which points have been covered, it becomes sequential. "Answer this question" may be aggregation or may require multi-step reasoning. The depth of the required computation determines the architectural need.
 
-== Benchmark Design
+== When Linear Suffices
 
-The separation results suggest ideal benchmarks:
+For most natural language processing with $D >= 32$ layers, linear-temporal models suffice. This is not a claim about expressivity---we have proved they are strictly less expressive. It is a claim about the distribution of natural language tasks.
 
-=== Running Parity
-- Input: Sequence of 0s and 1s
-- Output: Parity of inputs up to each position
-- Property: *Guaranteed* to separate architectures
-- Prediction: Linear-temporal accuracy $approx 50%$ (random), E88 $approx 100%$
+Linguistic complexity follows a heavy-tailed distribution. The vast majority of sentences require parsing depth 2--5. Complex center-embedded constructions push to depth 7--10. The extreme tail---legal documents, nested conditionals, deeply recursive structures---may reach 20--25.
 
-=== Running Threshold Count
-- Input: Sequence with elements to count, threshold $tau$
-- Output: 1 when count exceeds $tau$, else 0
-- Property: Continuous models cannot achieve exact threshold
-- Prediction: Linear-temporal shows smooth sigmoid, E88 shows sharp transition
+A 32-layer model with linear-temporal dynamics provides 32 levels of composition. This exceeds the natural language distribution almost everywhere. The theoretical gap between linear-temporal and E88 is real but rarely exercised by natural text.
 
-=== Finite State Machine Simulation
-- Input: FSM description + input sequence
-- Output: Final state / accept-reject
-- Property: Requires state latching
-- Prediction: E88 matches FSM exactly, linear-temporal degrades with state count
+The linear approach also has practical advantages. Parallel scan processes the entire sequence simultaneously, while nonlinear recurrence must proceed step by step. For training at scale, this throughput difference dominates.
 
-== Experimental Predictions
+== When the Gap Matters
 
-Based on the proofs, we predict:
+The theoretical gap becomes practical under specific conditions.
 
-#figure(
-  table(
-    columns: 5,
-    stroke: 0.5pt,
-    align: (left, center, center, center, center),
-    [*Task*], [*T*], [*E88 (1L)*], [*Mamba2 (32L)*], [*Gap*],
-    [Running parity], [1024], [~99%], [~50%], [49%],
-    [Threshold count], [1024], [~99%], [~75%], [24%],
-    [3-state FSM], [1024], [~99%], [~85%], [14%],
-    [Language modeling], [1024], [Baseline], [Similar], [~0%],
-  ),
-  caption: [Predicted benchmark results. Gaps are task-dependent.],
+_Depth-constrained deployment_: When layers are limited by latency or compute budget, the $D = 32$ assumption fails. A 4-layer model on device has only 4 levels of composition. Tasks requiring 5 or more become impossible for linear-temporal architectures.
+
+_Algorithmic reasoning_: When the task is explicitly algorithmic---counting objects, tracking state across a narrative, following a procedure---the linear-temporal limitation applies directly. These are exactly the tasks where "running parity" style computations are needed.
+
+_State machine simulation_: Parsing context-free grammars, simulating finite automata, tracking dialogue state---all require maintaining discrete state that persists and updates. Linear-temporal models approximate but cannot exactly compute such state.
+
+#keyinsight[
+  Adding layers is curvature in the wrong dimension. Depth adds nonlinearity _between_ layers; temporal nonlinearity adds it _through_ time. These are orthogonal. A 64-layer Mamba2 still cannot compute running parity. A 1-layer E88 can.
+]
+
+== Separating Benchmarks
+
+If we want to measure the expressivity gap empirically, we need benchmarks designed to exercise it.
+
+#simpletable(
+  columns: 3,
+  align: (left, center, center),
+  [*Benchmark*], [*E88*], [*Linear-Temporal*],
+  [Running parity], [$approx 100%$], [$approx 50%$ (random)],
+  [Running threshold], [Sharp transition], [Smooth sigmoid],
+  [FSM simulation], [Exact match], [Degrades with state count],
 )
+
+On running parity, the prediction is stark: E88 can achieve near-perfect accuracy with appropriate training, while linear-temporal models cannot exceed chance regardless of training budget. The impossibility is mathematical.
 
 == Design Principles
 
-=== Principle 1: Match Architecture to Task
-Linear-temporal models excel at pattern matching and aggregation. Nonlinear-temporal models excel at sequential decision-making. Use the right tool.
+The theory yields practical guidance.
 
-=== Principle 2: Depth is Not a Panacea (Curvature in the Wrong Dimension)
-Adding layers helps linear-temporal models, but cannot overcome fundamental limitations. For tasks requiring $T$ sequential decisions, you need temporal nonlinearity.
+_Match architecture to task._ Use linear-temporal models for pattern aggregation where throughput matters. Use nonlinear-temporal models for sequential decision tasks where correctness matters.
 
-#block(
-  fill: rgb("#fff0f7"),
-  stroke: rgb("#cc3399"),
-  inset: 10pt,
-  radius: 4pt,
-)[
-  *The Geometric View*: Depth adds curvature _between layers_ ($O(D)$). Temporal nonlinearity adds curvature _through time_ ($O(T)$). These dimensions are orthogonal. Adding more layers is *curvature in the wrong dimension*---it cannot substitute for temporal nonlinearity any more than adding width can substitute for depth.
-]
+_Accept that depth does not substitute for temporal nonlinearity._ If a task requires temporal decisions, adding layers does not help. The solution is architectural, not parametric.
 
-=== Principle 3: Saturation is a Feature
-E88's tanh saturation is not a numerical problem---it's the mechanism enabling binary memory. Design around it, don't fight it.
+_Recognize saturation as a feature._ E88's tanh saturation is not numerical instability---it is the mechanism enabling persistent memory. Attempts to "fix" saturation by clipping or normalization may destroy the expressivity advantage.
 
-=== Principle 4: Hardware Alignment Matters
-E23 is theoretically powerful but practically limited by memory bandwidth. E88's compute-dense operations align with modern accelerators. Theory must meet hardware.
+_Consider hardware alignment._ E88's matrix operations achieve high GPU utilization. Explicit tape memory (E23) creates irregular access patterns. The choice of escape route affects not just expressivity but efficiency.
 
-== Future Directions
+#centerrule
 
-=== Hybrid Architectures
-Combine linear-temporal efficiency with nonlinear-temporal capability:
-- Fast linear attention for most computation
-- E88-style heads for state tracking
-- Route based on task requirements
+The practical implications are clear. For most language tasks at scale, linear-temporal models suffice and train faster. For algorithmic tasks, constrained deployments, and exact computation requirements, the theoretical hierarchy predicts empirical outcomes. The art is recognizing which regime applies.
 
-=== Adaptive Depth
-Dynamically allocate composition depth:
-- Easy inputs: use linear temporal (fast)
-- Hard inputs: engage nonlinear temporal (expressive)
-
-=== Better Benchmarks
-The community needs benchmarks that cleanly separate architectures:
-- Running parity (provably hard for linear-temporal)
-- State machine simulation (requires latching)
-- Compositional reasoning (requires depth)
-
-== Conclusion
-
-The proofs establish a fundamental principle: *where nonlinearity enters the computation determines what can be computed*.
-
-#block(
-  fill: rgb("#f0f7ff"),
-  stroke: rgb("#3366cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *The Core Insight*: Curvature in the temporal dimension is computationally irreplaceable.
-
-  - Linear temporal dynamics: efficient, limited to depth $D$ (curvature between layers)
-  - Nonlinear temporal dynamics: more compute, depth $D times T$ (curvature through time + layers)
-
-  Depth and temporal nonlinearity are orthogonal---they curve computation in different directions.
-]
-
-For language modeling at scale, both approaches may suffice. For algorithmic reasoning, temporal nonlinearity is provably necessary.
-
-E88's practical success comes from achieving temporal nonlinearity with hardware-friendly operations. E23's theoretical power comes at the cost of hardware efficiency. The best architectures will find the right balance for their deployment constraints.
-
-The formal proofs we've developed are not academic exercises---they explain why some architectures fail on certain tasks and predict which architectures will succeed. This is the foundation for principled architecture design, moving beyond empirical trial-and-error to mathematically grounded engineering.
+The next section places these results in the classical framework of circuit complexity, connecting our architectural hierarchy to TC⁰ and beyond.

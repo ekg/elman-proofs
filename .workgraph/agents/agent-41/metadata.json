@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-41",
+  "executor": "lean-fix",
+  "pid": 228835,
+  "started_at": "2026-01-30T14:10:11.229121077+00:00",
+  "task_id": "track-a-fix",
+  "timeout": null
+}

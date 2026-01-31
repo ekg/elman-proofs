@@ -1,0 +1,5 @@
+Successfully fixed 2 sorries in `E1_GatedElman.lean`:
+
+1. **Line 152**: `Real.tanh x ^ 2 <= 1` - Proved using `Activation.tanh_bounded` which shows `|Real.tanh x| < 1`, then applied `sq_lt_one_iff_abs_lt_one` to get `Real.tanh x ^ 2 < 1 ≤ 1`.
+
+2. **Line 168**: `sigmoid x * (1 - sigmoid x) ≤ 1/4` - Proved using the algebraic identity that for `s ∈ (0,1)`, `s(1-s) = 1/4 - (s - 1/2)^2 ≤ 1/4`, solved by `nlinarith` with the constraint `sq_nonneg (s - 1/2)`.

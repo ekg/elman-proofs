@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-25",
+  "executor": "lean-fix",
+  "pid": 19184,
+  "started_at": "2026-01-29T22:22:07.039227367+00:00",
+  "task_id": "fix-theorem-statements",
+  "timeout": null
+}

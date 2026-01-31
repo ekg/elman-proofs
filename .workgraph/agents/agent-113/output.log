@@ -1,0 +1,37 @@
+I've completed the task of updating Lean file references throughout the expressivity document sections. Here's a summary of the changes made:
+
+## Summary of Updates
+
+### Section 03 (Linear Limitation)
+- References were already correct - `ExactCounting.lean:344` and `RunningParity.lean:200`
+
+### Section 04 (E88)
+- Updated `AttentionPersistence.lean:212` with comment `// nonzero_fixed_point_exists`
+- Changed `BinaryFactRetention.lean:174` → `TanhSaturation.lean:360` (`latching_vs_decay`)
+- Changed `RunningParity.lean:389` → `TanhSaturation.lean:720` (`e88_computes_running_parity`)
+- Changed `ExactCounting.lean:512` → `TanhSaturation.lean:424` (`e88_can_count_mod`)
+- Updated `MultiHeadTemporalIndependence.lean:129` with comment `// e88_head_update_independent`
+
+### Section 05 (E23 vs E88)
+- Changed `E23_DualMemory.lean:312` → `E23_DualMemory.lean:730` (`e23_is_utm`)
+
+### Section 06 (Separation)
+- Changed `MultiLayerLimitations.lean:412` → `MultiLayerLimitations.lean:365` (`e88_separates_from_linear_temporal`)
+- Changed `LinearLimitations.lean:98` → `LinearLimitations.lean:218` (`xor_not_affine`)
+- Changed `RunningParity.lean:389` → `TanhSaturation.lean:720` (`e88_computes_running_parity`)
+- Changed `ExactCounting.lean:512` → `TanhSaturation.lean:424` (`e88_can_count_mod`)
+
+### Section 08 (TC0 Bounds)
+- Updated `TC0Bounds.lean:153` → `TC0Bounds.lean:152` (`transformer_in_TC0`)
+- `TC0VsUnboundedRNN.lean:152` and `TC0VsUnboundedRNN.lean:127` were already correct
+
+### Section 09 (Output Feedback)
+- Changed `OutputFeedback.lean:47` → `OutputFeedback.lean:282` (`feedback_rnn_simulates_bounded_TM`)
+- Changed `OutputFeedback.lean:112` → `OutputFeedback.lean:498` (`feedback_effective_tape_length`)
+
+### Section 10 (Multi-Pass RNN)
+- Changed `MultiPassRNN.lean:89` → `MultiPass.lean:164` (`k_passes_simulate_k_accesses`)
+- Changed `MultiPassRNN.lean:167` → `MultiPass.lean:183` (`multipass_bidirectional`)
+
+### Section 12 (Formal System)
+- Expanded the table to include more key Lean files: `RunningParity.lean`, `ExactCounting.lean`, `TC0VsUnboundedRNN.lean`, `OutputFeedback.lean`, `MultiPass.lean`, `ComputationalClasses.lean`

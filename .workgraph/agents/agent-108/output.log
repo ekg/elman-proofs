@@ -1,0 +1,16 @@
+The task is complete. I have restyled sections 13-16 of the expressivity document:
+
+**Section 13 (Theory-Practice Gap)**: Converted from colored boxes to flowing prose with key insights. Removed `#finding` and `#observation` blocks, using `#definition`, `#proposition`, `#simpletable`, `#remark`, and `#keyinsight` from the traditional math style.
+
+**Section 14 (Composition Depth in Human Text)**: Restructured with narrative flow, converting examples to proper `#example` environments and tables to `#simpletable`. Added transitions between sections.
+
+**Section 15 (Uncanny Valley of Reasoning)**: Removed colored box definitions for failure modes and converted to prose. Used `#definition`, `#theorem`, `#proposition`, `#example`, and `#simpletable` environments. Focused on flowing narrative explaining why LLMs fail at deep reasoning.
+
+**Section 16 (Composition Depth Examples)**: Cleaned up the appendix reference tables using `#simpletable` throughout. Added proper `#definition` blocks for key concepts (composition depth calculation, running parity, running threshold). Converted final summary box to `#keyinsight`.
+
+All sections:
+- Import `traditional-math-style.typ`
+- Use proper environments from the style file
+- Have no old-style `#finding` or `#observation` blocks
+- Follow the narrative philosophy from the style guide
+- Compile successfully with typst

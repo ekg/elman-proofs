@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-32",
+  "executor": "lean-fix",
+  "pid": 93179,
+  "started_at": "2026-01-30T00:33:32.948347697+00:00",
+  "task_id": "2-1-find",
+  "timeout": null
+}

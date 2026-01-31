@@ -1,0 +1,28 @@
+I have completed task **1-1-catalog**. Here's a summary of what I found:
+
+## Summary of Sorry Catalog
+
+I analyzed **78+ sorry instances** across **19 project files** and categorized them into **8 distinct root causes**:
+
+### Key Findings:
+
+1. **12 theorems are mathematically FALSE** (Category 2) - These can't be proven because the statements are too general:
+   - `alertBasin_nonempty` claims non-empty basins for all `α > 0`, but is false for `α ≤ 1`
+   - `alert_state_robust` fails for certain `(α, θ)` combinations
+   - `strong_input_persists` fails for `θ > 0.96`
+
+2. **16 sorries need numerical verification** (Category 1) - Tight bounds on transcendental functions like `tanh(0.575) > 0.5`
+
+3. **15 sorries are routine algebraic lemmas** (Category 3) - Index manipulation, sum distributivity, convex combinations
+
+4. **8 sorries need calculus infrastructure** (Category 4) - Derivatives of affine maps, critical point analysis
+
+5. **6 sorries are softmax properties** (Category 5) - Standard facts about `∑ softmax = 1`
+
+6. **6 sorries need spectral theory** (Category 6) - Eigenvalue bounds, matrix norms
+
+7. **8 sorries need fixed-point/IVT arguments** (Category 7) - Existence of nonzero fixed points
+
+8. **7 sorries have structural issues** (Category 8) - Let-binding unfolding, SiLU bounds
+
+The full catalog is written to `/home/erikg/elman-proofs/docs/SORRY_CATALOG.md` with specific line numbers, explanations of why each proof is incomplete, and recommended fixes.

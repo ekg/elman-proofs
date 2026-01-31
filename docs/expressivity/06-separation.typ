@@ -1,181 +1,71 @@
-// Section 6: Separation Results
-// Proven Impossibilities
+// Section 6: The Computational Hierarchy
 
-= Separation Results: Proven Impossibilities
+#import "traditional-math-style.typ": *
 
-This section presents the formal separation results between linear-temporal and nonlinear-temporal architectures. Each result is proven in Lean 4 with Mathlib, establishing mathematical certainty rather than empirical observation.
+= The Computational Hierarchy
 
-== The Separation Hierarchy
+The pieces are now in place to state the complete picture. We have linear-temporal models that cannot compute parity. We have E88 that can. We have E23 that simulates Turing machines. How do these relate to each other, and to classical complexity theory?
 
-#block(
-  fill: rgb("#f7f7ff"),
-  stroke: rgb("#6666cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Computational Hierarchy (proven)*:
+== The Strict Hierarchy
 
-  $ "Linear RNN" subset.eq.not "D-layer Linear-Temporal" subset.eq.not "E88" subset.eq.not "E23 (UTM)" $
+#theorem("Strict Computational Hierarchy")[
+  $ "Linear RNN" subset.neq "D-layer Linear-Temporal" subset.neq "E88" subset.neq "E23" $
+  Each inclusion is proper: there exist functions computable at each level but not the previous one.
+]#leanfile("MultiLayerLimitations.lean:365")
 
-  Each inclusion is strict: there exist functions computable by the larger class but not the smaller.
-]
+The witnesses are concrete. A depth-$(D+1)$ function separates $D$-layer linear-temporal from $(D+1)$-layer. Running parity separates any linear-temporal from E88. Arbitrary Turing machine computation separates E88 (bounded) from E23 (unbounded).
 
-== Result 1: XOR is Not Affine
+== Two Barriers, Two Escapes
 
-The simplest separation: the XOR function cannot be computed by any affine function.
+The linear-temporal models face two fundamental barriers. Understanding them reveals why E88 succeeds where they fail.
 
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (LinearLimitations.lean:98)*:
-  #v(0.5em)
-  `theorem xor_not_affine : ¬∃ f : ℝ → ℝ → ℝ, IsAffine f ∧ ComputesXOR f`
+#theorem("Affine Barrier")[
+  Linear-temporal outputs are affine functions of their inputs. XOR is not affine: $"XOR"(0,0) + "XOR"(1,1) = 0 eq.not 2 = "XOR"(0,1) + "XOR"(1,0)$. Therefore running parity is impossible.
+]#leanfile("LinearLimitations.lean:218")
 
-  *Proof*: Any affine function satisfies $f(0,0) + f(1,1) = f(0,1) + f(1,0)$.
-  XOR gives: $0 + 0 = 0$ but $1 + 1 = 2$. Contradiction.
-]
+E88 escapes through sign encoding. The parity is stored in whether $S$ is positive or negative. This is not an affine function of the input---it involves the nonlinear tanh.
 
-This is the foundation: if linear-temporal models output affine functions, they cannot compute XOR. Since running parity is iterated XOR, it's also impossible.
+#theorem("Continuity Barrier")[
+  Linear-temporal outputs are continuous. Threshold is discontinuous. Therefore running threshold is impossible.
+]#leanfile("ExactCounting.lean:344")
 
-== Result 2: Running Parity
+E88 escapes through saturation. The tanh approaches a step function as the input accumulates. While technically continuous, the transition becomes arbitrarily sharp---a soft threshold that approximates hard threshold arbitrarily well.
 
-The canonical separation example: compute the parity of all inputs seen so far.
+== E88's Constructions
 
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (RunningParity.lean:145)*:
-  #v(0.5em)
-  `theorem multilayer_parity_impossibility (D : ℕ) :`
-  `  ∀ (model : DLayerLinearTemporal D), ¬CanComputeRunningParity model`
+The escape is constructive. We can write down the parameters that compute parity and threshold.
 
-  *Proof*: Running parity at time $T$ equals $x_1 xor x_2 xor ... xor x_T$.
-  This is not affine in the inputs (by iterated application of `xor_not_affine`).
-  $D$-layer linear-temporal models output affine functions of inputs.
-  Therefore, no such model can compute running parity, for any $D$.
-]
+#theorem("E88 Computes Parity")[
+  With $alpha = 1$ and $delta = 2$: input 0 preserves the sign of $S$, while input 1 flips the sign. The state sign encodes the running parity.
+]#leanfile("TanhSaturation.lean:720")
 
-E88 can compute running parity: with appropriate $alpha, delta$, the state sign-flips on each $1$ input, tracking parity implicitly.
+The construction: input 0 gives $S' = tanh(S)$, preserving sign. Input 1 gives $S' = tanh(S + 2)$. When $S < 0$, this crosses zero to positive; when $S > 0$ and moderate, it grows toward $+1$. The dynamics implement XOR.
 
-== Result 3: Running Threshold
+#theorem("E88 Computes Soft Threshold")[
+  Accumulated positive inputs drive $S$ toward $+1$. Accumulated negative inputs drive $S$ toward $-1$. The transition steepens as accumulation grows.
+]#leanfile("TanhSaturation.lean:424")
 
-Detect when a cumulative sum crosses a threshold.
+The construction: each input adds to the running sum inside the tanh. As the sum grows large and positive, $tanh$ saturates toward $+1$. As it grows large and negative, toward $-1$. The sign indicates whether the sum exceeds the threshold.
 
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (ExactCounting.lean:312)*:
-  #v(0.5em)
-  `theorem linear_cannot_running_threshold :`
-  `  ∀ (model : LinearTemporalModel), ¬CanComputeThreshold model τ`
+== The Complete Capability Table
 
-  *Proof*: Running threshold is discontinuous---the output jumps from $0$ to $1$ when the sum crosses $tau$.
-  Linear-temporal models compose continuous functions (linear ops + continuous activations).
-  Composition of continuous functions is continuous.
-  Therefore, linear-temporal models cannot compute discontinuous functions.
-]
+We summarize what each computational class can and cannot do.
 
-E88's tanh saturation enables approximate threshold: as the accumulated signal grows, tanh pushes the state toward $plus.minus 1$, creating a soft step function that approaches the hard threshold.
-
-== Result 4: Binary Fact Retention
-
-A fact presented early in the sequence should be retrievable later.
-
-#block(
-  fill: rgb("#fff0f0"),
-  stroke: rgb("#cc3333"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (BinaryFactRetention.lean:89)*:
-  #v(0.5em)
-  `theorem linearSSM_decays_without_input (α : ℝ) (hα : |α| < 1) (h₀ : ℝ) :`
-  `  ∀ ε > 0, ∃ T, |α^T * h₀| < ε`
-
-  *Interpretation*: In a linear SSM with $|alpha| < 1$, any initial state decays to zero.
-  There is no mechanism to "latch" information indefinitely.
-]
-
-In contrast, E88 can latch:
-
-#block(
-  fill: rgb("#f0fff0"),
-  stroke: rgb("#33cc33"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (TanhSaturation.lean:156)*:
-  #v(0.5em)
-  `theorem e88_latched_state_persists (S : ℝ) (hS : |S| > 0.99) (α : ℝ) (hα : α > 0.9) :`
-  `  |tanh(α * S)| > 0.98`
-
-  *Interpretation*: A state near $plus.minus 1$ stays near $plus.minus 1$ under E88 dynamics.
-  Tanh saturation prevents decay.
-]
-
-== Result 5: Finite State Machine Simulation
-
-Simulate an arbitrary finite automaton.
-
-#block(
-  fill: rgb("#f7fff0"),
-  stroke: rgb("#66cc33"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (informal, follows from above)*:
-
-  A finite state machine with $|Q|$ states and $|Sigma|$ input symbols requires distinguishing $|Q| times |Sigma|$ transitions.
-
-  - E88 with $H >= |Q|$ heads can simulate any such FSM (one head per state, saturation for state activity)
-  - Linear-temporal models cannot simulate FSMs requiring more than $D$ "decision levels"
-]
-
-== Summary Table
-
-#figure(
-  table(
-    columns: 4,
-    stroke: 0.5pt,
-    align: (left, center, center, center),
-    [*Task*], [*Linear-Temporal*], [*E88*], [*E23*],
-    [XOR], [Impossible], [Possible], [Possible],
-    [Running parity], [Impossible], [Possible], [Possible],
-    [Running threshold], [Impossible], [Possible], [Possible],
-    [Binary fact retention], [Decays], [Latches], [Persists],
-    [FSM (arbitrary)], [Limited], [Full], [Full],
-    [UTM simulation], [Impossible], [Impossible], [Possible],
-  ),
-  caption: [Summary of proven separation results.],
+#simpletable(
+  columns: 5,
+  align: (left, center, center, center, center),
+  [*Capability*], [*Linear RNN*], [*D-layer Lin.*], [*E88*], [*E23*],
+  [Running parity], [No], [No], [Yes], [Yes],
+  [Running threshold], [No], [No], [Yes], [Yes],
+  [Binary latching], [No], [No], [Yes], [Yes],
+  [Arbitrary FSM], [No], [No], [Yes], [Yes],
+  [UTM simulation], [No], [No], [No], [Yes],
 )
 
-== The Nature of These Proofs
+These are not empirical findings. They are theorems, verified in Lean 4. The "No" entries have proofs of impossibility; the "Yes" entries have explicit constructions.
 
-These are not empirical observations that might change with better training. They are *mathematical theorems*:
+#centerrule
 
-- `xor_not_affine` is as certain as $1 + 1 = 2$
-- `linearSSM_decays_without_input` follows from properties of exponential decay
-- `e88_latched_state_persists` follows from properties of tanh
+The hierarchy is now established. Linear-temporal models form a proper subclass of E88, which forms a proper subclass of E23. The separations are witnessed by specific functions: parity separates linear from E88, and unbounded computation separates E88 from E23.
 
-The proofs are mechanically verified in Lean 4, eliminating the possibility of logical errors. When we say "linear-temporal models cannot compute parity," we mean it in the same sense that "$sqrt(2)$ is irrational"---a proven fact, not a conjecture.
-
-== Implications
-
-These separations have concrete implications:
-
-1. *Architecture selection*: For tasks requiring parity/threshold/state-tracking, linear-temporal models will fail no matter how they're trained. Choose E88 or similar.
-
-2. *Benchmark design*: Running parity and threshold counting are ideal benchmarks---they separate architectures cleanly, and failures are guaranteed (not just likely).
-
-3. *Hybrid approaches*: Combining linear-temporal efficiency with nonlinear-temporal capability is a promising research direction. The separations tell us which component handles which task type.
-
-4. *Understanding failures*: When a linear-temporal model fails on algorithmic reasoning, we now know *why*---it's not a training issue, it's an architectural limitation.
+But there is a more familiar landmark in computational complexity: TC⁰, the class of constant-depth threshold circuits. Where do our architectures sit relative to this classical boundary? The answer is surprising.

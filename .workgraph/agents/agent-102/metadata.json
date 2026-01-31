@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-102",
+  "executor": "claude",
+  "pid": 1014222,
+  "started_at": "2026-01-31T16:17:40.999510227+00:00",
+  "task_id": "restyle-sections-3",
+  "timeout": null
+}

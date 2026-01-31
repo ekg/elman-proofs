@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-47",
+  "executor": "lean-fix",
+  "pid": 263287,
+  "started_at": "2026-01-30T15:01:07.446586797+00:00",
+  "task_id": "fix-e88-count",
+  "timeout": null
+}

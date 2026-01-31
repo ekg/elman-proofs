@@ -1,0 +1,21 @@
+I've completed task **2-1-find: Find Mathlib's matrix/linear continuity API**. Here's the summary:
+
+## Key Mathlib APIs Found
+
+1. **`continuous_finset_sum`** (`Mathlib/Topology/Algebra/Monoid.lean`)
+   - Proves finite sums are continuous when each term is continuous
+   - Essential for proving RNN state continuity since `h_t = Σ A^s * B * x_s`
+
+2. **`Continuous.matrix_mulVec`** (`Mathlib/Topology/Instances/Matrix.lean`)
+   - Matrix-vector multiplication is continuous
+   - Used for each term in the linear RNN expansion
+
+3. **`Continuous.matrix_mul`** (`Mathlib/Topology/Instances/Matrix.lean`)
+   - Matrix-matrix multiplication is continuous
+   - Useful for matrix powers in the sum
+
+4. **`LinearMap.continuous_of_finiteDimensional`** (`Mathlib/Topology/Algebra/Module/FiniteDimension.lean`)
+   - Any linear map from a finite-dimensional T2 space over a complete field is automatically continuous
+   - This is the "nuclear option" - can sometimes bypass explicit continuity proofs
+
+I've created a comprehensive reference document at `docs/MATHLIB_CONTINUITY_API.md` with proof patterns and import requirements.

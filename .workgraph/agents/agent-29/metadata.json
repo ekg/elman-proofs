@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-29",
+  "executor": "lean-fix",
+  "pid": 68856,
+  "started_at": "2026-01-30T00:26:55.925384177+00:00",
+  "task_id": "strategy-prove-numerical",
+  "timeout": null
+}

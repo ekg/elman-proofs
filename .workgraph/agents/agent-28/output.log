@@ -1,0 +1,23 @@
+I successfully completed the task. Here's a summary of what was accomplished:
+
+## Summary
+
+I proved two continuity lemmas in `/home/erikg/elman-proofs/ElmanProofs/Expressivity/ExactCounting.lean`:
+
+### 1. `linear_rnn_continuous_per_t` (lines 249-298)
+This theorem proves that for a linear RNN, the output at any fixed position `t` is a continuous function of the full input sequence. The proof:
+- Shows the truncation function is continuous (coordinate projections or constants)
+- Shows `stateFromZero` is continuous by using `linear_state_is_sum` to express it as a finite sum
+- Each term in the sum is a product of matrix coefficients with input components, hence continuous
+- Uses composition of continuous functions: inputs → truncated → state → output
+
+### 2. `linear_rnn_continuous_output` (lines 302-337)
+This theorem proves that the full output sequence of a linear RNN is continuous in the input sequence. The proof:
+- Uses `linear_state_is_sum` to express the state as a finite sum
+- Shows each component of the output is a polynomial in the input coordinates
+- Polynomials are continuous (finite sums of products of constants and coordinate projections)
+
+### Helper lemma added
+`continuous_matrix_mulVec` (lines 237-244): Proves that matrix-vector multiplication `M.mulVec v` is continuous in `v` for finite-dimensional matrices.
+
+The build passes successfully with no errors.

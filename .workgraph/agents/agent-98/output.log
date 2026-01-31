@@ -1,0 +1,31 @@
+I have completed the task. Here's a summary of what was done:
+
+## Summary
+
+I wrote all four discussion and depth analysis sections for the expressivity document:
+
+### Section 13: Theory-Practice Gap (`13-theory-practice-gap.typ`)
+- Analyzes why theoretically more expressive architectures (E88) can lose to less expressive ones (Mamba2) in practice
+- Distinguishes between **sample efficiency** (learning per example) and **wall-clock efficiency** (throughput)
+- Explains that Mamba2's ~4x throughput advantage often outweighs E88's expressivity advantage
+- Covers when theory predicts practice: tasks requiring temporal nonlinearity + sufficient training budget
+
+### Section 14: Composition Depth in Human Text (`14-composition-depth-text.typ`)
+- Analyzes how much composition depth natural language actually requires
+- Covers syntactic depth (2-7 levels), semantic depth (3-4 levels), and discourse depth (4-6 levels)
+- Compares with code execution which can require much higher depth (50-1000+)
+- Includes detailed examples: pronoun resolution, arithmetic word problems, logical deduction, code execution traces
+
+### Section 15: Uncanny Valley of Reasoning (`15-uncanny-valley-reasoning.typ`)
+- Explains why LLMs appear to reason but fail on tasks requiring deep thought
+- Documents failure modes: state tracking failures, logical deduction failures, mathematical reasoning failures
+- Distinguishes pattern recognition (what LLMs do well) from computation (what reasoning requires)
+- Analyzes chain-of-thought as a workaround and its limitations
+- Discusses architectural paths forward: E88-style temporal nonlinearity, multi-pass processing, hybrid architectures, external tools
+
+### Section 16: Depth Examples Appendix (`16-depth-examples.typ`)
+- Comprehensive reference tables for composition depth requirements
+- Covers: natural language, arithmetic, logical reasoning, algorithm execution, code understanding, state machines, running parity, and threshold counting
+- Provides an architecture selection guide based on depth requirements
+
+All sections were added to `main.typ` and the PDF was successfully compiled (2.3MB).

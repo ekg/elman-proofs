@@ -1,0 +1,36 @@
+The task is complete. Let me provide a summary of what was formalized in `ElmanProofs/Expressivity/MultiPass.lean`:
+
+## Summary: Multi-Pass RNN Formalization
+
+The file now formalizes the multi-pass RNN computational model with the following key additions:
+
+### Part 8: DTIME(k*T) Computational Class
+- **`DTIMEClass`**: Structure for time complexity classes
+- **`DTIME_kT`**: Definition of DTIME(k*T) for k passes over length-T input
+- **`SequentialAccessPattern`**: Formal model of sequential (not random) access within each pass
+- **`KPassSequentialComputation`**: Structure capturing k passes with sequential access per pass
+- **`kpass_in_dtime_kT`**: Theorem: k-pass RNN is in DTIME(k*T)
+
+### Soft Random Access Protocol
+- **`softRandomAccessPasses := 3`**: 3 passes needed per random access
+- **`three_k_passes_k_accesses`**: Main theorem - 3k passes provide k random accesses
+- **`SoftRandomAccessProtocol`**: Structure formalizing the 3-pass marking/propagation/retrieval protocol
+- **`soft_random_access_correct`**: Theorem: the protocol correctly retrieves target values
+
+### Part 9: Multi-Pass Hierarchy
+- **`MULTIPASSClass`**: Structure for MULTIPASS(k, T) computational class
+- **`multipass_strict_hierarchy`**: MULTIPASS(k, T) ⊊ MULTIPASS(k+1, T)
+- **`multipass_separation`**: Floor(k/3) < floor((k+3)/3) - separation theorem
+- **`multipass_chain`**: Monotonicity of the hierarchy
+
+### Part 10: Tape Read/Write Model
+- **`FormalTape`**: Structure for mutable tape between passes
+- **`tapeRead`**, **`tapeWrite`**, **`tapeExtend`**: Tape operations
+- **`TapePass`**: Structure for a single pass with state updates
+- **`write_then_read`**: Theorem: reading after writing returns the written value
+
+### Key Results from Task Specification
+1. ✅ Each pass can write to output tape
+2. ✅ Next pass reads modified tape
+3. ✅ k passes can simulate random access with O(k) overhead (specifically: 3k passes = k random accesses)
+4. ✅ Computational class: k passes = DTIME(k*T) with sequential access per pass

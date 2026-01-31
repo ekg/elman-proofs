@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-72",
+  "executor": "claude",
+  "pid": 462996,
+  "started_at": "2026-01-30T18:10:12.321144447+00:00",
+  "task_id": "section-3-linear",
+  "timeout": null
+}

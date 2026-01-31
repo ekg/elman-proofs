@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-99",
+  "executor": "claude",
+  "pid": 987135,
+  "started_at": "2026-01-31T12:41:59.700975677+00:00",
+  "task_id": "write-proper-e88",
+  "timeout": null
+}

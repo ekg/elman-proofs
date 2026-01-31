@@ -1,155 +1,59 @@
 // Section 5: E23 vs E88
-// Tape Memory vs Temporal Saturation
 
-= E23 vs E88: Two Paths to Expressivity
+#import "traditional-math-style.typ": *
 
-Both E23 and E88 achieve computational power beyond linear-temporal models, but through fundamentally different mechanisms. Understanding this difference illuminates what makes architectures work on real hardware.
+= Two Paths Beyond Linear
 
-== The Two Mechanisms
-
-#figure(
-  table(
-    columns: 3,
-    stroke: 0.5pt,
-    align: (left, left, left),
-    [*Aspect*], [*E23 (Dual Memory)*], [*E88 (Temporal Nonlinearity)*],
-    [Memory], [Explicit tape + working memory], [Implicit in saturated state],
-    [Persistence], [Tape never decays], [Tanh saturation creates stability],
-    [Capacity], [$N times D$ (tape size)], [$H times D$ (head count × dim)],
-    [Compute], [$O(N D + D^2)$ per step], [$O(H D^2)$ per step],
-    [Theoretical class], [UTM (universal)], [Bounded but very expressive],
-  ),
-  caption: [E23 and E88 achieve expressivity through different mechanisms.],
-)
+E88 is not the only architecture to escape linear-temporal limitations. E23 takes a different route---explicit tape memory rather than implicit saturation dynamics. The comparison illuminates what is possible and what is practical.
 
 == E23: The Tape-Based Approach
 
-E23 (Dual Memory Elman) separates memory into two components:
+E23 maintains explicit memory slots, accessed through attention-like addressing.
 
-$ "Tape": quad & h_"tape" in RR^(N times D) quad "(persistent, N slots)" $
-$ "Working": quad & h_"work" in RR^D quad "(nonlinear, computation)" $
+#definition("E23 Dynamics")[
+  _Read_: $r_t = sum_(i=1)^N alpha_i h_"tape"^((i))$, an attention-weighted sum over $N$ tape slots.
 
-The dynamics:
-+ *Read*: Attention over tape slots, weighted sum into working memory
-+ *Update*: $h_"work"' = tanh(W_h h_"work" + W_x x + "read" + b)$
-+ *Write*: Replacement write to tape via attention: $(1-alpha) dot "old" + alpha dot "new"$
+  _Update_: $h_"work"' = tanh(W_h h_"work" + W_x x_t + r_t + b)$, incorporating the read result.
 
-=== E23's Theoretical Strength
-
-#block(
-  fill: rgb("#f0fff7"),
-  stroke: rgb("#33cc66"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (E23_DualMemory.lean)*: E23 is Turing-complete (UTM class).
-
-  The proof relies on three capabilities:
-  1. Nonlinearity (tanh in working memory)
-  2. Content-based addressing (attention for routing)
-  3. Persistent storage (tape with no decay)
+  _Write_: $h_"tape"^((j))' = (1 - beta_j) h_"tape"^((j)) + beta_j h_"work"'$, selectively updating tape slots.
 ]
 
-With hard attention (one-hot), replacement write becomes exact slot replacement---precisely Turing machine semantics.
+With hard attention (winner-take-all addressing), this becomes a Turing machine simulator.
 
-=== E23's Practical Weakness
+#theorem("E23 is UTM-Complete")[
+  E23 with $N$ tape slots and hard attention simulates any Turing machine using at most $N$ tape cells.
+]#leanfile("E23_DualMemory.lean:730") // e23_is_utm
 
-Despite theoretical universality, E23 struggles on real hardware:
+The proof constructs the simulation explicitly: each tape slot holds one cell, the attention mechanism implements head movement, and the working state encodes the finite control. The correspondence is exact.
 
-*Memory bandwidth*: Each step reads and potentially writes all $N$ tape slots. Even with sparse attention, the tape must be kept in memory. For $N = 64, D = 1024$, the tape is $64 times 1024 times 4 = 256"KB"$ per sequence---significant at scale.
+== E88: The Saturation-Based Approach
 
-*Attention overhead*: Computing attention scores over $N$ slots adds $O(N D)$ compute per step. This compounds with sequence length.
+E88 achieves its expressivity without explicit tape. The matrix state and tanh saturation create implicit structure.
 
-*Training instability*: The replacement write $(1-alpha) dot "old" + alpha dot "new"$ creates long gradient paths through the tape. Information written early affects reads much later, creating vanishing/exploding gradient issues.
+The approaches differ in their source of power. E23's memory is explicit, addressable, and permanent. Writing to tape slot $j$ leaves the content there indefinitely; it never decays. E88's memory is implicit, distributed across the matrix entries, and dynamically stable. Saturation prevents decay, but the stability is emergent rather than designed-in.
 
-*Discrete vs continuous*: Theoretical UTM requires discrete operations (exact slot addressing). Soft attention approximates this but introduces errors that accumulate.
+The capacity formulas differ accordingly. E23 with $N$ slots of dimension $D$ has $N times D$ capacity. E88 with $H$ heads of dimension $d$ has $H times d^2$ capacity. For typical parameters, E88's capacity is larger, but it is less flexibly addressable.
 
-== E88: The Saturation Approach
+== The Trade-offs
 
-E88 uses temporal nonlinearity instead of explicit tape:
+Why would anyone choose E88 over E23, given that E23 is Turing-complete and E88 is not?
 
-$ S_t = tanh(alpha S_(t-1) + delta k_t^top) $
+The answer lies in training dynamics. E23's tape creates memory bandwidth pressure: $N times D$ reads and writes per step, with discrete addressing decisions at each step. Hard attention is non-differentiable; replacing it with soft attention loses the exactness that made E23 Turing-complete.
 
-where $S in RR^(H times D)$ (H heads, D dimensions).
+E88's matrix operations, by contrast, are naturally differentiable. The tanh is smooth everywhere. The gradient flows through the recurrence without discontinuities. The operations are also GPU-friendly: dense matrix multiplications achieve high utilization, while E23's variable addressing patterns create irregular memory access.
 
-=== How Saturation Creates Memory
-
-The key insight: tanh saturation creates stable fixed points.
-
-#block(
-  fill: rgb("#f0f7ff"),
-  stroke: rgb("#3366cc"),
-  inset: 12pt,
-  radius: 4pt,
-)[
-  *Theorem (TanhSaturation.lean)*: For $|S| approx 1$, the derivative $tanh'(S) = 1 - tanh^2(S) approx 0$.
-
-  This means small perturbations to a saturated state cause negligible change. The state "latches" at $plus.minus 1$.
+#keyinsight[
+  E23 is Turing-complete but hard to train. E88 is sub-UTM but trainable. The mechanisms that give E23 theoretical power---hard addressing, explicit tape---are exactly what make it difficult to optimize.
 ]
 
-This creates implicit binary memory:
-- State near $+1$: represents "fact is true"
-- State near $-1$: represents "fact is false"
-- Saturation prevents drift---the state persists without explicit storage
+== The Expressivity-Trainability Frontier
 
-=== E88's Practical Strengths
+This trade-off is a recurring theme in neural architecture design. Greater expressivity often comes with harder optimization. The frontier is not empty: E88 finds a point that exceeds linear-temporal models while remaining differentiable.
 
-*Hardware efficiency*: E88's computation is $O(H D^2)$ per step---matrix multiplications that GPUs excel at. No separate tape access, no attention over memory slots.
+The choice depends on the task. For problems requiring exact symbolic manipulation---compiler verification, theorem proving, arbitrary algorithm execution---E23's Turing completeness is necessary. For problems where approximate computation suffices and training efficiency matters---language modeling, retrieval, pattern recognition---E88's position on the frontier is more favorable.
 
-*Gradient flow*: The recurrence $S_t = tanh(alpha S_(t-1) + delta k_t)$ has bounded gradients. Unlike E23's tape, there's no separate storage creating long gradient paths.
+#centerrule
 
-*Parallelization*: While inherently sequential in $t$, E88 can parallelize across heads $H$. Each head runs independent dynamics (proven in MultiHeadTemporalIndependence.lean).
+We have seen two escape routes from linear-temporal limitations. E23 achieves full Turing completeness through explicit tape, at the cost of training difficulty. E88 achieves bounded superiority through implicit saturation, while remaining differentiable. Both exceed what Mamba2 and linear attention can compute. Neither dominates the other across all dimensions.
 
-*Natural batching*: State is fixed-size $H times D$ regardless of "memory requirements." No dynamic allocation, no variable-length tape.
-
-== The Core Trade-off
-
-#figure(
-  table(
-    columns: 3,
-    stroke: 0.5pt,
-    align: (center, center, center),
-    [], [*E23*], [*E88*],
-    [Memory capacity], [Explicit: $N times D$], [Implicit: $H times D$ "soft bits"],
-    [Precision], [Can be exact (hard attn)], [Approximate (saturation)],
-    [Hardware fit], [Poor (memory-bound)], [Good (compute-bound)],
-    [Training], [Hard (long gradients)], [Easier (bounded)],
-    [Theoretical power], [UTM], [Sub-UTM but very expressive],
-  ),
-  caption: [E23 trades practical efficiency for theoretical power.],
-)
-
-== Why E88 Wins in Practice
-
-*The memory bottleneck*: Modern accelerators (GPUs, TPUs) are compute-bound, not memory-bound. E23's tape creates memory bandwidth pressure; E88's matrix operations are compute-dense.
-
-*The precision illusion*: E23's "exact" addressing requires hard attention, which is non-differentiable. In practice, soft attention is used, losing the precision advantage.
-
-*Gradient scaling*: E23's tape creates $O(T)$ gradient paths (information written at step 1 affects reads at step $T$). E88's saturation naturally bounds gradient magnitude.
-
-*Capacity scaling*: Need more memory? E23 requires larger tape (more memory bandwidth). E88 adds more heads (more parallel compute)---the right direction for modern hardware.
-
-== When E23 Might Be Preferred
-
-E23's explicit tape could be valuable for:
-- *Interpretability*: Tape contents are directly inspectable
-- *Guaranteed persistence*: Information never decays (vs E88's "almost never")
-- *Exact retrieval*: When approximate recall is unacceptable
-- *Theoretical analysis*: UTM equivalence enables formal reasoning
-
-But these advantages rarely outweigh E88's practical benefits in typical ML settings.
-
-== The Deeper Lesson
-
-E23 and E88 represent two philosophies:
-
-*E23*: "Memory should be explicit and addressable, like a Turing machine tape."
-
-*E88*: "Memory should emerge from dynamics, stable states encoding information."
-
-The success of E88 suggests that for neural networks, the second philosophy aligns better with:
-- How gradient-based learning works
-- How modern hardware is designed
-- How information needs to be stored (approximately, not exactly)
-
-E23 is theoretically beautiful. E88 is practically effective. The proofs we've developed explain _why_: the mechanisms that give E23 its power (explicit tape, hard addressing) are exactly the mechanisms that make it hard to train and deploy.
+The next question is: where do these architectures sit in the classical hierarchy of computational complexity? The answer requires connecting neural network expressivity to circuit complexity.

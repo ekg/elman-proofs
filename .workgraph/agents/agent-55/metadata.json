@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-55",
+  "executor": "claude",
+  "pid": 334918,
+  "started_at": "2026-01-30T15:57:32.073142867+00:00",
+  "task_id": "final-4-prove",
+  "timeout": null
+}

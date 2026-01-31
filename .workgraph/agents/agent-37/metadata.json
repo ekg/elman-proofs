@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-37",
+  "executor": "lean-fix",
+  "pid": 131366,
+  "started_at": "2026-01-30T00:40:12.903319157+00:00",
+  "task_id": "2-2-prove",
+  "timeout": null
+}

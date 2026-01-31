@@ -1,0 +1,38 @@
+I have completed the task. Here's a summary of what was delivered:
+
+## Deep Introduction Written
+
+The new introduction (`docs/expressivity/01-introduction.typ`) provides comprehensive context across all six requested elements:
+
+### 1. The Fundamental Question: Where Should Nonlinearity Be Placed?
+- Frames the core design choice: between tokens (Transformers), between layers (Mamba2/FLA/GDN), or through time (E88/RNNs)
+- Establishes that this choice determines computational capabilities
+
+### 2. Historical Context: Transformers vs RNNs vs SSMs
+- RNN Era (1990s-2017): Rich temporal dynamics but training difficulties
+- Transformer Revolution (2017-2022): Removed sequential dependencies, enabled parallelism
+- SSM Resurgence (2022-present): Linear recurrence for efficiency
+- E88 Alternative (2025): Hardware-friendly temporal nonlinearity
+
+### 3. Key Insight: Temporal vs Depth-wise Nonlinearity
+- The central quote: "Nonlinearity flows down (through layers), not forward (through time)"
+- Composition depth comparison: Linear-temporal = $D$, Nonlinear-temporal = $D \times T$
+- Clear table comparing Mamba2, E88, and Transformers
+
+### 4. TC⁰ Circuit Complexity Framing
+- Connects architecture limitations to computational complexity theory
+- Explains why parity is outside TC⁰ and why this matters
+- Shows linear-temporal models are bounded by TC⁰ while E88 escapes it
+
+### 5. Emergent Computation: Output Feedback Creates Tape Memory
+- Chain-of-thought as emergent working memory
+- The complete hierarchy: Fixed Mamba2 ⊊ Fixed E88 ⊊ E88+Feedback ≅ Transformer+CoT ⊊ E23 (UTM)
+- Explains why CoT dramatically improves reasoning
+
+### 6. Detailed Roadmap of All Sections
+- Section-by-section breakdown of what each proves
+- Specific Lean file and line number references
+- Three-phase structure: Limitations → Separation → Practical Synthesis
+- Reading guide for different audiences (practitioners, theorists, curious readers)
+
+The introduction is approximately 4x longer than the original and provides the deep mathematical and historical context needed to understand the document's significance.

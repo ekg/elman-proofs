@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-27",
+  "executor": "lean-fix",
+  "pid": 68009,
+  "started_at": "2026-01-30T00:26:54.245236147+00:00",
+  "task_id": "strategy-analyze-broken",
+  "timeout": null
+}

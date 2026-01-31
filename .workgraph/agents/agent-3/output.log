@@ -1,0 +1,15 @@
+Task completed. I've created `Q3_SYNTHETIC_BENCHMARK_DESIGN.md` with:
+
+**Three benchmark tasks:**
+1. **Running Threshold Count (RTC)** — y_t = 1 iff count of 1s up to position t exceeds ⌈t/2⌉
+2. **Temporal XOR Chain (TXC)** — y_t = x_1 XOR x_2 XOR ... XOR x_t (prefix parity)
+3. **Finite State Machine (FSM)** — y_t = 1 iff count reaches 3 (irreversible absorbing state)
+
+**Key design elements:**
+- Tasks directly test the theorems in `LinearLimitations.lean` (threshold, XOR impossibility)
+- Sequence length sweep (64 to 2048) to test the D vs D·T depth hypothesis
+- Clear predictions: E88 should maintain ~99% accuracy while Mamba2 degrades with increasing T
+- Diagnostic tools: position-dependent accuracy, gradient flow analysis, state probes
+- Ablation: removing tanh from E88 should make it fail like Mamba2
+
+**Predicted outcome:** TXC will show the strongest separation (40%+ gap at T=1024) because XOR is maximally nonlinear, directly connecting to the formal `linear_cannot_xor` proof.

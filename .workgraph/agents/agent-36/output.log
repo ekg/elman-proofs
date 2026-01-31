@@ -1,0 +1,28 @@
+I've completed the task. Here's a summary of what was done:
+
+## Summary
+
+Fixed theorem statements with correct mathematical constraints in **TanhSaturation.lean** and **AttentionPersistence.lean**.
+
+### Key Changes
+
+**TanhSaturation.lean:**
+- `alert_state_is_absorbing`: Changed `hα : 0 < α` to `hα : 1 < α`, added `hθ_below_fp : θ < tanh (α * θ)`
+- `alert_state_robust`: Added `hTanh_bound : tanh (α * θ - δ) > θ - δ` constraint
+
+**AttentionPersistence.lean:**
+- `alert_basin_nonempty`: Added `hθ_below_fp : θ < tanh (α * θ)` constraint
+- `alert_forward_invariant`: Added `hθ_below_fp : θ < tanh (α * θ)` constraint, completely rewrote the proof to use this hypothesis cleanly
+- `alert_persists_under_perturbation`: Added `hθ_below_fp` constraint
+- `attention_persistence_main`: Added `hθ_below_fp` constraint
+- `e88_head_can_enter_alert`: Changed `θ < 1` to `θ < 0.76`, added `|S| ≤ 1` bound, strengthened input requirement to `δ*input > θ + 1 + α`
+- `e88_head_stays_alert`: Added `hθ_below_fp` constraint
+
+### Mathematical Insight
+
+The key constraint `θ < tanh(α * θ)` ensures that the threshold θ is below the fixed point S*(α) of the tanh recurrence. This is necessary because:
+- For α > 1, the tanh map `S ↦ tanh(αS)` has a nonzero fixed point S*
+- The alert basin (states with |S| > θ) is non-empty and forward invariant **only if** θ < S*
+- The condition `θ < tanh(αθ)` is equivalent to θ being below the fixed point
+
+The build completes successfully. The remaining sorries in `ExactCounting.lean` are Category 3 (require IVT or advanced Mathlib machinery), not Category 2 (incorrect constraints), so they're outside the scope of this task.

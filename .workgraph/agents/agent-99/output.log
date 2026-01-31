@@ -1,0 +1,36 @@
+Task completed. I've updated section 4 (`docs/expressivity/04-e88.typ`) to properly emphasize **matrix state as E88's core innovation**. Key changes:
+
+## Summary of Updates
+
+### 1. New Overview (4.1)
+- Changed subtitle from "Tanh Saturation, Latching, and Expressivity Separation" to "Matrix State, Tanh Saturation, and Expressivity Separation"
+- Added "The central insight": E88 maintains a **matrix** $S \in \mathbb{R}^{d \times d}$, providing $O(d^2)$ information capacity vs $O(d)$ for Mamba2
+- Restructured central results to emphasize matrix state first
+
+### 2. New Section 4.2: "Matrix State as Core Innovation"
+- Added **Definition: Matrix State vs Vector State** with explicit capacity comparison (64 values vs 4,096 for d=64)
+- Added **Theorem: Matrix State Capacity** comparing E88 ($Hd^2$) to Mamba2 ($n$)
+- Added explanation of outer product $vk^T$ as associative storage
+
+### 3. New Section 4.2.1: Comparison Table
+- Added explicit table comparing E88 matrix state vs Mamba2 vector state
+- Highlighted capacity difference (128× for typical configurations)
+
+### 4. New Section 4.3: "How Tanh Preserves Matrix State"
+- Explained dual purpose: bounding and saturation for preservation
+
+### 5. New Section 4.8.1: "Why Matrix State Enables Multi-Fact Tracking"
+- Added definition of multi-fact tracking
+- Concrete example: tracking "who spoke to whom" requires $d^2$ matrix
+- Theorem on vector state limitation
+
+### 6. Updated Summary Table (4.11)
+- Added **State type** row (Matrix vs Vector)
+- Added **State capacity** row ($d^2$ vs $n$)  
+- Added **Multi-fact tracking** row
+- Updated caption to emphasize state capacity as fundamental distinction
+
+### 7. Rewritten Conclusion (4.12)
+- Now explicitly states **two** innovations: matrix state + temporal nonlinearity
+- Explains why Mamba2's depth cannot compensate for state capacity limits
+- Added MatrixStateRNN.lean to file references

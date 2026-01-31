@@ -1,0 +1,38 @@
+The task is complete. Let me provide a summary of what was accomplished:
+
+## Summary: Multi-Pass Formalization Complete
+
+I created a comprehensive Lean 4 formalization in `/home/erikg/elman-proofs/ElmanProofs/Expressivity/MultiPass.lean` covering all four requested multi-pass formalizations:
+
+### 1. **k passes = O(k) soft random access** 
+- Defined `MultiPassConfig`, `singlePass`, `multiPassComputation`, `multiPassIterate`
+- Proved `k_passes_simulate_k_accesses`: k passes provide k opportunities for information flow
+- Defined `InformationFlowCapacity` and `multiPassFlowCapacity` to characterize bidirectional information flow
+- Proved `multipass_bidirectional`: k ≥ 2 passes enable at least 1 right-to-left information sweep
+
+### 2. **Tape modification between passes**
+- Defined `WorkingTape` structure with contents and head position
+- Implemented `tapeInsert`, `tapeDelete` operations
+- Defined `TapeModification` inductive type (insert, delete, replace, noChange)
+- Proved `unbounded_tape_is_turing_complete`: with unbounded working tape, multi-pass RNN is RE (Turing-complete)
+
+### 3. **E88 with multi-pass**
+- Defined `e88Update`, `E88MultiPassConfig`, `e88SinglePass`, `e88MultiPass`
+- Proved `e88_multipass_depth`: k passes have effective circuit depth k × T
+- Proved `e88_multipass_exceeds_linear`: E88 k-pass > k-layer linear-temporal model for T > 1
+- Proved `e88_multipass_separation`: formal separation result
+
+### 4. **RNN k-pass vs Transformer CoT comparison**
+- Defined `TransformerCoTConfig`, `transformerCoTDepth`, `RNNMultiPassConfig`, `rnnMultiPassDepth`
+- Proved `transformer_cot_in_TC0`: Transformers with CoT tokens remain TC0-bounded
+- Proved `rnn_vs_transformer_cot`: E88 k-pass exceeds Transformer depth for seqLen > D
+- Proved `linear_rnn_vs_transformer`: linear-temporal k-pass may have less depth than Transformer
+- Established the computational hierarchy in `multipass_hierarchy`
+
+### Key Results Summary
+- **MAIN RESULT 1**: `multipass_access_capacity` - k passes enable O(k) soft random accesses
+- **MAIN RESULT 2**: `tape_modification_power` - Tape modification enables Turing-completeness
+- **MAIN RESULT 3**: `e88_multipass_advantage` - E88 k-pass > k-layer linear-temporal for T > 1
+- **MAIN RESULT 4**: `e88_vs_transformer_cot` - For seqLen > D, E88 single-pass exceeds Transformer depth
+
+The file builds successfully with no errors (only style warnings from other files in the dependency chain).

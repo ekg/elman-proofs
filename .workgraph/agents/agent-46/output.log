@@ -1,0 +1,14 @@
+I have successfully fixed the `count_mod_3_not_linear` sorry in `ElmanProofs/Expressivity/ExactCounting.lean`. 
+
+The proof works by:
+1. Assuming a linear RNN can compute count mod 3
+2. Defining input sequences: `one_at i` (1 at position i, 0 elsewhere) for i ∈ {0,1,2}
+3. Defining `ones_012` which has 1s at positions 0, 1, 2
+4. Proving that `ones_012 = one_at 0 + one_at 1 + one_at 2` (pointwise addition)
+5. Using linearity of the RNN output to show: `f(ones_012) = f(one_at 0) + f(one_at 1) + f(one_at 2)`
+6. Computing the count mod 3 values:
+   - Each `one_at i` has count 1, so count mod 3 = 1
+   - `ones_012` has count 3, so count mod 3 = 0
+7. Deriving a contradiction: 0 = 1 + 1 + 1 = 3
+
+The build passes successfully.

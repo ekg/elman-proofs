@@ -1,0 +1,33 @@
+You are working on task: final-document-assembly-3 - Final document assembly
+
+## Task Description
+Final assembly after narrative polish: compile PDF, verify everything flows, commit and push.
+
+## Deliverable
+{{task_deliverable}}
+
+## Key Context Files (READ THESE FIRST)
+- ElmanProofs/Expressivity/LinearLimitations.lean - existing proofs that linear RNNs cannot compute threshold/XOR
+- ElmanProofs/Expressivity/LinearCapacity.lean - linear state is weighted sum of inputs
+- ElmanProofs/Expressivity/MultiLayerLimitations.lean - multi-layer extension (recently created)
+- ElmanProofs/Architectures/RecurrenceLinearity.lean - architecture classification (linear vs nonlinear in h)
+- ElmanProofs/Architectures/Mamba2_SSM.lean - Mamba2 formalization
+- OPEN_QUESTIONS_TEMPORAL_VS_DEPTH.md - the problem statement
+- OPEN_QUESTIONS_RESOLUTION.md - recent analysis findings
+
+## Key Predictions to Formalize
+1. **Tanh saturation/latching**: Once |S| approaches 1, tanh'(S) → 0, creating stable fixed points
+2. **Binary retention**: E88 can "latch" a binary fact; Mamba2's linear state decays as α^t
+3. **Exact counting**: E88's nested tanh can count exactly mod small n; Mamba2 cannot threshold
+4. **Running parity**: parity(x_1,...,x_t) is not linearly computable (extends XOR proof)
+5. **Head independence**: Each E88 head runs independent temporal dynamics
+6. **Attention persistence**: E88 head can enter "alert" state and stay there
+
+## Instructions
+1. Read the relevant existing Lean files to understand conventions and existing theorems
+2. Write complete, compiling Lean 4 code with Mathlib imports
+3. Prove the theorems fully where possible; use 'sorry' only for genuinely hard subgoals
+4. Follow the existing code style in ElmanProofs/
+5. When done, run: wg done final-document-assembly-3
+
+IMPORTANT: Write REAL proofs with REAL math. No mock implementations.

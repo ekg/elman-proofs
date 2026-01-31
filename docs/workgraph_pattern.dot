@@ -1,0 +1,31 @@
+digraph "Recurrent Sorry-Fixing Loop" {
+  rankdir=TB;
+  node [fontname="Helvetica", fontsize=11];
+  edge [fontname="Helvetica", fontsize=9];
+  compound=true;
+
+  // Abstract iteration pattern
+  subgraph cluster_pattern {
+    label="Recurrent Pattern (per iteration)";
+    style=rounded;
+    color=blue;
+    bgcolor=aliceblue;
+
+    scan [label="1. Scan\nsorries", shape=ellipse, style=filled, fillcolor=lightyellow];
+    fix [label="2. Fix sorries\n(parallel per file)", shape=box, style=filled, fillcolor=lightblue];
+    build [label="3. Build\n& test", shape=ellipse, style=filled, fillcolor=lightyellow];
+    verify [label="4. Verify\ncompletion", shape=diamond, style=filled, fillcolor=lightyellow];
+    done [label="DONE\n(0 sorries)", shape=doubleoctagon, style=filled, fillcolor=lightgreen];
+    next [label="Spawn\nITERATION-N+1", shape=box, style=filled, fillcolor=lightcoral];
+
+    scan -> fix;
+    fix -> build;
+    build -> verify;
+    verify -> done [label="count=0"];
+    verify -> next [label="count>0"];
+  }
+
+  // Recurrence arrow
+  next -> scan [style=dashed, color=red, label="recur", constraint=false];
+
+}

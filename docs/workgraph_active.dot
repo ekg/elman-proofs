@@ -1,0 +1,19 @@
+digraph "Active Tasks" {
+  rankdir=TB;
+  node [fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=8];
+
+  subgraph cluster_iteration_4 {
+    label="Iteration 4";
+    style=dashed;
+    color=blue;
+    "iteration-4-fix" [label="Fix sorries in ExactCounting.lean (15)\nagent-21", shape=box, style=filled, fillcolor=yellow];
+    "iteration-4-fix-2" [label="Fix sorries in AttentionPersistence.lean (12)\nagent-22", shape=box, style=filled, fillcolor=yellow];
+    "iteration-4-fix-3" [label="Fix sorries in TanhSaturation.lean (10)\nagent-23", shape=box, style=filled, fillcolor=yellow];
+    "iteration-4-build" [label="Build and verify", shape=box, style=filled, fillcolor=white];
+  }
+
+  "iteration-4-fix" -> "iteration-4-build";
+  "iteration-4-fix-2" -> "iteration-4-build";
+  "iteration-4-fix-3" -> "iteration-4-build";
+}

@@ -1,0 +1,21 @@
+I have successfully fixed both sorries in `E27_TapeGatedOutput.lean`:
+
+## Summary
+
+**File:** `ElmanProofs/Architectures/E27_TapeGatedOutput.lean`
+
+### Sorry 1: `silu_bounded_by_input` (line 87)
+- **Theorem:** `|silu x| ≤ |x|`
+- **Proof approach:** Since `silu x = x / (1 + exp(-x))` and the denominator `1 + exp(-x) > 1`, we have:
+  - `|silu x| = |x| / (1 + exp(-x))`
+  - Since the denominator is at least 1, this gives `|x| / (1 + exp(-x)) ≤ |x| / 1 = |x|`
+
+### Sorry 2: `e27_output_bounded` (line 283)
+- **Theorem:** Given bounded working memory (`|h_work dim| < 1`) and bounded inputs (`z`, `read`), the output `e27b_output` is bounded
+- **Proof approach:** Chain of inequalities using:
+  1. `|h_work dim| ≤ 1`
+  2. `|silu (z dim + read dim)| ≤ |z dim + read dim|` (from `silu_bounded_by_input`)
+  3. `|z dim + read dim| ≤ |z dim| + |read dim|` (triangle inequality)
+  4. `|z dim| + |read dim| ≤ M_z + M_r` (from hypotheses)
+
+Both proofs compile successfully with no remaining sorries in the file.

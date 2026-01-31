@@ -1,0 +1,9 @@
+Task complete. I fixed the 3 sorries in `ElmanProofs/Architectures/E31_SparseGatedElman.lean`:
+
+1. **`silu_bounded`** (line 89): Proved that |silu(x)| ≤ |x| by showing that the denominator (1 + exp(-x)) ≥ 1, so dividing by it shrinks the absolute value.
+
+2. **`sigmoid_range`** (line 111): Proved that sigmoid(x) = 1/(1 + exp(-x)) is in (0, 1) using the fact that exp(-x) > 0, so the denominator > 1.
+
+3. **`e31_output_bounded`** (line 214): Proved that |h * gate| ≤ 1 when |h| ≤ 1 and gate ∈ [0, 1] (from sparsemax properties). Added a helper lemma `sparsemax_le_one` to establish that sparsemax values are at most 1.
+
+The file now compiles with only 2 remaining sorries (`e31_gate_sparse` and `e31c_output`) which were pre-existing and not part of this task.

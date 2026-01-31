@@ -1,0 +1,9 @@
+{
+  "agent_id": "agent-116",
+  "executor": "claude",
+  "model": "opus",
+  "pid": 1207746,
+  "started_at": "2026-01-31T21:32:57.528878297+00:00",
+  "task_id": "formalize-tape-modification",
+  "timeout": null
+}

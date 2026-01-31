@@ -1,0 +1,18 @@
+I have completed the restyling of sections 11 and 12.
+
+**Section 11 (Experimental Results)** was transformed from a format with colored boxes and exhaustive subsections into a flowing narrative that:
+- Opens with the counterintuitive finding that Mamba2 beats E88 empirically despite lower expressivity
+- Uses simple tables with `#simpletable` instead of colored `#finding` and `#observation` boxes
+- Removes redundant subsection structure (11.1, 11.2.1, etc.) in favor of prose sections
+- Employs `#keyinsight` for the two main takeaways
+- Explains the theory-practice gap narratively rather than through bullet lists
+
+**Section 12 (Formal System)** was condensed from an exhaustive file-by-file listing to:
+- A summary of *what* is proven, not *where* it's proven
+- Five core definitions capturing the main results (impossibility, separation, classification, complexity, counting)
+- Single footnotes to Lean files rather than inline code blocks with line numbers
+- Removal of the "How to Read Lean Code" tutorial section
+- A compact verification status table
+- Focus on guarantees and their limits
+
+Both sections now use the traditional math style (no colored boxes, italicized theorems, `#leanfile` footnotes) and tell a coherent story rather than presenting disconnected facts.

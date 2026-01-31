@@ -1,0 +1,17 @@
+Task completed. I restyled sections 7 and 8 of the expressivity document:
+
+**Section 7 (Practical Implications):**
+- Added `#import "traditional-math-style.typ": *`
+- Removed all colored boxes (`fill:`, `stroke:`, `radius:`)
+- Converted content to proper theorem/definition/proposition environments
+- Consolidated 3 tables down to 1 simple table
+- Added narrative flow with connecting prose
+- Used `#keyinsight`, `#mediumrule`, `#heavyrule` for visual structure
+
+**Section 8 (TC⁰ Bounds):**
+- Added traditional math style import
+- Presented the hierarchy reversal clearly: Linear SSM < TC⁰ < E88
+- Removed redundant tables (had 4 tables, now has 1 key summary table)
+- Used proper theorem/proof environments for all major results
+- Added clear proof sketches for the complexity bounds
+- Emphasized the key insight that the naive "Transformer > SSM > RNN" ordering reverses for computational expressivity

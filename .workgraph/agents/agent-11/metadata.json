@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-11",
+  "executor": "claude",
+  "pid": 4014817,
+  "started_at": "2026-01-29T17:11:20.247145607+00:00",
+  "task_id": "formalize-attention-persistence",
+  "timeout": null
+}

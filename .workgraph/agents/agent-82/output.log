@@ -1,0 +1,28 @@
+I've investigated all 9 sorries in the codebase. Here's my analysis:
+
+## Summary
+
+The build completes successfully, but 9 sorries remain:
+
+### E23vsE88Comparison.lean (5 sorries)
+1. **Line 185** (`e88_latched_state_bounded_from_zero`): Requires tight numerical bounds on tanh. The theorem needs α ≥ 0.5 hypothesis to be provable.
+
+2. **Line 213** (`binary_retention_gap`): **Mathematically false statement**. Claims fixed points exist for α < 1, but for α < 1, the only fixed point of `tanh(αS) = S` is S = 0. Needs to be reformulated to α > 1 for true fixed points.
+
+3. **Lines 254, 277** (`linear_cannot_running_threshold`, `running_parity_not_linear`): These need discontinuity/affine arguments. The proofs exist in ExactCounting.lean and RunningParity.lean but aren't connected.
+
+4. **Line 339** (`e88_alert_persistence`): Similar numerical bounds issue.
+
+### ComputationalClasses.lean (4 sorries)
+1. **Lines 312, 317** (`regular_subset_linearRNN`): Need induction on word length showing DFA simulation preserves one-hot encoding.
+
+2. **Lines 604, 635**: Need pumping lemma formalization to show a^n b^n is not regular.
+
+### OutputFeedback.lean (1 sorry)
+1. **Line 347** (`feedback_rnn_simulates_bounded_TM`): Needs to show one-hot decoding correctly recovers head position. Requires proving that `Exists.choose` returns the unique index with value 1.
+
+These sorries require either:
+- Careful numerical analysis with tight exponential bounds
+- Correcting mathematically false theorem statements  
+- Formalizing automata theory (pumping lemma, DFA simulation)
+- One-hot encoding round-trip proofs

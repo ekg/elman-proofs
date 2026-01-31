@@ -1,0 +1,14 @@
+Completed task **section-2-mathematical-2** (Section 2: Mathematical Foundations).
+
+**Deliverable**: `docs/expressivity/02-foundations.typ` (with compiled PDF)
+
+**Document contents**:
+- 2.1-2.4: Linear RNN capacity bounds with formal proofs (state as weighted sum, threshold impossibility, XOR impossibility)
+- 2.5-2.6: Multi-layer analysis showing depth cannot compensate for linear temporal dynamics
+- 2.7: Separation examples (Running Threshold Count, Temporal XOR Chain)
+- 2.8: Architecture classification (Mamba2 linear in h, E88 nonlinear in h)
+- 2.9: E88 saturation and binary latching properties
+- 2.10: Information flow analysis (linear vs input-dependent gating)
+- 2.11-2.13: Practical implications and key insight summary
+
+All theorems cite the corresponding Lean formalizations in the ElmanProofs codebase.

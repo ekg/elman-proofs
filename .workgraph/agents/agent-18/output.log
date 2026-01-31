@@ -1,0 +1,22 @@
+I've completed the task `iteration-3-fix-3` for fixing sorries in TanhSaturation.lean. Here's a summary of the work done:
+
+## Summary
+
+**File:** `ElmanProofs/Expressivity/TanhSaturation.lean`
+
+**Original sorries:** 6
+
+**Status:**
+1. **`e88_latched_state_persists` (line 285):** Still has sorry - the theorem requires `|tanh(x)| > 1 - 2ε` when `|x| > 2α - 1 - αε`, which needs additional constraints on α that aren't provided in the hypothesis
+
+2. **`linear_cannot_count_exactly` (lines ~460-500):** Rewrote with a clean proof using n=1 inputs showing B must satisfy incompatible bounds (B > 0.833 from small input and B < 0.75 from large input)
+
+3. **`running_parity_not_linear` (lines ~510-620):** Rewrote with a direct proof using the 4 binary corner inputs to show the XOR property (0+0=0, 0+1=1, 1+0=1, 1+1=0) which contradicts linear additivity
+
+4. **`alert_state_is_absorbing`:** Two sorries remain - this theorem is mathematically problematic:
+   - For α ≥ 1: Would need to prove the fixed point S* > θ, which isn't guaranteed
+   - For α < 1: The basin is empty since all sequences converge to 0
+
+5. **`alert_state_robust`:** Sorry remains - the theorem constraints don't guarantee θ > δ, which is needed for the proof
+
+**Key insight:** Several of these theorems have hypotheses that are insufficient to prove the conclusions. The mathematical statements need strengthening (e.g., requiring α > 1 for alert_state_is_absorbing, or θ < S*(α) for the fixed point theorems).

@@ -1,0 +1,32 @@
+I've completed the task. Here's a summary of what was created:
+
+## Summary: Section 1: Introduction — The Central Question
+
+I created **`ElmanProofs/Expressivity/Introduction.lean`** which formalizes the central question of temporal nonlinearity vs depth in sequence models.
+
+### Key Content:
+
+1. **The Central Question**: Does depth compensate for linear temporal dynamics?
+   - Answer: **NO** — depth cannot fully compensate
+
+2. **Architectural Dichotomy**:
+   - `TemporalDynamics.linear`: Models like Mamba2, MinGRU where state evolves as `h_T = Σ α^{T-t} · f(x_t)`
+   - `TemporalDynamics.nonlinear`: Models like E88 where state evolves as `S := σ(αS + g(x))`
+
+3. **Core Theorems**:
+   - `withinLayerDepth`: Linear dynamics collapse to depth 1; nonlinear grows with sequence length T
+   - `totalDepth`: Total composition depth = layers × within-layer depth
+   - `depth_gap`: Nonlinear has T × more depth per layer
+   - `answer_depth_does_not_compensate`: For any D layers, there exists T where 1-layer nonlinear beats D-layer linear
+
+4. **Separation Examples**:
+   - `runningThresholdCount`: Output 1 when count exceeds threshold τ
+   - `temporalXORChain`: XOR of all inputs up to position t
+   - `runningParity`: Parity of prefix — canonical separation example
+
+5. **Roadmap**: Maps out how subsequent files prove the key claims:
+   - `LinearCapacity.lean`, `LinearLimitations.lean` — base proofs
+   - `MultiLayerLimitations.lean` — depth-independence
+   - `TanhSaturation.lean`, `BinaryFactRetention.lean`, `ExactCounting.lean`, `RunningParity.lean` — capabilities and separations
+
+The file compiles successfully with `lake build` and provides the foundational framework for understanding the expressivity gap between linear-temporal and nonlinear-temporal architectures.

@@ -1,0 +1,8 @@
+{
+  "agent_id": "agent-21",
+  "executor": "lean-fix",
+  "pid": 4177080,
+  "started_at": "2026-01-29T21:28:07.518565297+00:00",
+  "task_id": "iteration-4-fix",
+  "timeout": null
+}

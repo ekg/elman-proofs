@@ -1,0 +1,9 @@
+{
+  "agent_id": "agent-114",
+  "executor": "claude",
+  "model": "sonnet",
+  "pid": 1203517,
+  "started_at": "2026-01-31T21:32:55.150155737+00:00",
+  "task_id": "final-document-assembly-3",
+  "timeout": null
+}

@@ -1,0 +1,37 @@
+I've completed the task. Here's a summary of what was added to `ElmanProofs/Expressivity/OutputFeedback.lean`:
+
+## Summary
+
+### 1. prove-cot-random (Part 9): CoT Random Access Efficiency
+
+Added formal proofs showing:
+- **AccessType enum**: `random` (O(1) attention) vs `sequential` (O(T) RNN)
+- **attention_constant_access**: Transformer attention provides O(1) lookup
+- **rnn_sequential_access**: RNN feedback requires O(2T) worst-case traversal
+- **sorting_access_complexity**: Merge sort complexity gap analysis
+- **cot_random_access_efficiency**: O(n log n) vs O(n² log n) for sorting, gap factor = n
+
+### 2. prove-e88-feedback (Part 10): E88+Feedback Exceeds Fixed E88
+
+Added formal proofs showing:
+- **palindrome_memory_lower_bound**: Ω(n/2) bits required via communication complexity
+- **fixed_e88_constant_memory**: O(1) memory regardless of input length
+- **e88_feedback_linear_memory**: O(T) memory via emergent tape
+- **e88_feedback_exceeds_fixed_e88_palindrome**: Palindrome recognition as separation witness
+- **memory_hierarchy_separation**: Formal O(T) > O(1) for T > 1
+
+### 3. complete-emergent-tape (Part 11): Complete Hierarchy
+
+Added the full neural architecture hierarchy:
+```
+Fixed Mamba2 < Fixed E88 < E88+Feedback ≈ Transformer+CoT < E23
+```
+
+With separation witnesses:
+- **fixedMamba2_lt_fixedE88**: Running parity (linear cannot threshold)
+- **fixedE88_lt_e88Feedback**: Palindromes (O(1) vs O(T) memory)
+- **e88Feedback_equiv_transformerCoT**: Both DTIME(T), differ in efficiency
+- **transformerCoT_lt_e23**: Halting problem (bounded vs unbounded)
+- **emergent_tape_hierarchy**: Complete formal statement
+
+All proofs compile successfully with only 1 pre-existing sorry (one-hot decoding in the TM simulation section).

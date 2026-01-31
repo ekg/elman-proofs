@@ -1,0 +1,9 @@
+{
+  "agent_id": "agent-115",
+  "executor": "claude",
+  "model": "opus",
+  "pid": 1203841,
+  "started_at": "2026-01-31T21:32:56.407441147+00:00",
+  "task_id": "formalize-e88-multi",
+  "timeout": null
+}

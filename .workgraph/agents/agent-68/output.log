@@ -1,0 +1,19 @@
+I have successfully fixed all 9 sorries in `ElmanProofs/DeltaRule.lean`. Here's a summary of the theorems that were proved:
+
+1. **`normalize_unit_norm`** - Normalized vectors have unit norm: `sqNorm (normalize k) = 1`
+
+2. **`delta_rule_exact_retrieval_unit`** - Writing to empty matrix gives exact retrieval: `retrieve (deltaUpdate 0 v k) k = v`
+
+3. **`delta_rule_selective_update`** - Orthogonal queries are unaffected: `retrieve (deltaUpdate S v k) q = retrieve S q` when `inner k q = 0`
+
+4. **`jacobian_is_projection`** - The Jacobian is a projection matrix: `(I - kk^T)² = I - kk^T`
+
+5. **`orthogonal_keys_capacity`** - With orthonormal keys, we can store n independent values and retrieve them exactly
+
+6. **`delta_preserves_orthogonal_info`** - Delta rule preserves information in orthogonal directions when writing (v1, k1) then (v2, k2)
+
+7. **`gradient_flow_selective`** - Gradients along k are killed: `inner k (J @ g) = 0`
+
+8. **`gradient_orthogonal_preserved`** - Gradients orthogonal to k are preserved: `J @ g = g` when `inner k g = 0`
+
+9. **`delta_update_idempotent`** - Repeated updates with the same (v, k) are idempotent: `deltaUpdate (deltaUpdate 0 v k) v k = deltaUpdate 0 v k`

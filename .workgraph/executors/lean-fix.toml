@@ -1,0 +1,33 @@
+[executor]
+type = "claude"
+command = "claude"
+args = ["--dangerously-skip-permissions"]
+
+[executor.prompt_template]
+template = '''
+You are working on task: {{task_id}} - {{task_title}}
+
+## RECURRENT SORRY-FIXING LOOP
+
+This is part of an iterative process to remove all `sorry` placeholders from Lean proofs.
+
+### Your Job
+
+1. Read the relevant Lean file
+2. Find all `sorry` statements
+3. For each sorry, write a real proof using Mathlib tactics
+4. Save the file
+5. Run `lake build` to verify compilation
+6. CRITICAL: Run `wg done {{task_id}}` when finished
+
+### Key Lean Tactics
+- simp, ring, omega, linarith for algebraic goals
+- exact, apply, have, obtain for building proofs
+- norm_num for numerical bounds
+- Real.tanh_lt_one, Real.abs_tanh_lt_one from Mathlib
+
+### Important
+- Write REAL proofs, not mock implementations
+- If a sorry is genuinely hard, leave a detailed comment but still try
+- ALWAYS run `wg done {{task_id}}` at the end
+'''

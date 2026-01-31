@@ -1,0 +1,29 @@
+Task complete. Here's a summary of the deliverable:
+
+## Task Q2: Find Separation Example - Complete
+
+I've written `Q2_SEPARATION_ANALYSIS.md` with the following key findings:
+
+### Main Result
+**There exist functions computable by 1-layer E88 that no D-layer Mamba2 can compute (for sequence length T sufficiently large).**
+
+### Concrete Separation Examples
+
+1. **Temporal XOR Chain**: `XORChain(x)_t = x_1 XOR x_2 XOR ... XOR x_t`
+   - E88: ✓ Computes with O(1) state using temporal tanh
+   - Mamba2: ✗ Cannot compute for T > 2^D
+
+2. **Running Threshold Count**: Output 1 at position t if ≥τ inputs seen so far
+   - E88: ✓ Computes with O(1) state
+   - Mamba2: ✗ Cannot compute for T > exp(D·n)
+
+### Why the Separation Exists
+
+- **E88**: `S_t = tanh(αS_{t-1} + δk^T)` applies tanh at **every timestep**, creating O(T) temporal nonlinearities
+- **Mamba2**: `h_t = αh_{t-1} + Bx_t` is **linear within each layer** - only D inter-layer nonlinearities exist
+
+The composition depth for temporal computation is T for E88 vs D for Mamba2.
+
+### Practical Implications
+- For T << 2^D (typical language: T~1000-100k, D~32, so 2^D >> T): Mamba2's depth compensates
+- This may explain why Mamba2 works well for language despite linear temporal dynamics

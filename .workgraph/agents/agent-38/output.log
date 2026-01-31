@@ -1,0 +1,22 @@
+I have completed the task **2-3-prove: Prove all continuity-related sorries**. Here's what was accomplished:
+
+## Summary
+
+### What was found:
+1. The main continuity theorems (`linear_rnn_continuous_per_t` and `linear_rnn_continuous_output` in `ExactCounting.lean`) were **already proven** with no sorries.
+
+2. The theorem `exact_count_detection_not_linear` (line 413) was using a sorry for a **discontinuity argument** that relies on continuity principles.
+
+### What was proven:
+I added a new theorem `exact_count_detection_discontinuous` and proved `exact_count_detection_not_linear` using the same IVT/connectedness pattern used in the already-proven `running_threshold_discontinuous` theorem.
+
+**Key proof technique:**
+- The `exactCountDetection` function only outputs values in {0, 1}
+- All-zeros input gives output 0 (count = 0 ≠ k when k > 0)
+- k-ones input gives output 1 
+- If a linear RNN could compute this, the output would be continuous
+- But a continuous function on a connected domain mapping to {0,1} and hitting both values must hit 0.5 (by IVT/ordConnected)
+- Contradiction since exactCountDetection never outputs 0.5
+
+### Build status:
+✅ `lake build` completed successfully (2525 jobs)

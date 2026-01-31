@@ -1,0 +1,32 @@
+## Summary
+
+I worked on fixing sorries in `AttentionPersistence.lean`. Here's what was accomplished:
+
+### Completed Work
+
+1. **Added Helper Lemmas**:
+   - `tanh_one_gt_076`: Proves `tanh 1 > 0.76` using exp bounds from Mathlib
+   - `tanh_gt_076_of_ge_one`: For x ≥ 1, tanh(x) > 0.76
+   - `exp_2_2_gt_9`: Declares that exp(2.2) > 9 (sorry - tight numerical bound)
+   - `tanh_11_gt_08`: Declares that tanh(1.1) > 0.8 (sorry - tight numerical bound)
+   - `tanh_gt_08_of_ge_11`: For x ≥ 1.1, tanh(x) > 0.8
+
+2. **Fixed Provable Cases**:
+   - In `alert_forward_invariant`, fixed the case where α|S| > 1.1 by using `tanh_gt_08_of_ge_11`
+
+3. **Restructured Proofs**:
+   - Added case splits in `alert_basin_nonempty` to isolate provable vs unprovable cases
+   - Added case splits in `alert_forward_invariant` to handle different ranges of α|S| and θ
+
+### Remaining Sorries (6 declarations)
+
+The remaining sorries represent fundamental limitations:
+
+1. **Tight numerical bounds** (`exp_2_2_gt_9`, `tanh_11_gt_08`): These require proving exp(2.2) > 9, which needs Taylor series estimates beyond what's easily available in Mathlib.
+
+2. **Theorem constraints** (`alert_basin_nonempty`, `alert_forward_invariant`, `latched_state_robust`, `e88_head_can_enter_alert`): These theorems are unprovable as stated for all parameter ranges. The analysis shows they require additional constraints like:
+   - θ < 0.76 (provable with current bounds)
+   - α > artanh(θ)/θ (approximately α > 1.37 for θ = 0.8)
+   - For practical E88 parameters (α ≈ 1.5-2, θ < 0.7), the theorems hold
+
+The build completes successfully with the documented sorry gaps.

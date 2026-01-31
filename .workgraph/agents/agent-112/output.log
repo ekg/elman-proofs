@@ -1,0 +1,37 @@
+The narrative arc and coherence pass is complete. Here's a summary of the transformation:
+
+## Summary of Changes
+
+**Overall Narrative Arc:**
+- Document now tells a coherent story: question → investigation → discovery → resolution
+- Central question ("Where should nonlinearity live?") established in introduction and resolved in conclusion
+- Each section flows naturally into the next with explicit transitions
+
+**Section-by-Section:**
+
+1. **Introduction** - Rewrote to hook with the central question, then preview the journey
+2. **Foundations** - Transformed from reference material into building blocks for the investigation
+3. **Linear Limitation** - Now presents the impossibility results as rising tension ("what can't be done")
+4. **E88** - The turn—shows how tanh saturation escapes the barriers
+5. **E23 vs E88** - Two escape routes, different trade-offs
+6. **Separation** - The hierarchy emerges as a discovery
+7. **Implications** - Practical consequences flow from theory
+8. **TC⁰ Bounds** - Classical complexity perspective deepens the story ("the inverted hierarchy")
+9. **Output Feedback** - The emergent tape insight explains why chain-of-thought works
+10. **Multi-Pass RNN** - A middle path between fixed state and full feedback
+11. **Experimental Results** - The twist—practice inverts theory, but we explain why
+12. **Formal Verification** - Brief, emphasizes certainty
+14. **Composition Depth** - When does the theory matter?
+16. **Appendix** - Reference tables
+
+**New Elements:**
+- Complete **abstract** that previews the narrative journey
+- Full **conclusion** that resolves the central question and synthesizes all findings
+- Removed empty/merged sections (13, 15) from includes
+- Updated references section
+
+**Removed Anti-patterns:**
+- Bullet point lists replaced with flowing prose
+- "Here are 5 facts" structures woven into narrative
+- Theorems now feel like discoveries in the story
+- Explicit connections between sections ("The next section..." transitions)
