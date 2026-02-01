@@ -17,8 +17,8 @@ Linear Attention computes $"Output" = q dot.op (sum_i k_i times.o v_i)$. Gated D
 == The Threshold Barrier
 
 #theorem("Running Threshold")[
-  No $D$-layer linear-temporal model computes running threshold. Linear-temporal outputs are continuous; threshold is discontinuous.
-]#leanfile("ExactCounting.lean:344")
+  No $D$-layer linear-temporal model computes running threshold. Linear-temporal outputs are continuous; threshold is discontinuous.#leanfile("ExactCounting.lean:344")
+]
 
 A linear combination of inputs is continuous. Threshold has a jump discontinuity. Adding layers does not help.
 
@@ -27,8 +27,8 @@ This extends to any function with a hard decision boundary: binary classificatio
 == The Parity Barrier
 
 #theorem("Running Parity")[
-  No linear-temporal model computes $y_t = x_1 xor dots xor x_t$. Parity violates the affine identity: $f(0,0) + f(1,1) = 0 eq.not 2 = f(0,1) + f(1,0)$.
-]#leanfile("RunningParity.lean:200")
+  No linear-temporal model computes $y_t = x_1 xor dots xor x_t$. Parity violates the affine identity: $f(0,0) + f(1,1) = 0 eq.not 2 = f(0,1) + f(1,0)$.#leanfile("RunningParity.lean:200")
+]
 
 Affine functions satisfy $f(a) + f(b) = f(c) + f(d)$ when $a + b = c + d$. Parity does not.
 

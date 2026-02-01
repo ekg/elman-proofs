@@ -82,29 +82,6 @@ Input-dependent gating does not change the classification. In Mamba2, $A(x_t)$ a
 
 We now formalize each architecture with precise mathematical definitions extracted from our Lean formalizations.
 
-#definition("E88: Gated Elman Network")[
-  The E88 update rule with hidden state $h in RR^d$:
-  $ h_t = tanh(W_h h_(t-1) + W_x x_t + b) circle.filled.tiny sigma(W_g h_(t-1) + V_g x_t + b_g) $
-  where:
-  - $W_h in RR^(d times d)$ is the recurrence matrix
-  - $W_x in RR^(d times m)$ is the input projection
-  - $W_g, V_g$ are gate matrices
-  - $sigma(z) = 1/(1 + e^(-z))$ is the sigmoid function
-  - $circle.filled.tiny$ denotes element-wise multiplication
-
-  *Key property*: Nonlinear in $h_(t-1)$ due to $tanh(W_h h_(t-1) + dots.h)$.
-]#leanref("E1_GatedElman.lean:84", "e1_update")
-
-For matrix-state variants, we define the E88 matrix update:
-
-#definition("E88 Matrix State")[
-  The E88 matrix state update with $S in RR^(d times d)$:
-  $ S_t = tanh(alpha S_(t-1) + v_t k_t^top) $
-  where $alpha in (0,2)$ is retention coefficient, and $v_t, k_t in RR^d$ provide rank-1 updates.
-
-  *Key property*: Nonlinear in $S_(t-1)$ through nested tanh application. Each timestep adds one composition level.
-]
-
 #definition("Mamba2: Selective State Space Model")[
   The Mamba2 SSM update with state $h in RR^n$ and output $y in RR^d$:
   $ h_t &= A(x_t) h_(t-1) + B(x_t) x_t \
@@ -174,6 +151,72 @@ For matrix-state variants, we define the E88 matrix update:
 
   *Key property*: Linear in $c_(t-1)$ like MinGRU. Cell state update is $c_t = "diag"(f_t) c_(t-1) + "diag"(i_t) tilde(c)_t$.
 ]
+
+=== E88: Our Novel Architecture
+
+All the architectures above---MinGRU, MinLSTM, Mamba2---are _linear in the previous state_. The state evolves as $h_t = A(x_t) h_(t-1) + b(x_t)$, which means the recurrence through time composes into a single linear transformation. This is why they cannot compute threshold, parity, or XOR: their temporal composition depth is only $D$ (number of layers), not $D times T$ (layers times time).
+
+We introduce *E88*, a nonlinear recurrent architecture that breaks this limitation.
+
+#definition("E88: Nonlinear Matrix State")[
+  E88 uses a *matrix state* $S in RR^(d times d)$ with the update rule:
+  $ S_t = tanh(alpha S_(t-1) + v_t k_t^top) $
+  where:
+  - $alpha in (0,2)$ is a retention coefficient
+  - $v_t, k_t in RR^d$ are value and key vectors derived from input $x_t$
+  - Each timestep applies tanh element-wise to the matrix
+
+  Output is computed via: $y_t = q_t^top S_t$ where $q_t in RR^d$ is a query vector.
+
+  *Key innovation*: The recurrence $S_t = tanh(alpha S_(t-1) + dots.h)$ is *nonlinear in $S_(t-1)$* through nested tanh application. Unlike linear SSMs where the state is a weighted sum that decays, E88's state can *latch* via tanh saturation.
+]#leanref("E1_GatedElman.lean:84", "e1_update")
+
+The critical difference from linear models:
+
+*Linear SSMs (Mamba2, MinLSTM)*: State evolves as $h_t = alpha_t h_(t-1) + beta_t x_t$. The contribution from input $x_s$ at time $s < t$ decays exponentially: $x_s$ contributes $product_(i=s+1)^t alpha_i$ to $h_t$. As $t - s$ grows, this product shrinks toward zero. The memory _blurs_.
+
+*E88*: State evolves as $S_t = tanh(alpha S_(t-1) + v_t k_t^top)$. When $|alpha S_(t-1) + v_t k_t^top|$ enters the saturation region of tanh (where $|z| > 2$), we have $tanh(z) approx plus.minus 1$ and $tanh'(z) approx 0$. The state element _latches_ to $plus.minus 1$ and becomes insensitive to new inputs. The memory _persists_.
+
+This is addressable memory: E88 can store a binary fact in position $(i,j)$ of the matrix by driving $S_(i,j)$ into saturation. That fact remains accessible via the path $S_(i,j) dot.op q_i$ until explicitly overwritten.
+
+#proposition("State Accessibility")[
+  In E88, every element $S_(i,j)$ of the matrix state is directly accessible through the output path $y_t = q_t^top S_t = sum_(i,j) q_(t,i) S_(i,j)$.
+
+  In contrast, linear SSMs must access state through linear combinations: $y_t = C h_t$ where $h_t$ is a weighted sum of all past inputs. Individual facts cannot be isolated.
+]
+
+#proposition("Temporal Composition Depth")[
+  For a sequence of length $T$ through a $D$-layer E88 network:
+  - Each timestep adds one level of nonlinearity (the tanh at that timestep)
+  - Each layer adds one level of nonlinearity (interlayer activation)
+  - Total composition depth: $D times T$
+
+  For a linear-temporal model (MinLSTM, Mamba2):
+  - Temporal recurrence is linear: matrices compose into single transformation
+  - Only interlayer activations contribute to depth
+  - Total composition depth: $D$
+]#leanref("RecurrenceLinearity.lean:229", "e1_more_depth_than_minGRU")
+
+E88 is the key contribution of this work. It demonstrates that nonlinearity in the temporal recurrence---not just deep stacking of layers---is essential for expressing functions that require maintaining discrete state over time.
+
+==== E88 Architectural Variants
+
+We implement E88 in two forms:
+
+#definition("E88 Vector State (E1 Gated Elman)")[
+  The E1 variant uses a vector hidden state $h in RR^d$:
+  $ h_t = tanh(W_h h_(t-1) + W_x x_t + b) circle.filled.tiny sigma(W_g h_(t-1) + V_g x_t + b_g) $
+  where:
+  - $W_h in RR^(d times d)$ is the recurrence matrix
+  - $W_x in RR^(d times m)$ is the input projection
+  - $W_g, V_g$ are gate matrices for multiplicative gating
+  - $sigma(z) = 1/(1 + e^(-z))$ is the sigmoid function
+  - $circle.filled.tiny$ denotes element-wise multiplication
+
+  The gate $sigma(W_g h_(t-1) + V_g x_t + b_g)$ modulates the activation, allowing the model to selectively update or preserve state elements.
+]#leanref("E1_GatedElman.lean:84", "e1_update")
+
+Both variants share the core property: *nonlinearity in the previous state through nested function application*. This enables $D times T$ composition depth rather than just $D$.
 
 === Architectural Parameters and Complexity
 

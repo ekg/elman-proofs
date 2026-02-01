@@ -21,8 +21,8 @@ E23 maintains explicit memory slots, accessed through attention-like addressing.
 With hard attention (winner-take-all addressing), this becomes a Turing machine simulator.
 
 #theorem("E23 is UTM-Complete")[
-  E23 with $N$ tape slots and hard attention simulates any Turing machine using at most $N$ tape cells.
-]#leanfile("E23_DualMemory.lean:730") // e23_is_utm
+  E23 with $N$ tape slots and hard attention simulates any Turing machine using at most $N$ tape cells.#leanfile("E23_DualMemory.lean:730") // e23_is_utm
+]
 
 The proof constructs the simulation explicitly: each tape slot holds one cell, the attention mechanism implements head movement, and the working state encodes the finite control. The correspondence is exact.
 

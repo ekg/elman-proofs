@@ -37,8 +37,8 @@ This is exactly the separation we have been studying---now placed in classical c
 The question is: where do Transformers, SSMs, and recurrent networks sit in this hierarchy?
 
 #theorem("Transformers Are TC⁰-Bounded")[
-  A Transformer with $D$ layers and saturated (hard) attention can be simulated by a TC⁰ circuit of depth $O(D)$.
-]#leanfile("TC0Bounds.lean:152")
+  A Transformer with $D$ layers and saturated (hard) attention can be simulated by a TC⁰ circuit of depth $O(D)$.#leanfile("TC0Bounds.lean:152")
+]
 
 #proof-sketch[
   Consider a single attention head: $"Attn"(Q, K, V) = "softmax"(Q K^top) V$. With hard attention (one-hot softmax), this selects a single value based on the maximum dot product. The argmax is computable by $O(1)$ threshold gates (compare each dot product to every other). The feedforward layer $"FFN"(x) = W_2 dot.op "ReLU"(W_1 x + b_1) + b_2$ is a bounded composition of linear operations and ReLU. ReLU is a threshold: $"ReLU"(x) = x dot.op [x > 0]$. Total depth per layer: $O(1)$. Total depth for $D$ layers: $O(D)$. Since $D$ is fixed, the circuit has constant depth.
@@ -47,8 +47,8 @@ The question is: where do Transformers, SSMs, and recurrent networks sit in this
 This means Transformers live at TC⁰---exactly at the boundary where threshold gates give power over AC⁰. They can compute parity. But their depth is constant.
 
 #theorem("Linear SSMs Are Below TC⁰")[
-  State-space models with nonnegative gates (Mamba, Griffin, RWKV) cannot compute PARITY.
-]#leanfile("TC0VsUnboundedRNN.lean:152")
+  State-space models with nonnegative gates (Mamba, Griffin, RWKV) cannot compute PARITY.#leanfile("TC0VsUnboundedRNN.lean:152")
+]
 
 #proof-sketch[
   The state update is $h_t = A(x_t) h_(t-1) + b(x_t)$ where $A(x_t)$ has nonnegative entries (typical for gating mechanisms). By the Perron-Frobenius theorem, nonnegative matrices have a dominant eigenvalue that is real and nonnegative. The state evolves as:
@@ -59,8 +59,8 @@ This means Transformers live at TC⁰---exactly at the boundary where threshold 
 Linear SSMs fall _below_ TC⁰---they cannot even compute the function that separates AC⁰ from TC⁰.
 
 #theorem("E88 Exceeds TC⁰")[
-  E88 with $T$ timesteps has effective depth $D times T$. For any constant bound $C$, there exists sequence length $T$ such that $D times T > C$.
-]#leanfile("TC0VsUnboundedRNN.lean:127")
+  E88 with $T$ timesteps has effective depth $D times T$. For any constant bound $C$, there exists sequence length $T$ such that $D times T > C$.#leanfile("TC0VsUnboundedRNN.lean:127")
+]
 
 #proof[
   The key observation is that each timestep in E88 applies a nonlinear function (tanh) to the previous state: $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$. For a $D$-layer E88 processing $T$ timesteps, the total number of sequential nonlinear operations is $D times T$.

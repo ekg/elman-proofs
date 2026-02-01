@@ -24,16 +24,16 @@ But capacity alone does not explain the gap. A large linear system is still line
 The tanh function is bounded in $(-1, 1)$. As input grows large, tanh approaches $plus.minus 1$ and its derivative approaches zero.
 
 #lemma("Tanh Boundedness")[
-  For all $x in RR$: $|tanh(x)| < 1$.
-]#leanfile("TanhSaturation.lean:42")
+  For all $x in RR$: $|tanh(x)| < 1$.#leanfile("TanhSaturation.lean:42")
+]
 
 #proof[
   Recall $tanh(x) = (e^x - e^(-x))/(e^x + e^(-x))$. The numerator has magnitude strictly less than the denominator for all finite $x$.
 ]
 
 #lemma("Tanh Derivative Vanishes at Saturation")[
-  $tanh'(x) = 1 - tanh^2(x)$. As $|x| -> infinity$, we have $tanh'(x) -> 0$.
-]#leanfile("TanhSaturation.lean:87")
+  $tanh'(x) = 1 - tanh^2(x)$. As $|x| -> infinity$, we have $tanh'(x) -> 0$.#leanfile("TanhSaturation.lean:87")
+]
 
 #proof[
   Since $|tanh(x)| -> 1$ as $|x| -> infinity$, we have $tanh'(x) = 1 - tanh^2(x) -> 0$.
@@ -54,16 +54,16 @@ Perturbations to a saturated state have vanishing effect. The state is stable ne
 ]
 
 #theorem("Unique Fixed Point for $alpha <= 1$")[
-  For $alpha <= 1$, zero is the unique fixed point and is globally attracting.
-]#leanfile("AttentionPersistence.lean:156")
+  For $alpha <= 1$, zero is the unique fixed point and is globally attracting.#leanfile("AttentionPersistence.lean:156")
+]
 
 #proof-sketch[
   At $S = 0$: $f'(0) = alpha <= 1$. Since $|tanh'(x)| <= 1$ and $|tanh(x)| < |x|$ for $x eq.not 0$, the Banach fixed-point theorem applies.
 ]
 
 #theorem("Nonzero Fixed Points for $alpha > 1$")[
-  For $alpha > 1$, there exist two additional fixed points $plus.minus S^*$ with $S^* > 0$. Zero becomes unstable; $plus.minus S^*$ are stable.
-]#leanfile("AttentionPersistence.lean:212")
+  For $alpha > 1$, there exist two additional fixed points $plus.minus S^*$ with $S^* > 0$. Zero becomes unstable; $plus.minus S^*$ are stable.#leanfile("AttentionPersistence.lean:212")
+]
 
 #proof-sketch[
   For $alpha > 1$, $f'(0) = alpha > 1$, so zero is unstable. Consider $g(S) = tanh(alpha S) - S$. We have $g(0) = 0$, $g'(0) = alpha - 1 > 0$, and $lim_(S -> infinity) g(S) = -infinity$. By the intermediate value theorem, there exists $S^* > 0$ with $g(S^*) = 0$. By symmetry, $-S^*$ is also a fixed point.
@@ -80,8 +80,8 @@ Linear systems have no such structure. The recurrence $S_t = alpha S_(t-1)$ with
 ]
 
 #theorem("E88 Latched State Persistence")[
-  For $alpha > 1$, once $|S|$ enters a neighborhood of $plus.minus S^*$, it remains there absent strong external input.
-]#leanfile("TanhSaturation.lean:320")
+  For $alpha > 1$, once $|S|$ enters a neighborhood of $plus.minus S^*$, it remains there absent strong external input.#leanfile("TanhSaturation.lean:320")
+]
 
 #proof-sketch[
   Since $|f'(S^*)| < 1$, orbits in the basin of attraction converge exponentially to $S^*$.
@@ -98,16 +98,16 @@ Linear systems have no such structure. The recurrence $S_t = alpha S_(t-1)$ with
 #theorem("E88 Latches; Linear Decays")[
   In E88: once $|S|$ approaches the stable fixed point, the state persists. The tanh derivative vanishes at saturation.
 
-  In linear systems: the state decays to zero without continuous reinforcement.
-]#leanfile("TanhSaturation.lean:360")
+  In linear systems: the state decays to zero without continuous reinforcement.#leanfile("TanhSaturation.lean:360")
+]
 
 Once the state saturates near the stable fixed point, it stays there. In a linear-temporal model, the decision would fade.
 
 == Computing Parity
 
 #theorem("E88 Computes Parity")[
-  With $alpha = 1$ and $delta = 2$: input 0 preserves the sign of $S$; input 1 flips the sign. The sign encodes running parity.
-]#leanfile("TanhSaturation.lean:720")
+  With $alpha = 1$ and $delta = 2$: input 0 preserves the sign of $S$; input 1 flips the sign. The sign encodes running parity.#leanfile("TanhSaturation.lean:720")
+]
 
 The sign of the state encodes even or odd. Each 0-input preserves the sign, each 1-input flips it.
 
@@ -116,16 +116,16 @@ This is impossible for linear-temporal models. A single-layer E88 achieves it.
 == Computing Soft Threshold
 
 #theorem("E88 Computes Soft Threshold")[
-  Accumulated positive signal drives $S$ toward $+1$. Accumulated negative signal drives $S$ toward $-1$. The transition approaches a hard threshold as accumulation grows.
-]#leanfile("TanhSaturation.lean:424")
+  Accumulated positive signal drives $S$ toward $+1$. Accumulated negative signal drives $S$ toward $-1$. The transition approaches a hard threshold as accumulation grows.#leanfile("TanhSaturation.lean:424")
+]
 
 E88 creates an increasingly sharp transition as input accumulates.
 
 == Head Independence
 
 #theorem("Parallel State Machines")[
-  An $H$-head E88 is equivalent to $H$ independent state machines. Heads do not interact within a layer.
-]#leanfile("MultiHeadTemporalIndependence.lean:129")
+  An $H$-head E88 is equivalent to $H$ independent state machines. Heads do not interact within a layer.#leanfile("MultiHeadTemporalIndependence.lean:129")
+]
 
 Each head can track a different binary fact, parity, or threshold.
 

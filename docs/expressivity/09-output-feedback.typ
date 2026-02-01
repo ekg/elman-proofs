@@ -13,8 +13,8 @@ When a model's output becomes part of its input, the output stream functions as 
 Consider a Transformer with chain-of-thought prompting. The model generates tokens, which are prepended to the context, which the model reads on the next step. The generated text is not just output---it is working memory. Similarly, an RNN in autoregressive mode reads its own previous outputs. The "scratchpad" techniques in language models exploit exactly this mechanism.
 
 #theorem("Emergent Tape")[
-  A model with output feedback and $T$ computation steps has effective memory capacity $O(T)$ bits, achieving $"DTIME"(T)$ computational power regardless of fixed state dimension.
-]#leanfile("OutputFeedback.lean:282")
+  A model with output feedback and $T$ computation steps has effective memory capacity $O(T)$ bits, achieving $"DTIME"(T)$ computational power regardless of fixed state dimension.#leanfile("OutputFeedback.lean:282")
+]
 
 The proof is constructive: simulate a $T$-step Turing machine by encoding the tape in the output stream. The model reads the tape, makes a transition, writes the updated tape. $T$ steps suffice for $T$-bounded computation.
 
@@ -35,8 +35,8 @@ Both achieve $"DTIME"(T)$---bounded Turing machine computation. But for algorith
 With output feedback, we can state the complete memory hierarchy.
 
 #theorem("Strict Hierarchy with Feedback")[
-  $ "Fixed Mamba2" subset.neq "Fixed E88" subset.neq "E88+Feedback" equiv "Transformer+CoT" subset.neq "E23" $
-]#leanfile("OutputFeedback.lean:498")
+  $ "Fixed Mamba2" subset.neq "Fixed E88" subset.neq "E88+Feedback" equiv "Transformer+CoT" subset.neq "E23" $#leanfile("OutputFeedback.lean:498")
+]
 
 Each separation has a witness.
 

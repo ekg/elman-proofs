@@ -11,8 +11,8 @@ Between fixed state and full output feedback lies an intermediate option: re-pro
 An RNN with fixed state processes the sequence once, left to right. But suppose we let it process the sequence twice, or three times, or $k$ times. Each pass can carry information forward, building on what previous passes learned.
 
 #theorem("k-Pass Random Access")[
-  A $k$-pass RNN can access position $p$ in a sequence of length $T$ using 3 passes: (1) mark positions on the first pass, (2) locate the target position on the second pass, (3) retrieve the value on the third pass. Therefore $k$ passes provide $floor(k\/3)$ effective random accesses.
-]#leanfile("MultiPass.lean:878")
+  A $k$-pass RNN can access position $p$ in a sequence of length $T$ using 3 passes: (1) mark positions on the first pass, (2) locate the target position on the second pass, (3) retrieve the value on the third pass. Therefore $k$ passes provide $floor(k\/3)$ effective random accesses.#leanfile("MultiPass.lean:878")
+]
 
 The construction mimics how humans scan a document. First pass: note where relevant information appears. Second pass: find the specific location needed. Third pass: retrieve the content. Each "random access" costs three sequential passes.
 
@@ -22,8 +22,8 @@ More passes means more access capability, forming a strict hierarchy.
 
 #theorem("Strict Multi-Pass Hierarchy")[
   $ "MULTIPASS"(1, T) subset.neq "MULTIPASS"(2, T) subset.neq dots.c subset.neq "DTIME"(T^2) $
-  where $"MULTIPASS"(k, T)$ is the class of functions computable by a $k$-pass RNN on sequences of length $T$.
-]#leanfile("MultiPass.lean:958")
+  where $"MULTIPASS"(k, T)$ is the class of functions computable by a $k$-pass RNN on sequences of length $T$.#leanfile("MultiPass.lean:958")
+]
 
 The limit $"DTIME"(T^2)$ comes from the observation that $O(T)$ passes, each taking $O(T)$ time, gives $O(T^2)$ total computation---matching quadratic attention.
 
@@ -32,14 +32,14 @@ The limit $"DTIME"(T^2)$ comes from the observation that $O(T)$ passes, each tak
 When we apply multi-pass to E88 specifically, the temporal nonlinearity compounds across passes. Each pass adds $T$ to the compositional depth, creating a multiplicative advantage over linear-temporal models.
 
 #theorem("E88 Multi-Pass Depth")[
-  An E88 RNN with $k$ passes over a sequence of length $T$ achieves compositional depth $k times T$. Each pass contributes $T$ nested tanh applications, accumulating across passes to create $k times T$ total depth.
-]#leanfile("E88MultiPass.lean:149")
+  An E88 RNN with $k$ passes over a sequence of length $T$ achieves compositional depth $k times T$. Each pass contributes $T$ nested tanh applications, accumulating across passes to create $k times T$ total depth.#leanfile("E88MultiPass.lean:149")
+]
 
 This is the fundamental expressivity advantage. A linear-temporal model like Mamba2 collapses temporally at each layer, giving effective depth $k$ regardless of sequence length. E88's tanh nonlinearity prevents this collapse: the state at the end of pass $i$ is a $T$-fold nested composition of tanh, and pass $i+1$ applies tanh $T$ more times on top of that.
 
 #theorem("E88 Exceeds Linear-Temporal Multi-Pass")[
-  For any $k > 0$ and $T > 1$, E88 with $k$ passes has compositional depth $k times T$, which strictly exceeds the depth $k$ of a linear-temporal $k$-pass RNN.
-]#leanfile("E88MultiPass.lean:212")
+  For any $k > 0$ and $T > 1$, E88 with $k$ passes has compositional depth $k times T$, which strictly exceeds the depth $k$ of a linear-temporal $k$-pass RNN.#leanfile("E88MultiPass.lean:212")
+]
 
 The gap is multiplicative in sequence length. For typical sequences ($T approx 1000$), even a single-pass E88 has 1000× the compositional depth of a linear-temporal model's single pass.
 
@@ -48,8 +48,8 @@ The gap is multiplicative in sequence length. For typical sequences ($T approx 1
 Between passes, the RNN can modify working memory—not just carrying state forward, but actively transforming an external tape. This enables iterative refinement algorithms that progressively build solutions.
 
 #theorem("Tape Modification Operations")[
-  A multi-pass RNN with tape modification can perform: (1) insertions that grow working memory, (2) deletions that shrink/clean working memory, (3) rewrites that modify intermediate results, (4) content-based head movement for adaptive traversal.
-]#leanfile("MultiPass.lean:1075")
+  A multi-pass RNN with tape modification can perform: (1) insertions that grow working memory, (2) deletions that shrink/clean working memory, (3) rewrites that modify intermediate results, (4) content-based head movement for adaptive traversal.#leanfile("MultiPass.lean:1075")
+]
 
 The tape serves as external memory. On pass 1, the RNN might mark positions of interest. On pass 2, it inserts computed values at those positions. On pass 3, it reads the augmented tape and deletes temporary markers. Each pass sees the modified tape from the previous pass, enabling progressive computation.
 
@@ -75,8 +75,8 @@ The comparison reveals a fundamental trade-off in sequence processing.
 A Transformer achieves $O(1)$ random access through attention, at the cost of $O(T^2)$ memory bandwidth (the attention matrix). An RNN with feedback has only sequential access but linear bandwidth. A $k$-pass RNN interpolates: $floor(k\/3)$ random accesses with $O(k T)$ bandwidth.
 
 #theorem("E88 vs Transformer Depth Comparison")[
-  For sequence length $T$ and Transformer depth $D$, an E88 single-pass has compositional depth $T$. When $T > D$ (typical: $T > 32$), E88 exceeds Transformer depth. With $k$ passes, E88 achieves depth $k times T$, which grows linearly with sequence length while Transformer depth remains constant at $D$.
-]#leanfile("E88MultiPass.lean:238")
+  For sequence length $T$ and Transformer depth $D$, an E88 single-pass has compositional depth $T$. When $T > D$ (typical: $T > 32$), E88 exceeds Transformer depth. With $k$ passes, E88 achieves depth $k times T$, which grows linearly with sequence length while Transformer depth remains constant at $D$.#leanfile("E88MultiPass.lean:238")
+]
 
 The contrast is sharp. Transformers have _constant depth_ regardless of sequence length—this is the defining property of TC⁰. E88 has _depth proportional to $T$_—this exceeds TC⁰ for long sequences. Multi-pass E88 with $k$ passes achieves depth $k times T$, creating a computational class that can grow arbitrarily large.
 
@@ -94,8 +94,8 @@ Chain-of-thought (CoT) adds computation tokens to Transformers, letting them "th
   1. RNN achieves $T\/3$ soft random accesses with $k=T$ passes (vs $T$ full random accesses for Transformer)
   2. RNN uses $O(k times T)$ total operations (vs $O(D times T^2)$ for Transformer with attention)
   3. RNN uses $O(d)$ memory (vs $O(T^2)$ for Transformer attention matrices)
-  4. RNN has sequential depth $k times T$ (vs constant depth $D$ for Transformer)
-]#leanfile("MultiPass.lean:2004")
+  4. RNN has sequential depth $k times T$ (vs constant depth $D$ for Transformer)#leanfile("MultiPass.lean:2004")
+]
 
 The key insight: RNN $k$-pass trades parallelism for memory efficiency. A Transformer can process all $T$ positions simultaneously (parallelism $T$), but must store $O(T^2)$ attention weights. An RNN processes one position at a time (parallelism 1), but uses only $O(d)$ state memory.
 
@@ -114,8 +114,8 @@ For E88 specifically, the multi-pass depth advantage is even more pronounced:
 
   $ "TC"^0 ("Transformer," op("depth") D) subset.neq "E88" k"-pass" (op("depth") k times T) $
 
-  E88 exceeds both linear-temporal multi-pass (by factor $T$) and Transformers (when depth $k times T > D$).
-]#leanfile("E88MultiPass.lean:435")
+  E88 exceeds both linear-temporal multi-pass (by factor $T$) and Transformers (when depth $k times T > D$).#leanfile("E88MultiPass.lean:435")
+]
 
 == The Extended Hierarchy
 

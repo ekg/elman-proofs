@@ -341,8 +341,8 @@ The key expressivity advantage of E88 over Mamba2 is *latching*: the ability to 
   If at some time $t_0$ a strong input drives $|alpha S_(t_0) + delta v_(t_0) k_(t_0)^top| > c$ for large $c$, then:
   1. $|S_(t_0)| approx 1$ (state saturates)
   2. For $t > t_0$ with small inputs, $S_t approx "sign"(S_(t_0))$ (state persists)
-  3. The latched state decays at rate $O(epsilon)$ where $epsilon = "sech"^2(c)$ (exponentially slow)
-]#leanfile("TanhSaturation.lean:200-250")
+  3. The latched state decays at rate $O(epsilon)$ where $epsilon = "sech"^2(c)$ (exponentially slow)#leanfile("TanhSaturation.lean:200-250")
+]
 
 #proof-sketch[
   When $|x| > c$, we have $tanh(x) approx "sign"(x)$ and $tanh'(x) < epsilon$ for small $epsilon$.
@@ -385,8 +385,8 @@ The final separation concerns circuit complexity. Transformers are bounded by TC
 ]
 
 #definition("Transformer Saturation Bound")[
-  A saturated $D$-layer Transformer computes a function in TC⁰ with depth $O(D)$.
-]#leanfile("TC0Bounds.lean:15-40")
+  A saturated $D$-layer Transformer computes a function in TC⁰ with depth $O(D)$.#leanfile("TC0Bounds.lean:15-40")
+]
 
 This is the Merrill-Sabharwal result: Transformers with hard attention are TC⁰ bounded.
 
@@ -395,8 +395,8 @@ This is the Merrill-Sabharwal result: Transformers with hard attention are TC⁰
 #theorem("Linear SSM < TC⁰")[
   Linear state-space models cannot compute PARITY, but TC⁰ circuits can (using MAJORITY gates).
 
-  Therefore, there exist functions in TC⁰ that are not computable by linear SSMs of any depth.
-]#leanfile("TC0VsUnboundedRNN.lean:50-100")
+  Therefore, there exist functions in TC⁰ that are not computable by linear SSMs of any depth.#leanfile("TC0VsUnboundedRNN.lean:50-100")
+]
 
 #proof-sketch[
   Running parity theorem shows linear SSMs cannot compute parity at any depth. But a TC⁰ circuit with a single MAJORITY gate computes parity on $n$ bits:
@@ -408,8 +408,8 @@ This is the Merrill-Sabharwal result: Transformers with hard attention are TC⁰
 #theorem("TC⁰ < E88 (unbounded T)")[
   For any constant depth $D$, there exist functions computable by E88 with sequence length $T$ that require circuit depth $> D$.
 
-  Specifically, E88 has compositional depth $O(D times T)$, which exceeds any constant for sufficiently large $T$.
-]#leanfile("TC0VsUnboundedRNN.lean:150-200")
+  Specifically, E88 has compositional depth $O(D times T)$, which exceeds any constant for sufficiently large $T$.#leanfile("TC0VsUnboundedRNN.lean:150-200")
+]
 
 #proof-sketch[
   Each E88 recurrence step composes the nonlinearity:
