@@ -8,7 +8,7 @@ Every sequence model faces a choice: where should nonlinearity live?
 
 This is not a hyperparameter. It is a fundamental architectural decision with mathematical consequences. The answer determines which functions a model can compute, which it cannot, and why chain-of-thought reasoning works when it does.
 
-Consider the three dominant approaches. Transformers apply nonlinearity between layers: the sequence flows through attention, then through a feedforward network, then through attention again. Time is handled all at once through the attention mechanism; depth accumulates vertically. State-space models like Mamba2 make a different choice: nonlinearity still flows between layers, but now time flows _linearly_ within each layer. The state $h_t$ is a linear function of $h_(t-1)$. This enables parallel computation through associative scans, but it constrains what can be computed. The third path---the one we will examine most closely---places nonlinearity in time itself. In E88, the state $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$ involves a nonlinear function of the previous state. Every timestep adds a layer of composition depth.
+Consider the three dominant approaches. Transformers @vaswani2017attention apply nonlinearity between layers: the sequence flows through attention, then through a feedforward network, then through attention again. Time is handled all at once through the attention mechanism; depth accumulates vertically. State-space models like Mamba2 @dao2024mamba2 make a different choice: nonlinearity still flows between layers, but now time flows _linearly_ within each layer. The state $h_t$ is a linear function of $h_(t-1)$. This enables parallel computation through associative scans, but it constrains what can be computed. The third path---the one we will examine most closely---places nonlinearity in time itself, following the classical Elman architecture @elman1990finding. In E88, the state $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$ involves a nonlinear function of the previous state. Every timestep adds a layer of composition depth.
 
 These three choices lead to three different computational classes. Our central result makes this precise.
 
@@ -32,6 +32,6 @@ The story has a final twist. When a model writes output and reads it back, the o
 $ "E88+Feedback" equiv "Transformer+CoT" equiv "DTIME"(T) $
 Chain-of-thought works because it provides working memory, not because it enables magical reasoning.
 
-All theorems in this document are mechanically verified in Lean 4 with Mathlib. This is mathematical certainty, not argument by plausibility. We invite verification: clone the repository, run `lake build`, and confirm that every proof compiles without gaps.
+All theorems in this document are mechanically verified in Lean 4 @moura2021lean4 with Mathlib @mathlib2020. This is mathematical certainty, not argument by plausibility. We invite verification: clone the repository, run `lake build`, and confirm that every proof compiles without gaps.
 
 The journey begins with the question of where nonlinearity should live. By the end, we will understand the hierarchy of sequence models and know, with mathematical precision, what each can and cannot do.

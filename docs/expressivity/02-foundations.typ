@@ -4,7 +4,7 @@
 
 = Mathematical Foundations
 
-Before we can prove what linear systems cannot do, we need the language to describe what they _are_. The central concept is _recurrence linearity_: whether the new state depends linearly or nonlinearly on the previous state.
+Before we can prove what linear systems cannot do, we need the language to describe what they _are_. The central concept is _recurrence linearity_: whether the new state depends linearly or nonlinearly on the previous state. The computational power of recurrent networks has been studied since Siegelmann and Sontag's foundational work @siegelmann1995computational, which established that RNNs with rational weights are Turing complete.
 
 == Linear Recurrent Systems
 

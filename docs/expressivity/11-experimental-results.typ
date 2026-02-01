@@ -11,14 +11,40 @@ The theorems in this document are airtight. E88 computes functions that linear-t
 In experiments with CMA-ES hyperparameter optimization at 480M parameters, the results surprised us:
 
 #simpletable(
-  columns: 3,
-  align: (left, center, center),
-  [*Architecture*], [*Best Loss*], [*Best Configuration*],
-  [Mamba2], [1.271], [d_state=96, depth=25],
-  [FLA-GDN], [1.273], [depth=17, heads=24],
-  [E88], [1.407], [heads=68, d=16, depth=23],
-  [Transformer], [1.505], [heads=8, depth=13],
+  columns: 6,
+  align: (left, center, center, center, center, center),
+  [*Architecture*], [*Loss*], [*Depth*], [*Hidden Dim*], [*Params*], [*Iters*],
+  [Mamba2], [1.271], [25], [1792], [494M], [120],
+  [FLA-GDN], [1.273], [17], [1920], [502M], [120],
+  [E88], [1.407], [23], [3840], [488M], [120],
+  [Transformer], [1.505], [13], [1536], [491M], [120],
+  [MinGRU], [1.528], [14], [2944], [486M], [120],
+  [MinLSTM], [1.561], [31], [1792], [498M], [120],
+  [MoM-E88], [1.762], [12], [3840], [480M], [240],
+  [E90], [1.791], [13], [3072], [497M], [80],
 )
+
+_Iterations_: CMA-ES evaluations (training runs). All models trained 10 minutes per config at 3e-4 learning rate. Iterations vary because some models converged faster (E90 needed only 80 evals) while MoM-E88 required extended search (240 evals).
+
+=== Key Hyperparameters by Architecture
+
+#simpletable(
+  columns: 3,
+  align: (left, left, left),
+  [*Architecture*], [*Best Configuration*], [*Expressivity-Critical Parameters*],
+  [Mamba2], [d_state=96, expand=2, depth=25], [Linear SSM: no temporal nonlinearity],
+  [FLA-GDN], [expansion=2, depth=17, n_heads=24], [Gated Delta: input-dependent gates],
+  [E88], [n_heads=68, n_state=16, depth=23], [Nonlinear: tanh(Wh + Ux) enables XOR],
+  [Transformer], [n_heads=8, expansion=4, depth=13], [Attention: quadratic, no recurrence],
+  [MinGRU], [expansion=1, depth=14], [Minimal GRU: linear hidden state],
+  [MinLSTM], [expansion=1, depth=31], [Minimal LSTM: gated but linear temporal],
+  [MoM-E88], [n_heads=40, top_k=8, n_state=64, depth=12], [Sparse routing: activates 8 of 40 heads],
+  [E90], [n_heads=114, config=(8,16), depth=13], [Dual-rate: 8-step fast, 16-step slow],
+)
+
+_Expansion factor_: E88 expansion=1.0 (square state matrices). Mamba2 expand=2 (hidden dim is 2× model dim). FLA-GDN expansion=2 (FFN factor). MinGRU/MinLSTM expansion=1 (minimal parameterization).
+
+_State dimension_: E88 n_state=16 per head (68 heads × 16 = 1088 total state). Mamba2 d_state=96 (single state vector). E90 uses dual-rate with (8, 16) timestep config.
 
 Mamba2---the architecture we proved cannot compute parity---achieved the best loss. E88---provably more expressive---placed third. The empirical ranking exactly inverts the theoretical hierarchy.
 

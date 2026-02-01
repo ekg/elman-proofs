@@ -23,9 +23,51 @@ But capacity alone does not explain the expressivity gap. A large linear system 
 
 The tanh function is bounded: its output lies in $(-1, 1)$. As the input grows large, tanh approaches $plus.minus 1$ and its derivative approaches zero. This _saturation_ regime is where E88's power emerges.
 
-#theorem("Bifurcation at $alpha = 1$")[
-  Consider the scalar map $f(S) = tanh(alpha S)$. For $alpha <= 1$, zero is the unique fixed point and it is globally attracting. For $alpha > 1$, two nonzero fixed points $plus.minus S^*$ appear, and zero becomes unstable.
-]#leanfile("AttentionPersistence.lean:212") // nonzero_fixed_point_exists
+#lemma("Tanh Boundedness")[
+  For all $x in RR$: $|tanh(x)| < 1$.
+]#leanfile("TanhSaturation.lean:42")
+
+#proof[
+  Recall $tanh(x) = (e^x - e^(-x))/(e^x + e^(-x))$. The numerator has magnitude strictly less than the denominator for all finite $x$.
+]
+
+#lemma("Tanh Derivative Vanishes at Saturation")[
+  $tanh'(x) = 1 - tanh^2(x)$. As $|x| -> infinity$, we have $tanh'(x) -> 0$.
+]#leanfile("TanhSaturation.lean:87")
+
+#proof[
+  The derivative formula is standard calculus. Since $|tanh(x)| -> 1$ as $|x| -> infinity$, we have $tanh'(x) = 1 - tanh^2(x) -> 0$.
+]
+
+This derivative property is key: perturbations to a saturated state have vanishing effect. The state is _stable_ near $plus.minus 1$.
+
+#definition("Fixed Point of Tanh Recurrence")[
+  A value $S^*$ is a fixed point of the map $f(S) = tanh(alpha S)$ if $S^* = tanh(alpha S^*)$.
+]
+
+#theorem("Zero Is Always a Fixed Point")[
+  $S^* = 0$ is a fixed point for all $alpha$.
+]
+
+#proof[
+  $tanh(alpha dot.op 0) = tanh(0) = 0$.
+]
+
+#theorem("Unique Fixed Point for $alpha <= 1$")[
+  For $alpha <= 1$, zero is the unique fixed point, and it is globally attracting.
+]#leanfile("AttentionPersistence.lean:156")
+
+#proof-sketch[
+  The map $f(S) = tanh(alpha S)$ is a contraction when $|f'(S)| < 1$ everywhere. At $S = 0$: $f'(0) = alpha$. For $alpha <= 1$, the slope at the fixed point is at most 1. Since $|tanh'(x)| <= 1$ everywhere and $|tanh(x)| < |x|$ for $x eq.not 0$, the Banach fixed-point theorem applies: every orbit converges to zero.
+]
+
+#theorem("Nonzero Fixed Points for $alpha > 1$")[
+  For $alpha > 1$, there exist two additional fixed points $plus.minus S^*$ with $S^* > 0$. Zero becomes unstable (repelling), and $plus.minus S^*$ become stable (attracting).
+]#leanfile("AttentionPersistence.lean:212")
+
+#proof-sketch[
+  For $alpha > 1$, the derivative at zero is $f'(0) = alpha > 1$, so zero is unstable. Consider $g(S) = tanh(alpha S) - S$. We have $g(0) = 0$, $g'(0) = alpha - 1 > 0$, and $lim_(S -> infinity) g(S) = 1 - infinity = -infinity$. By the intermediate value theorem, there exists $S^* > 0$ with $g(S^*) = 0$. By symmetry, $-S^*$ is also a fixed point. Stability follows from $|f'(plus.minus S^*)| < 1$, which holds because tanh is strictly concave on $(0, infinity)$.
+]
 
 This bifurcation is the mathematical core of E88's memory capability. When $alpha > 1$, the system has _bistability_: two stable states that the dynamics can settle into and remain in. A sufficiently strong input can push the state from one basin to the other, where it stays until pushed again.
 
@@ -35,13 +77,33 @@ In contrast, linear systems have no such structure. The recurrence $S_t = alpha 
 
 The bifurcation theorem tells us that stable nonzero states exist. Latching tells us that E88 can use them.
 
+#definition("Latched State")[
+  A state $S$ is _latched_ if $|S| > 1 - epsilon$ for some small $epsilon > 0$ and the state remains in this region under the dynamics.
+]
+
+#theorem("E88 Latched State Persistence")[
+  For $alpha > 1$, once $|S|$ enters a neighborhood of the stable fixed point $plus.minus S^*$, it remains there indefinitely in the absence of strong external input.
+]#leanfile("TanhSaturation.lean:320")
+
+#proof-sketch[
+  The basin of attraction of $S^*$ contains all points $S$ with $S > 0$ and $S$ closer to $S^*$ than to 0. Since $|f'(S^*)| < 1$, orbits in the basin converge exponentially to $S^*$.
+]
+
+#theorem("Linear State Exponential Decay")[
+  In a linear system $S_t = alpha S_(t-1)$ with $|alpha| < 1$: $S_T = alpha^T S_0 -> 0$ exponentially fast.
+]
+
+#proof[
+  Direct computation: $|S_T| = |alpha|^T |S_0| -> 0$ as $T -> infinity$ since $|alpha| < 1$.
+]
+
 #theorem("E88 Latches; Linear Decays")[
-  In E88: once $|S|$ approaches 1, the state persists indefinitely. The tanh derivative vanishes at saturation, so perturbations have vanishing effect.
+  In E88: once $|S|$ approaches the stable fixed point, the state persists indefinitely. The tanh derivative vanishes at saturation, so perturbations have vanishing effect.
 
-  In linear systems: $S_t = alpha^t S_0 -> 0$ for $|alpha| < 1$. Without continuous reinforcement, the state decays. There is no permanent memory.
-]#leanfile("TanhSaturation.lean:360") // latching_vs_decay
+  In linear systems: without continuous reinforcement, the state decays to zero. There is no permanent memory.
+]#leanfile("TanhSaturation.lean:360")
 
-This is the mechanism behind E88's ability to "remember" a binary fact. Once the state saturates near $+1$ or $-1$, it stays there. The model has latched onto a decision. In a linear-temporal model, the same decision would gradually fade.
+This is the mechanism behind E88's ability to "remember" a binary fact. Once the state saturates near the stable fixed point, it stays there. The model has latched onto a decision. In a linear-temporal model, the same decision would gradually fade.
 
 == Computing Parity
 

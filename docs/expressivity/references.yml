@@ -1,0 +1,669 @@
+# Bibliography for Elman RNN Expressivity Analysis
+# Hayagriva YAML format for Typst
+
+# ============================================================================
+# Foundational RNN Papers
+# ============================================================================
+
+elman1990finding:
+  type: Article
+  title: Finding structure in time
+  author: Elman, Jeffrey L.
+  date: 1990
+  parent:
+    type: Periodical
+    title: Cognitive Science
+    volume: 14
+    issue: 2
+  page-range: 179-211
+  doi: 10.1207/s15516709cog1402_1
+
+hochreiter1997long:
+  type: Article
+  title: Long short-term memory
+  author:
+    - Hochreiter, Sepp
+    - Schmidhuber, Jürgen
+  date: 1997
+  parent:
+    type: Periodical
+    title: Neural Computation
+    volume: 9
+    issue: 8
+  page-range: 1735-1780
+  doi: 10.1162/neco.1997.9.8.1735
+
+cho2014learning:
+  type: Conference
+  title: "Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation"
+  author:
+    - Cho, Kyunghyun
+    - van Merrienboer, Bart
+    - Gulcehre, Caglar
+    - Bahdanau, Dzmitry
+    - Bougares, Fethi
+    - Schwenk, Holger
+    - Bengio, Yoshua
+  date: 2014
+  parent:
+    type: Proceedings
+    title: "Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP)"
+  page-range: 1724-1734
+  doi: 10.3115/v1/D14-1179
+  url: https://aclanthology.org/D14-1179/
+
+# ============================================================================
+# Computational Power and Expressivity
+# ============================================================================
+
+siegelmann1995computational:
+  type: Article
+  title: On the computational power of neural nets
+  author:
+    - Siegelmann, Hava T.
+    - Sontag, Eduardo D.
+  date: 1995
+  parent:
+    type: Periodical
+    title: Journal of Computer and System Sciences
+    volume: 50
+    issue: 1
+  page-range: 132-150
+  doi: 10.1006/jcss.1995.1013
+
+siegelmann1992computational:
+  type: Conference
+  title: On the computational power of neural nets
+  author:
+    - Siegelmann, Hava T.
+    - Sontag, Eduardo D.
+  date: 1992
+  parent:
+    type: Proceedings
+    title: "Proceedings of the Fifth Annual Workshop on Computational Learning Theory"
+  page-range: 440-449
+  doi: 10.1145/130385.130432
+
+# ============================================================================
+# Modern Architectures
+# ============================================================================
+
+vaswani2017attention:
+  type: Conference
+  title: "Attention is all you need"
+  author:
+    - Vaswani, Ashish
+    - Shazeer, Noam
+    - Parmar, Niki
+    - Uszkoreit, Jakob
+    - Jones, Llion
+    - Gomez, Aidan N.
+    - Kaiser, Lukasz
+    - Polosukhin, Illia
+  date: 2017
+  parent:
+    type: Proceedings
+    title: Advances in Neural Information Processing Systems
+    volume: 30
+  page-range: 5998-6008
+  url: https://proceedings.neurips.cc/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html
+
+bahdanau2015neural:
+  type: Conference
+  title: "Neural Machine Translation by Jointly Learning to Align and Translate"
+  author:
+    - Bahdanau, Dzmitry
+    - Cho, Kyunghyun
+    - Bengio, Yoshua
+  date: 2015
+  parent:
+    type: Proceedings
+    title: "International Conference on Learning Representations (ICLR)"
+  url: https://arxiv.org/abs/1409.0473
+  serial-number:
+    arxiv: "1409.0473"
+
+gu2023mamba:
+  type: Manuscript
+  title: "Mamba: Linear-Time Sequence Modeling with Selective State Spaces"
+  author:
+    - Gu, Albert
+    - Dao, Tri
+  date: 2023-12-01
+  serial-number:
+    arxiv: "2312.00752"
+  url: https://arxiv.org/abs/2312.00752
+
+dao2024mamba2:
+  type: Manuscript
+  title: "Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality"
+  author:
+    - Dao, Tri
+    - Gu, Albert
+  date: 2024-05-31
+  serial-number:
+    arxiv: "2405.21060"
+  url: https://arxiv.org/abs/2405.21060
+
+# ============================================================================
+# State Space Models
+# ============================================================================
+
+gu2022efficiently:
+  type: Conference
+  title: "Efficiently Modeling Long Sequences with Structured State Spaces"
+  author:
+    - Gu, Albert
+    - Goel, Karan
+    - Ré, Christopher
+  date: 2022
+  parent:
+    type: Proceedings
+    title: "International Conference on Learning Representations"
+  url: https://openreview.net/forum?id=uYLFoz1vlAC
+  serial-number:
+    arxiv: "2111.00396"
+
+gu2020hippo:
+  type: Conference
+  title: "HiPPO: Recurrent Memory with Optimal Polynomial Projections"
+  author:
+    - Gu, Albert
+    - Dao, Tri
+    - Ermon, Stefano
+    - Rudra, Atri
+    - Ré, Christopher
+  date: 2020
+  parent:
+    type: Proceedings
+    title: Advances in Neural Information Processing Systems
+    volume: 33
+  page-range: 1474-1487
+  url: https://proceedings.neurips.cc/paper/2020/hash/102f0bb6efb3a6128a3c750dd16729be-Abstract.html
+
+# ============================================================================
+# Minimal RNN Variants (MinGRU, MinLSTM)
+# ============================================================================
+
+feng2024mingru:
+  type: Manuscript
+  title: "Were RNNs All We Needed?"
+  author:
+    - Feng, Leo
+    - Tung, Frederick
+    - Harakeh, Ahmed
+    - Haider, Hossam
+    - Akhoundzadeh, Reza
+    - Sathiamoorthy, Malaikannan
+    - Shabanian, Samira
+  date: 2024-10-07
+  serial-number:
+    arxiv: "2410.01201"
+  url: https://arxiv.org/abs/2410.01201
+
+feng2024minlstm:
+  type: Manuscript
+  title: "The Surprising Effectiveness of Minimal RNNs"
+  author:
+    - Feng, Leo
+    - Harakeh, Ahmed
+    - Akhoundzadeh, Reza
+    - Tung, Frederick
+    - Sathiamoorthy, Malaikannan
+  date: 2024-08-20
+  serial-number:
+    arxiv: "2408.11211"
+  url: https://arxiv.org/abs/2408.11211
+
+# ============================================================================
+# Gated Linear Attention and Delta Nets (FLA-GDN, GatedDeltaNet)
+# ============================================================================
+
+yang2024gated:
+  type: Conference
+  title: "Gated Linear Attention Transformers with Hardware-Efficient Training"
+  author:
+    - Yang, Songlin
+    - Wang, Bailin
+    - Shen, Yikang
+    - Panda, Rameswar
+    - Kim, Yoon
+  date: 2024
+  parent:
+    type: Proceedings
+    title: "International Conference on Machine Learning (ICML)"
+  serial-number:
+    arxiv: "2312.06635"
+  url: https://arxiv.org/abs/2312.06635
+
+sun2024learning:
+  type: Manuscript
+  title: "Learning to (Learn at Test Time): RNNs with Expressive Hidden States"
+  author:
+    - Sun, Yu
+    - Jiang, Xinhao
+    - Liu, Karan
+    - Garg, Moksh
+    - Susskind, Josh
+    - Abbeel, Pieter
+    - Jaitly, Navdeep
+  date: 2024-07-10
+  serial-number:
+    arxiv: "2407.04620"
+  url: https://arxiv.org/abs/2407.04620
+
+# ============================================================================
+# Circuit Complexity and Depth
+# ============================================================================
+
+barrington1989bounded:
+  type: Article
+  title: "Bounded-width polynomial-size branching programs recognize exactly those languages in NC^1"
+  author: Barrington, David A. Mix
+  date: 1989
+  parent:
+    type: Periodical
+    title: Journal of Computer and System Sciences
+    volume: 38
+    issue: 1
+  page-range: 150-164
+  doi: 10.1016/0022-0000(89)90037-8
+
+sipser2012introduction:
+  type: Book
+  title: Introduction to the Theory of Computation
+  author: Sipser, Michael
+  edition: 3
+  publisher: Cengage Learning
+  date: 2012
+  isbn: 978-1133187790
+
+merrill2023parallelism:
+  type: Conference
+  title: "The Parallelism Tradeoff: Limitations of Log-Precision Transformers"
+  author:
+    - Merrill, William
+    - Sabharwal, Ashish
+  date: 2023
+  parent:
+    type: Proceedings
+    title: "Transactions of the Association for Computational Linguistics"
+    volume: 11
+  page-range: 531-545
+  doi: 10.1162/tacl_a_00562
+  serial-number:
+    arxiv: "2207.00729"
+
+merrill2023expressive:
+  type: Conference
+  title: "Expressive Power of Recurrent Neural Networks"
+  author: Merrill, William
+  date: 2023
+  parent:
+    type: Proceedings
+    title: "International Conference on Learning Representations (ICLR)"
+  url: https://openreview.net/forum?id=9B2ARQL-GF
+  serial-number:
+    arxiv: "2208.13930"
+
+perez2021attention:
+  type: Conference
+  title: "Attention is Turing Complete"
+  author:
+    - Pérez, Jorge
+    - Marinković, Javier
+    - Barceló, Pablo
+  date: 2021
+  parent:
+    type: Proceedings
+    title: "Journal of Machine Learning Research"
+    volume: 22
+    issue: 75
+  page-range: 1-35
+  url: https://jmlr.org/papers/v22/20-302.html
+
+hahn2020theoretical:
+  type: Conference
+  title: "Theoretical Limitations of Self-Attention in Neural Sequence Models"
+  author: Hahn, Michael
+  date: 2020
+  parent:
+    type: Proceedings
+    title: "Transactions of the Association for Computational Linguistics"
+    volume: 8
+  page-range: 156-171
+  doi: 10.1162/tacl_a_00306
+
+furst1984parity:
+  type: Conference
+  title: "Parity, circuits, and the polynomial-time hierarchy"
+  author:
+    - Furst, Merrick
+    - Saxe, James B.
+    - Sipser, Michael
+  date: 1984
+  parent:
+    type: Proceedings
+    title: "Mathematical Systems Theory"
+    volume: 17
+    issue: 1
+  page-range: 13-27
+  doi: 10.1007/BF01744431
+
+arora2009computational:
+  type: Book
+  title: "Computational Complexity: A Modern Approach"
+  author:
+    - Arora, Sanjeev
+    - Barak, Boaz
+  publisher: Cambridge University Press
+  date: 2009
+  serial-number:
+    isbn: 978-0521424264
+  url: https://theory.cs.princeton.edu/complexity/
+
+# ============================================================================
+# Chain-of-Thought and Reasoning
+# ============================================================================
+
+wei2022chain:
+  type: Conference
+  title: "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models"
+  author:
+    - Wei, Jason
+    - Wang, Xuezhi
+    - Schuurmans, Dale
+    - Bosma, Maarten
+    - Ichter, Brian
+    - Xia, Fei
+    - Chi, Ed
+    - Le, Quoc
+    - Zhou, Denny
+  date: 2022
+  parent:
+    type: Proceedings
+    title: Advances in Neural Information Processing Systems
+    volume: 35
+  page-range: 24824-24837
+  url: https://proceedings.neurips.cc/paper_files/paper/2022/hash/9d5609613524ecf4f15af0f7b31abca4-Abstract-Conference.html
+
+nye2021scratchpad:
+  type: Manuscript
+  title: "Show Your Work: Scratchpads for Intermediate Computation with Language Models"
+  author:
+    - Nye, Maxwell
+    - Andreassen, Anders Johan
+    - Gur-Ari, Guy
+    - Michalewski, Henryk
+    - Austin, Jacob
+    - Bieber, David
+    - Dohan, David
+    - Lewkowycz, Aitor
+    - Bosma, Maarten
+    - Luan, David
+    - Sutton, Charles
+    - Odena, Augustus
+  date: 2021
+  serial-number:
+    arxiv: "2112.00114"
+  url: https://arxiv.org/abs/2112.00114
+
+# ============================================================================
+# Memory Networks and External Memory
+# ============================================================================
+
+weston2015memory:
+  type: Conference
+  title: "Memory Networks"
+  author:
+    - Weston, Jason
+    - Chopra, Sumit
+    - Bordes, Antoine
+  date: 2015
+  parent:
+    type: Proceedings
+    title: "International Conference on Learning Representations (ICLR)"
+  serial-number:
+    arxiv: "1410.3916"
+  url: https://arxiv.org/abs/1410.3916
+
+graves2014neural:
+  type: Manuscript
+  title: "Neural Turing Machines"
+  author:
+    - Graves, Alex
+    - Wayne, Greg
+    - Danihelka, Ivo
+  date: 2014
+  serial-number:
+    arxiv: "1410.5401"
+  url: https://arxiv.org/abs/1410.5401
+
+# ============================================================================
+# Language Models and Training
+# ============================================================================
+
+radford2019language:
+  type: Web
+  title: "Language Models are Unsupervised Multitask Learners"
+  author:
+    - Radford, Alec
+    - Wu, Jeffrey
+    - Child, Rewon
+    - Luan, David
+    - Amodei, Dario
+    - Sutskever, Ilya
+  date: 2019
+  url: https://openai.com/research/better-language-models
+
+brown2020language:
+  type: Conference
+  title: "Language Models are Few-Shot Learners"
+  author:
+    - Brown, Tom B.
+    - Mann, Benjamin
+    - Ryder, Nick
+    - Subbiah, Melanie
+    - Kaplan, Jared
+    - Dhariwal, Prafulla
+    - Neelakantan, Arvind
+    - Shyam, Pranav
+    - Sastry, Girish
+    - Askell, Amanda
+    - Agarwal, Sandhini
+    - Herbert-Voss, Ariel
+    - Krueger, Gretchen
+    - Henighan, Tom
+    - Child, Rewon
+    - Ramesh, Aditya
+    - Ziegler, Daniel M.
+    - Wu, Jeffrey
+    - Winter, Clemens
+    - Hesse, Christopher
+    - Chen, Mark
+    - Sigler, Eric
+    - Litwin, Mateusz
+    - Gray, Scott
+    - Chess, Benjamin
+    - Clark, Jack
+    - Berner, Christopher
+    - McCandlish, Sam
+    - Radford, Alec
+    - Sutskever, Ilya
+    - Amodei, Dario
+  date: 2020
+  parent:
+    type: Proceedings
+    title: Advances in Neural Information Processing Systems
+    volume: 33
+  page-range: 1877-1901
+  url: https://proceedings.neurips.cc/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html
+
+# ============================================================================
+# RNN Expressivity Theory
+# ============================================================================
+
+chen2018recurrent:
+  type: Conference
+  title: "On the Turing Completeness of Modern Neural Network Architectures"
+  author:
+    - Chen, Yining
+    - Gilroy, Sorcha
+    - Maletti, Andreas
+    - May, Jonathan
+    - Knight, Kevin
+  date: 2018
+  parent:
+    type: Proceedings
+    title: "International Conference on Learning Representations (ICLR)"
+  url: https://openreview.net/forum?id=HyGBdo0qFm
+
+weiss2018practical:
+  type: Conference
+  title: "On the Practical Computational Power of Finite Precision RNNs for Language Recognition"
+  author:
+    - Weiss, Gail
+    - Goldberg, Yoav
+    - Yahav, Eran
+  date: 2018
+  parent:
+    type: Proceedings
+    title: "Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (ACL)"
+    volume: 2
+  page-range: 740-745
+  doi: 10.18653/v1/P18-2117
+
+# ============================================================================
+# Deep Learning Fundamentals
+# ============================================================================
+
+goodfellow2016deep:
+  type: Book
+  title: Deep Learning
+  author:
+    - Goodfellow, Ian
+    - Bengio, Yoshua
+    - Courville, Aaron
+  publisher: MIT Press
+  date: 2016
+  url: https://www.deeplearningbook.org/
+  serial-number:
+    isbn: 978-0262035613
+
+# ============================================================================
+# Linear Algebra and State Space Theory
+# ============================================================================
+
+horn2012matrix:
+  type: Book
+  title: "Matrix Analysis"
+  edition: 2
+  author:
+    - Horn, Roger A.
+    - Johnson, Charles R.
+  publisher: Cambridge University Press
+  date: 2012
+  serial-number:
+    isbn: 978-0521548236
+  doi: 10.1017/CBO9781139020411
+
+antsaklis2006linear:
+  type: Book
+  title: "Linear Systems"
+  author:
+    - Antsaklis, Panos J.
+    - Michel, Anthony N.
+  publisher: Birkhäuser
+  date: 2006
+  serial-number:
+    isbn: 978-0817644345
+
+# ============================================================================
+# Optimization and Hyperparameter Search
+# ============================================================================
+
+hansen2001completely:
+  type: Article
+  title: "Completely Derandomized Self-Adaptation in Evolution Strategies"
+  author:
+    - Hansen, Nikolaus
+    - Ostermeier, Andreas
+  date: 2001
+  parent:
+    type: Periodical
+    title: Evolutionary Computation
+    volume: 9
+    issue: 2
+  page-range: 159-195
+  doi: 10.1162/106365601750190398
+
+# ============================================================================
+# Formal Verification Tools
+# ============================================================================
+
+moura2021lean4:
+  type: Conference
+  title: "The Lean 4 Theorem Prover and Programming Language"
+  author:
+    - de Moura, Leonardo
+    - Ullrich, Sebastian
+  date: 2021
+  parent:
+    type: Proceedings
+    title: "Automated Deduction - CADE-28"
+    publisher: Springer
+    volume: 12699
+  page-range: 625-635
+  doi: 10.1007/978-3-030-79876-5_37
+
+moura2015lean:
+  type: Conference
+  title: "The Lean Theorem Prover (System Description)"
+  author:
+    - de Moura, Leonardo
+    - Kong, Soonho
+    - Avigad, Jeremy
+    - van Doorn, Floris
+    - von Raumer, Jakob
+  date: 2015
+  parent:
+    type: Proceedings
+    title: "Automated Deduction - CADE-25"
+    publisher: Springer
+    volume: 9195
+  page-range: 378-388
+  doi: 10.1007/978-3-319-21401-6_26
+
+mathlib2020:
+  type: Conference
+  title: "The Lean Mathematical Library"
+  author: The mathlib Community
+  date: 2020
+  parent:
+    type: Proceedings
+    title: "Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs"
+  page-range: 367-381
+  doi: 10.1145/3372885.3373824
+
+lean4:
+  type: Repository
+  title: "Lean 4: Theorem Prover and Programming Language"
+  author:
+    - de Moura, Leonardo
+    - Ullrich, Sebastian
+  date: 2024
+  publisher: GitHub
+  url: https://github.com/leanprover/lean4
+
+# ============================================================================
+# This Work
+# ============================================================================
+
+elmanproofs2025:
+  type: Repository
+  title: "ElmanProofs: Formal Verification of Elman Network Expressivity Separation"
+  author: Gonzalez, Erik
+  date: 2025
+  publisher: GitHub
+  url: https://github.com/ergz/elman-proofs
+  license: Apache-2.0

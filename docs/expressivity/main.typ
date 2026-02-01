@@ -139,33 +139,44 @@ The question of where nonlinearity should live has an answer: it depends on what
 
 = References
 
-The formal proofs are available in the ElmanProofs repository (`github.com/ekg/elman-proofs`):
+== Formal Proofs
 
-- `LinearCapacity.lean` — Linear RNN state as weighted sum of inputs
-- `LinearLimitations.lean` — Core impossibility results: threshold, XOR, parity
-- `MultiLayerLimitations.lean` — Multi-layer extension of impossibility results
-- `TanhSaturation.lean` — Saturation dynamics, bifurcation, latching
-- `ExactCounting.lean` — Threshold and counting impossibility/possibility
-- `RunningParity.lean` — Parity impossibility and E88 construction
-- `E23_DualMemory.lean` — E23 tape-based memory formalization
-- `MatrixStateRNN.lean` — E88 matrix state formalization
-- `MultiHeadTemporalIndependence.lean` — Head independence theorem
-- `E23vsE88Comparison.lean` — Direct comparison of E23 and E88 capabilities
-- `AttentionPersistence.lean` — Bifurcation and fixed point analysis
-- `OutputFeedback.lean` — Emergent tape memory and CoT equivalence
-- `TC0Bounds.lean` — TC⁰ circuit complexity bounds for Transformers
-- `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC⁰ < E88
-- `ComputationalClasses.lean` — Chomsky hierarchy for RNNs
-- `MultiPass.lean` — Multi-pass RNN computational class with tape modification (~2000 lines)
-- `E88MultiPass.lean` — E88 multi-pass depth hierarchy and random access theorems
-- `RecurrenceLinearity.lean` — Architecture classification by recurrence type
+The Lean 4 formalizations are available in the ElmanProofs repository:
+
+#block(inset: (left: 1em))[
+  `LinearCapacity.lean` — Linear RNN state as weighted sum of inputs \
+  `LinearLimitations.lean` — Core impossibility results: threshold, XOR, parity \
+  `MultiLayerLimitations.lean` — Multi-layer extension of impossibility results \
+  `TanhSaturation.lean` — Saturation dynamics, bifurcation, latching \
+  `ExactCounting.lean` — Threshold and counting impossibility/possibility \
+  `RunningParity.lean` — Parity impossibility and E88 construction \
+  `E23_DualMemory.lean` — E23 tape-based memory formalization \
+  `MatrixStateRNN.lean` — E88 matrix state formalization \
+  `MultiHeadTemporalIndependence.lean` — Head independence theorem \
+  `E23vsE88Comparison.lean` — Direct comparison of E23 and E88 capabilities \
+  `AttentionPersistence.lean` — Bifurcation and fixed point analysis \
+  `OutputFeedback.lean` — Emergent tape memory and CoT equivalence \
+  `TC0Bounds.lean` — TC⁰ circuit complexity bounds for Transformers \
+  `TC0VsUnboundedRNN.lean` — Hierarchy: Linear SSM < TC⁰ < E88 \
+  `ComputationalClasses.lean` — Chomsky hierarchy for RNNs \
+  `MultiPass.lean` — Multi-pass RNN computational class with tape modification \
+  `E88MultiPass.lean` — E88 multi-pass depth hierarchy and random access theorems \
+  `RecurrenceLinearity.lean` — Architecture classification by recurrence type
+]
+
+#v(1em)
+
+To verify: clone the repository and run `lake build`.
+
+== Bibliography
+
+#bibliography("references.yml", style: "ieee")
 
 #v(2em)
 
 #align(center)[
   #text(size: 9pt, style: "italic")[
     Document generated from ElmanProofs Lean 4 formalizations. \
-    All core expressivity theorems mechanically verified. \
-    To verify: clone the repository and run `lake build`.
+    All core expressivity theorems mechanically verified.
   ]
 ]
