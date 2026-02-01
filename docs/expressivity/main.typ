@@ -1,11 +1,11 @@
 // Expressivity Analysis: Temporal Nonlinearity vs Depth
-// A Formal Analysis of E88, Mamba2, FLA, and GDN
+// A Formal Analysis of E88, Mamba2, and Modern RNN Architectures
 //
 // Compiled from ElmanProofs Lean 4 formalizations
 
 #set document(
   title: "Expressivity Analysis: Temporal Nonlinearity vs Depth",
-  author: "ElmanProofs Contributors",
+  author: "Erik Garrison",
 )
 
 // Sans-serif font throughout
@@ -51,7 +51,7 @@
   #v(1em)
   #text(size: 14pt, style: "italic")[Where Should Nonlinearity Live?]
   #v(2em)
-  #text(size: 11pt)[ElmanProofs Contributors]
+  #text(size: 11pt)[Erik Garrison]
   #v(0.5em)
   #text(size: 10pt)[January 2026]
   #v(2em)
@@ -81,7 +81,7 @@
 
 Every sequence model must answer a fundamental question: where should nonlinearity live? The answer determines computational limits that no amount of scaling can overcome.
 
-This document develops the theory of _recurrence linearity_ and its consequences. We prove that models with linear temporal dynamics---Mamba2, Fast Linear Attention, Gated Delta Networks---are mathematically constrained in ways that models with nonlinear temporal dynamics are not. A $D$-layer linear-temporal model has composition depth $D$, regardless of sequence length. An E88-style model with nonlinear recurrence has composition depth $D times T$, where $T$ is the sequence length. The gap is multiplicative.
+This document develops the theory of _recurrence linearity_ and its consequences. We prove that models with linear temporal dynamics---Mamba2, Linear Attention, Gated Delta Networks---are mathematically constrained in ways that models with nonlinear temporal dynamics are not. A $D$-layer linear-temporal model has composition depth $D$, regardless of sequence length. An E88-style model with nonlinear recurrence has composition depth $D times T$, where $T$ is the sequence length. The gap is multiplicative.
 
 The consequences are concrete. Functions like running parity and threshold counting are provably impossible for linear-temporal models at any depth. E88 computes them with a single layer. The separation is not empirical---it is mathematical, verified in Lean 4 with no gaps in the proofs.
 
@@ -108,6 +108,9 @@ The document traces a journey from the fundamental question---where should nonli
 #include "14-composition-depth-text.typ"
 // 15-uncanny-valley-reasoning.typ - merged into 14
 #include "16-depth-examples.typ"
+
+// Appendix: Formal Proofs
+#include "appendix-proofs.typ"
 
 // Conclusion
 #pagebreak()

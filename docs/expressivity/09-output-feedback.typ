@@ -54,14 +54,12 @@ The emergent tape principle demystifies chain-of-thought reasoning.
   Chain-of-thought works because it provides working memory, not because it enables magical reasoning ability. The scratchpad is computationally necessary for multi-step algorithms. A model computing $A$ then $B$ then $C$, where each depends on the previous, needs somewhere to store intermediate results.
 ]
 
-Without CoT, a Transformer has fixed internal state: the residual stream, the attention patterns. Complex multi-step computations overflow this state. The model hallucinates or takes shortcuts.
+Without CoT, a Transformer has fixed internal state. Complex multi-step computations overflow this state.
 
-With CoT, the output provides unbounded (up to context length) working memory. The same model can now execute the algorithm correctly because it has somewhere to put the intermediate values.
+With CoT, the output provides unbounded working memory. The model can execute algorithms correctly.
 
-This is not about "showing work" for interpretability. It is about computational necessity.
+This is computational necessity, not interpretability.
 
 #centerrule
 
-We have seen how output feedback changes the landscape. Models with emergent tape memory achieve bounded Turing machine power, regardless of their base architecture. The differences between architectures collapse at this level---E88+Feedback equals Transformer+CoT equals $"DTIME"(T)$.
-
-But what if we want something between fixed state and full feedback? Multi-pass RNNs offer an intermediate point.
+Models with emergent tape memory achieve bounded Turing machine power. The differences between architectures collapse: E88+Feedback equals Transformer+CoT equals $"DTIME"(T)$.

@@ -1,5 +1,6 @@
 // Traditional Math Style for Typst
 // Based on LaTeX theorem environments (amsthm style)
+// Using the ctheorems package for proper numbering and inline behavior
 //
 // USAGE:
 //   #import "traditional-math-style.typ": *
@@ -37,96 +38,131 @@
 // - Sans-serif font maintained for screen readability
 
 // ============================================================================
-// COUNTERS
+// IMPORT CTHEOREMS PACKAGE
 // ============================================================================
 
-#let theorem-counter = counter("theorem")
-
-// Reset theorem counter at each section (heading level 1)
-// Call this in show rules if needed
+#import "@preview/ctheorems:1.1.3": *
 
 // ============================================================================
-// THEOREM-LIKE ENVIRONMENTS
+// THEOREM-LIKE ENVIRONMENTS (using ctheorems)
 // ============================================================================
 
-// Theorem: italic body, bold header
+// Base theorem environment with traditional styling
+// - No fill/stroke (plain traditional style)
+// - Italic body for theorems
+// - Bold heading
+#let theorem-base = thmbox(
+  "theorem",
+  "Theorem",
+  fill: none,
+  stroke: none,
+  inset: 0pt,
+  radius: 0pt,
+  padding: (top: 1.2em, bottom: 1.2em),
+  namefmt: name => text(weight: "bold")[#name],
+  titlefmt: title => text(weight: "bold")[(#title)],
+  bodyfmt: body => emph[#body]
+)
+
+// Lemma: shares counter with theorem
+#let lemma-base = thmbox(
+  "lemma",
+  "Lemma",
+  base: "theorem",
+  fill: none,
+  stroke: none,
+  inset: 0pt,
+  radius: 0pt,
+  padding: (top: 1.2em, bottom: 1.2em),
+  namefmt: name => text(weight: "bold")[#name],
+  titlefmt: title => text(weight: "bold")[(#title)],
+  bodyfmt: body => emph[#body]
+)
+
+// Corollary: shares counter with theorem
+#let corollary-base = thmbox(
+  "corollary",
+  "Corollary",
+  base: "theorem",
+  fill: none,
+  stroke: none,
+  inset: 0pt,
+  radius: 0pt,
+  padding: (top: 1.2em, bottom: 1.2em),
+  namefmt: name => text(weight: "bold")[#name],
+  titlefmt: title => text(weight: "bold")[(#title)],
+  bodyfmt: body => emph[#body]
+)
+
+// Proposition: shares counter with theorem
+#let proposition-base = thmbox(
+  "proposition",
+  "Proposition",
+  base: "theorem",
+  fill: none,
+  stroke: none,
+  inset: 0pt,
+  radius: 0pt,
+  padding: (top: 1.2em, bottom: 1.2em),
+  namefmt: name => text(weight: "bold")[#name],
+  titlefmt: title => text(weight: "bold")[(#title)],
+  bodyfmt: body => emph[#body]
+)
+
+// Definition: upright body (not italicized in traditional style)
+#let definition-base = thmbox(
+  "definition",
+  "Definition",
+  base: "theorem",
+  fill: none,
+  stroke: none,
+  inset: 0pt,
+  radius: 0pt,
+  padding: (top: 1.2em, bottom: 1.2em),
+  namefmt: name => text(weight: "bold")[#name],
+  titlefmt: title => text(weight: "bold")[(#title)],
+  bodyfmt: body => body  // upright, not italic
+)
+
+// Wrapper functions to match our API: theorem(title)[body]
 #let theorem(title, body) = {
-  theorem-counter.step()
-  block(
-    above: 1.2em,
-    below: 1.2em,
-    width: 100%,
-  )[
-    #text(weight: "bold")[Theorem]
-    #context text(weight: "bold")[#theorem-counter.display()]
-    #if title != none [ (#text(weight: "bold")[#title])]#text(weight: "bold")[.]
-    #h(0.3em)
-    #emph[#body]
-  ]
+  if title == none {
+    theorem-base[#body]
+  } else {
+    theorem-base(title: title)[#body]
+  }
 }
 
-// Lemma: italic body, bold header
 #let lemma(title, body) = {
-  theorem-counter.step()
-  block(
-    above: 1.2em,
-    below: 1.2em,
-    width: 100%,
-  )[
-    #text(weight: "bold")[Lemma]
-    #context text(weight: "bold")[#theorem-counter.display()]
-    #if title != none [ (#text(weight: "bold")[#title])]#text(weight: "bold")[.]
-    #h(0.3em)
-    #emph[#body]
-  ]
+  if title == none {
+    lemma-base[#body]
+  } else {
+    lemma-base(title: title)[#body]
+  }
 }
 
-// Corollary: italic body, bold header
 #let corollary(title, body) = {
-  theorem-counter.step()
-  block(
-    above: 1.2em,
-    below: 1.2em,
-    width: 100%,
-  )[
-    #text(weight: "bold")[Corollary]
-    #context text(weight: "bold")[#theorem-counter.display()]
-    #if title != none [ (#text(weight: "bold")[#title])]#text(weight: "bold")[.]
-    #h(0.3em)
-    #emph[#body]
-  ]
+  if title == none {
+    corollary-base[#body]
+  } else {
+    corollary-base(title: title)[#body]
+  }
 }
 
-// Proposition: italic body, bold header
 #let proposition(title, body) = {
-  theorem-counter.step()
-  block(
-    above: 1.2em,
-    below: 1.2em,
-    width: 100%,
-  )[
-    #text(weight: "bold")[Proposition]
-    #context text(weight: "bold")[#theorem-counter.display()]
-    #if title != none [ (#text(weight: "bold")[#title])]#text(weight: "bold")[.]
-    #h(0.3em)
-    #emph[#body]
-  ]
+  if title == none {
+    proposition-base[#body]
+  } else {
+    proposition-base(title: title)[#body]
+  }
 }
 
-// Definition: upright body (definitions are not italicized in traditional style)
 #let definition(title, body) = {
-  theorem-counter.step()
-  block(
-    above: 1.2em,
-    below: 1.2em,
-    width: 100%,
-  )[
-    #text(weight: "bold")[Definition]
-    #context text(weight: "bold")[#theorem-counter.display()]
-    #if title != none [ (#text(weight: "bold")[#title])]#text(weight: "bold")[.]
-    #h(0.3em)
-    #body
-  ]
+  if title == none {
+    definition-base[#body]
+  } else {
+    definition-base(title: title)[#body]
+  }
 }
 
 // Remark: upright body
@@ -202,38 +238,27 @@
 }
 
 // ============================================================================
-// PROOF ENVIRONMENT
+// PROOF ENVIRONMENT (using ctheorems)
 // ============================================================================
 
 // Proof with italic 'Proof.' and QED symbol (filled square)
-#let proof(body) = {
-  block(
-    above: 0.8em,
-    below: 1em,
-    width: 100%,
-  )[
-    #text(style: "italic")[Proof.]
-    #h(0.3em)
-    #body
-    #h(1fr)
-    $square.filled$
-  ]
-}
+// Using thmproof from ctheorems ensures proper inline behavior
+#let proof = thmproof(
+  "proof",
+  "Proof",
+  base: none,
+  titlefmt: title => text(style: "italic")[#title.],
+  bodyfmt: body => [#h(0.3em)#body#h(1fr)$square.filled$]
+)
 
-// Proof sketch variant
-#let proof-sketch(body) = {
-  block(
-    above: 0.8em,
-    below: 1em,
-    width: 100%,
-  )[
-    #text(style: "italic")[Proof sketch.]
-    #h(0.3em)
-    #body
-    #h(1fr)
-    $square.stroked$
-  ]
-}
+// Proof sketch variant with hollow square
+#let proof-sketch = thmproof(
+  "proof-sketch",
+  "Proof sketch",
+  base: none,
+  titlefmt: title => text(style: "italic")[#title.],
+  bodyfmt: body => [#h(0.3em)#body#h(1fr)$square.stroked$]
+)
 
 // ============================================================================
 // LEAN REFERENCE (AS FOOTNOTE)
@@ -241,14 +266,10 @@
 
 // Create a footnote reference to Lean formalization
 // Usage: #leanref("LinearCapacity.lean:72", "theorem linear_state_is_sum")
-#let leanref(location, signature) = {
-  footnote[Lean formalization: #raw(location, lang: none). See #raw(signature, lang: "lean4").]
-}
+#let leanref(location, signature) = footnote[Lean formalization: #raw(location, lang: none). See #raw(signature, lang: "lean4").]
 
 // Short form for just file reference
-#let leanfile(location) = {
-  footnote[Lean formalization: #raw(location, lang: none).]
-}
+#let leanfile(location) = footnote[Lean formalization: #raw(location, lang: none).]
 
 // ============================================================================
 // HORIZONTAL RULES FOR SECTION BREAKS
@@ -339,8 +360,8 @@
 // Call this at the start of document or in main.typ
 #let setup-traditional-style(doc) = {
   // Reset theorem counter at each level-1 heading
+  // Note: ctheorems manages theorem counters automatically
   show heading.where(level: 1): it => {
-    theorem-counter.update(0)
     equation-counter.update(0)
     it
   }

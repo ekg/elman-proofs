@@ -131,4 +131,3 @@ The practical implications follow from the theory. For tasks where $k < T\/D$ pa
 
 Multi-pass processing offers a practical middle ground. When the number of required random accesses is known and bounded, multi-pass RNNs achieve the necessary computation with less memory overhead than full attention. The hierarchy continues to refine: each architectural choice trades off computation, memory, and capability in different ways.
 
-But all these theoretical results face a sobering empirical reality. Despite E88's provably greater computational power, Mamba2 outperforms it on language modeling benchmarks. The next section confronts this gap between theory and practice.
