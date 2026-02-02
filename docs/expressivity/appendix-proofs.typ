@@ -31,8 +31,8 @@ The key structural result:
 #theorem("Linear State as Weighted Sum")[
   For a linear RNN with matrices $A, B$, the state at time $T$ starting from $h_0 = bb(0)$ is:
   $ h_T = sum_(t=0)^(T-1) A^(T-1-t) B x_t $
-  That is, the state is a weighted sum of past inputs, where the weight matrix for input $x_t$ is $A^(T-1-t) B$.
-]#leanref("LinearCapacity.lean:71", "theorem linear_state_is_sum")
+  That is, the state is a weighted sum of past inputs, where the weight matrix for input $x_t$ is $A^(T-1-t) B$.#leanref("LinearCapacity.lean:71", "theorem linear_state_is_sum")
+]
 
 #proof[
   By induction on $T$.
@@ -54,8 +54,8 @@ The linear state structure immediately implies that outputs are linear functions
 #theorem("Linear RNN Output is Affine")[
   For any linear RNN with matrices $A, B, C$ and sequence length $T$, there exist weights $w_0, dots, w_(T-1) in RR$ and bias $c in RR$ such that:
   $ y_T = C h_T = sum_(t=0)^(T-1) w_t x_t + c $
-  where $w_t$ is the scalar $(C A^(T-1-t) B)_(0,0)$ (for scalar inputs/outputs).
-]#leanref("LinearLimitations.lean:51", "theorem linear_output_as_sum")
+  where $w_t$ is the scalar $(C A^(T-1-t) B)_(0,0)$ (for scalar inputs/outputs).#leanref("LinearLimitations.lean:51", "theorem linear_output_as_sum")
+]
 
 #proof[
   From the state representation:
@@ -80,8 +80,8 @@ This linearity is the Achilles' heel of linear RNNs.
 The threshold function is discontinuous at $sum x_t = tau$. Linear functions are continuous. This is the core of the impossibility.
 
 #theorem("Linear RNNs Cannot Compute Threshold")[
-  For any threshold $tau in RR$ and sequence length $T >= 1$, there does not exist a linear RNN (with any state dimension $n$) that computes $f_tau^T$.
-]#leanref("LinearLimitations.lean:107", "theorem linear_cannot_threshold")
+  For any threshold $tau in RR$ and sequence length $T >= 1$, there does not exist a linear RNN (with any state dimension $n$) that computes $f_tau^T$.#leanref("LinearLimitations.lean:107", "theorem linear_cannot_threshold")
+]
 
 #proof[
   Suppose for contradiction that there exist matrices $A, B, C$ such that for all input sequences $(x_0, dots, x_(T-1))$:
@@ -134,8 +134,8 @@ The threshold function is discontinuous at $sum x_t = tau$. Linear functions are
 
 #theorem("XOR is Not Affine")[
   There do not exist constants $a, b, c in RR$ such that for all $x, y in {0, 1}$:
-  $ "XOR"(x, y) = a x + b y + c $
-]#leanref("LinearLimitations.lean:218", "theorem xor_not_affine")
+  $ "XOR"(x, y) = a x + b y + c $#leanref("LinearLimitations.lean:218", "theorem xor_not_affine")
+]
 
 #proof[
   Suppose such $a, b, c$ exist. Evaluate at the four binary inputs:
@@ -163,8 +163,8 @@ The threshold function is discontinuous at $sum x_t = tau$. Linear functions are
 ]
 
 #corollary("Linear RNNs Cannot Compute XOR")[
-  For sequence length $T = 2$ and binary inputs, there does not exist a linear RNN that computes $"XOR"(x_0, x_1)$.
-]#leanref("LinearLimitations.lean:314", "theorem linear_cannot_xor")
+  For sequence length $T = 2$ and binary inputs, there does not exist a linear RNN that computes $"XOR"(x_0, x_1)$.#leanref("LinearLimitations.lean:314", "theorem linear_cannot_xor")
+]
 
 #proof[
   By the output linearity theorem, a linear RNN computes an affine function $a x_0 + b x_1 + c$ on 2-element sequences. But XOR is not affine by the previous theorem.
@@ -200,8 +200,8 @@ Running parity extends XOR to arbitrary-length sequences: at each position $t$, 
 
 #theorem("Parity on T Inputs is Not Affine")[
   For any $T >= 2$, there do not exist weights $w_0, dots, w_(T-1) in RR$ and bias $b in RR$ such that for all binary inputs $(x_0, dots, x_(T-1)) in {0, 1}^T$:
-  $ "parity"(sum_(i=0)^(T-1) x_i) = sum_(i=0)^(T-1) w_i x_i + b $
-]#leanref("RunningParity.lean:80", "theorem parity_T_not_affine")
+  $ "parity"(sum_(i=0)^(T-1) x_i) = sum_(i=0)^(T-1) w_i x_i + b $#leanref("RunningParity.lean:80", "theorem parity_T_not_affine")
+]
 
 #proof[
   We reduce to the $T = 2$ case (XOR). Suppose such weights and bias exist.
@@ -232,8 +232,8 @@ Running parity extends XOR to arbitrary-length sequences: at each position $t$, 
 === Linear RNNs Cannot Compute Running Parity
 
 #theorem("Running Parity Requires Nonlinear Temporal Dynamics")[
-  For any $T >= 2$, there does not exist a linear RNN (with any state dimension $n$) that computes the running parity function at position $T - 1$.
-]#leanref("RunningParity.lean:200", "theorem linear_cannot_running_parity")
+  For any $T >= 2$, there does not exist a linear RNN (with any state dimension $n$) that computes the running parity function at position $T - 1$.#leanref("RunningParity.lean:200", "theorem linear_cannot_running_parity")
+]
 
 #proof[
   Suppose such a linear RNN exists, with matrices $A, B, C$. The output at position $T - 1$ is:
@@ -252,8 +252,8 @@ Running parity extends XOR to arbitrary-length sequences: at each position $t$, 
 ]
 
 #corollary("Multi-Layer Linear-Temporal Models Cannot Compute Parity")[
-  For any number of layers $D >= 1$ and sequence length $T >= 2$, a multi-layer linear-temporal model (where each layer has linear temporal dynamics) cannot compute running parity.
-]#leanref("RunningParity.lean:247", "theorem multilayer_linear_cannot_running_parity")
+  For any number of layers $D >= 1$ and sequence length $T >= 2$, a multi-layer linear-temporal model (where each layer has linear temporal dynamics) cannot compute running parity.#leanref("RunningParity.lean:247", "theorem multilayer_linear_cannot_running_parity")
+]
 
 #remark(none)[
   This impossibility applies to:
@@ -274,13 +274,13 @@ Nonlinear RNNs escape the linear limitations through the activation function. Th
 === Saturation Properties
 
 #theorem("Tanh Approaches ±1")[
-  $ lim_(x -> oo) tanh(x) = 1 quad quad lim_(x -> -oo) tanh(x) = -1 $
-]#leanref("TanhSaturation.lean:69", "theorem tanh_saturates_to_one")
+  $ lim_(x -> oo) tanh(x) = 1 quad quad lim_(x -> -oo) tanh(x) = -1 $#leanref("TanhSaturation.lean:69", "theorem tanh_saturates_to_one")
+]
 
 #theorem("Tanh Derivative Vanishes at Saturation")[
   For any $epsilon > 0$, there exists $c > 0$ such that for all $x$ with $|x| > c$:
-  $ |frac(d, d x) tanh(x)| = |"sech"^2(x)| < epsilon $
-]#leanref("TanhSaturation.lean:86", "theorem tanh_derivative_vanishes")
+  $ |frac(d, d x) tanh(x)| = |"sech"^2(x)| < epsilon $#leanref("TanhSaturation.lean:86", "theorem tanh_derivative_vanishes")
+]
 
 #proof[
   The derivative of tanh is:
@@ -307,8 +307,8 @@ This vanishing gradient is usually seen as a problem ("vanishing gradients preve
 
 #theorem("Tanh Recurrence is Contractive")[
   If $|alpha| < 1$, then for all $S_1, S_2 in RR$:
-  $ |tanh(alpha S_1 + b) - tanh(alpha S_2 + b)| <= |alpha| dot |S_1 - S_2| $
-]#leanref("TanhSaturation.lean:97", "theorem tanhRecurrence_is_contraction")
+  $ |tanh(alpha S_1 + b) - tanh(alpha S_2 + b)| <= |alpha| dot |S_1 - S_2| $#leanref("TanhSaturation.lean:97", "theorem tanhRecurrence_is_contraction")
+]
 
 #proof[
   The mean value theorem gives:

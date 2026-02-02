@@ -9,7 +9,7 @@
 )
 
 // Sans-serif font throughout
-#set text(font: "DejaVu Sans", size: 10.5pt)
+#set text(font: "New Computer Modern", size: 11pt)
 #set par(justify: true, leading: 0.65em)
 #set page(margin: (x: 1in, y: 1in), numbering: "1")
 

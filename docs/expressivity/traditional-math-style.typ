@@ -261,15 +261,43 @@
 )
 
 // ============================================================================
-// LEAN REFERENCE (AS FOOTNOTE)
+// LEAN REFERENCE (AS FOOTNOTE WITH GITHUB PERMALINK)
 // ============================================================================
 
-// Create a footnote reference to Lean formalization
-// Usage: #leanref("LinearCapacity.lean:72", "theorem linear_state_is_sum")
-#let leanref(location, signature) = footnote[Lean formalization: #raw(location, lang: none). See #raw(signature, lang: "lean4").]
+// COMMIT SHA for GitHub permalinks - update this when needed
+#let lean-commit-sha = "d19254d"
 
-// Short form for just file reference
-#let leanfile(location) = footnote[Lean formalization: #raw(location, lang: none).]
+// Create a footnote reference to Lean formalization with clickable GitHub permalink
+// Usage: #leanref("LinearCapacity.lean:72", "theorem linear_state_is_sum")
+// Creates footnote with link to: https://github.com/ekg/elman-proofs/blob/COMMIT/ElmanProofs/Expressivity/FILE#LLINE
+#let leanref(location, signature) = {
+  // Parse location: "File.lean:123" or "File.lean:123,456"
+  let parts = location.split(":")
+  let filepath = parts.at(0)
+  let line = if parts.len() > 1 { parts.at(1).split(",").at(0) } else { "" }
+
+  // Construct GitHub permalink
+  let github-url = "https://github.com/ekg/elman-proofs/blob/" + lean-commit-sha + "/ElmanProofs/Expressivity/" + filepath
+  if line != "" {
+    github-url = github-url + "#L" + line
+  }
+
+  footnote[Lean formalization: #link(github-url)[#raw(location, lang: none)]. See #raw(signature, lang: "lean4").]
+}
+
+// Short form for just file reference with GitHub link
+#let leanfile(location) = {
+  let parts = location.split(":")
+  let filepath = parts.at(0)
+  let line = if parts.len() > 1 { parts.at(1).split(",").at(0) } else { "" }
+
+  let github-url = "https://github.com/ekg/elman-proofs/blob/" + lean-commit-sha + "/ElmanProofs/Expressivity/" + filepath
+  if line != "" {
+    github-url = github-url + "#L" + line
+  }
+
+  footnote[Lean formalization: #link(github-url)[#raw(location, lang: none)].]
+}
 
 // ============================================================================
 // HORIZONTAL RULES FOR SECTION BREAKS
