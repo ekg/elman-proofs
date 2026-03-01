@@ -16,19 +16,19 @@
 // Prevent page breaks before headings
 #show heading.where(level: 1): it => {
   v(1.5em)
-  text(size: 16pt, weight: "bold", it.body)
+  align(left)[#text(size: 16pt, weight: "bold", it.body)]
   v(0.75em)
 }
 
 #show heading.where(level: 2): it => {
   v(1em)
-  text(size: 13pt, weight: "bold", it.body)
+  align(left)[#text(size: 13pt, weight: "bold", it.body)]
   v(0.5em)
 }
 
 #show heading.where(level: 3): it => {
   v(0.75em)
-  text(size: 11pt, weight: "bold", it.body)
+  align(left)[#text(size: 11pt, weight: "bold", it.body)]
   v(0.25em)
 }
 
@@ -45,11 +45,11 @@
 // Title page
 #align(center)[
   #v(2in)
-  #text(size: 24pt, weight: "bold")[Expressivity Analysis]
+  #text(size: 24pt, weight: "bold")[Proof-Guided Architecture Exploration]
   #v(0.5em)
   #text(size: 18pt)[Temporal Nonlinearity vs Depth]
   #v(1em)
-  #text(size: 14pt, style: "italic")[Where Should Nonlinearity Live?]
+  #text(size: 14pt, style: "italic")[Using Formal Proofs to Design Sequence Models]
   #v(2em)
   #text(size: 11pt)[Erik Garrison]
   #v(0.5em)
@@ -79,15 +79,7 @@
 ]
 #v(1em)
 
-Every sequence model must answer a fundamental question: where should nonlinearity live? The answer determines computational limits that no amount of scaling can overcome.
-
-This document develops the theory of _recurrence linearity_ and its consequences. We prove that models with linear temporal dynamics---Mamba2, Linear Attention, Gated Delta Networks---are mathematically constrained in ways that models with nonlinear temporal dynamics are not. A $D$-layer linear-temporal model has composition depth $D$, regardless of sequence length. An E88-style model with nonlinear recurrence has composition depth $D times T$, where $T$ is the sequence length. The gap is multiplicative.
-
-The consequences are concrete. Functions like running parity and threshold counting are provably impossible for linear-temporal models at any depth. E88 computes them with a single layer. The separation is not empirical---it is mathematical, verified in Lean 4 with no gaps in the proofs.
-
-We also confront the tension between theory and practice: despite E88's provably greater expressivity, Mamba2 achieves better perplexity on language modeling benchmarks. This apparent contradiction resolves once we distinguish what an architecture _can compute_ from what it _learns efficiently_. The theoretical hierarchy concerns ultimate limits; training dynamics determine what happens within those limits.
-
-The document traces a journey from the fundamental question---where should nonlinearity live?---through the mathematical machinery of linear recurrence, the impossibility results, E88's escape via tanh saturation, the circuit complexity perspective, output feedback and emergent tape, and finally to the practical implications. The reader emerges with a complete understanding of the expressivity hierarchy among modern sequence models.
+We demonstrate a methodology for architecture design: use formal impossibility proofs to explore the design space systematically. Formalizing linear-temporal recurrence reveals what such models cannot compute (running parity, threshold functions), which in turn reveals what architectural features are necessary (temporal nonlinearity). We establish a strict computational hierarchy with each separation witnessed by constructive examples. The method guides architecture exploration by converting empirical questions ("which architecture is better?") into mathematical constraints ("which functions are computable?"). All theorems mechanically verified in Lean 4.
 
 #v(2em)
 
@@ -121,14 +113,11 @@ We began with a question: where should nonlinearity live? The answer, we have se
 
 Transformers place nonlinearity between layers. State-space models like Mamba2 do the same, but process time linearly within each layer. E88 places nonlinearity in time itself, with $S_t = tanh(alpha S_(t-1) + delta v_t k_t^top)$ compounding across timesteps.
 
-These choices create a strict hierarchy:
-$ "Linear SSM" subset.neq "TC"^0 "(Transformer)" subset.neq "E88" subset.neq "E23 (UTM)" $
-
-Linear-temporal models fall below TC⁰---they cannot compute even parity. Transformers sit at TC⁰, with constant depth. E88 exceeds TC⁰, its depth growing with sequence length. E23 achieves full Turing completeness through explicit tape.
+These choices create the strict computational hierarchy established in the introduction: Linear-temporal models fall below TC⁰---they cannot compute even parity. Transformers sit at TC⁰, with constant depth. E88 exceeds TC⁰, its depth growing with sequence length. E23 achieves full Turing completeness through explicit tape.
 
 The separation is witnessed by concrete functions. Running parity: impossible for any linear-temporal model, achievable by single-layer E88. Threshold: impossible for linear (continuous functions cannot equal discontinuous ones), achievable by E88 via saturation. The proofs are complete, verified in Lean 4, with no gaps.
 
-Yet theory is not practice. Mamba2 outperforms E88 on language modeling despite being provably less expressive. The resolution: expressivity determines what _can_ be computed with unlimited resources; benchmarks measure what is learned in fixed time on specific tasks. The theory tells us about limits; training dynamics tell us what happens within those limits.
+Theory and practice partially align. At short context (512 tokens), Mamba2 outperforms E88 on language modeling despite being provably less expressive---training dynamics dominate. At 32K context, CMA-ES architecture search inverts the ranking: E88 achieves 1.100 vs Mamba2's 1.188, leading by 0.088 nats. The compositional depth advantage manifests where sequence length makes it matter. Expressivity determines what _can_ be computed; context length determines whether that computation is required.
 
 The practical implications follow from the theory. For tasks whose composition depth is bounded by $D = 32$, linear-temporal models suffice---and train faster. For algorithmic reasoning, state tracking, and any task requiring temporal decisions, the linear-temporal limitation bites. Depth adds nonlinearity in the wrong dimension; only temporal nonlinearity provides depth through time.
 

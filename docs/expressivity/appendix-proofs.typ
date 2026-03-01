@@ -5,172 +5,9 @@
 
 = Appendix: Formal Proofs
 
-This appendix presents the key expressivity theorems from the ElmanProofs formalization, translated from Lean 4 into traditional mathematical notation. Each proof has been mechanically verified in Lean with no gaps or `sorry` placeholders in the critical results.
+This appendix presents detailed proofs for theorems that are stated but not fully proven in the main text. The main sections (§2-§4) already contain complete proofs for foundational results on linear RNN limitations, threshold/XOR impossibility, and tanh saturation dynamics. Here we provide the remaining technical details for running parity, multi-head independence, and circuit complexity bounds.
 
-The proofs are organized by topic: linear limitations, running parity, tanh saturation, and circuit complexity bounds. For each theorem, we provide:
-1. The statement in traditional mathematical notation
-2. The complete proof (not Lean tactics, but mathematical reasoning)
-3. A reference to the Lean file for verification
-
-#pagebreak()
-
-== Linear RNN Limitations
-
-The fundamental limitation of linear RNNs stems from a simple fact: the state at time $T$ is a linear combination of past inputs. This seemingly innocuous property has profound consequences.
-
-=== State Representation
-
-#definition("Linear RNN State")[
-  A linear RNN with state dimension $n$, input dimension $m$, is characterized by matrices $A in RR^(n times n)$, $B in RR^(n times m)$, $C in RR^(k times n)$. The state evolves as:
-  $ h_(t+1) = A h_t + B x_t $
-  starting from $h_0 = bb(0)$. The output is $y_t = C h_t$.
-]
-
-The key structural result:
-
-#theorem("Linear State as Weighted Sum")[
-  For a linear RNN with matrices $A, B$, the state at time $T$ starting from $h_0 = bb(0)$ is:
-  $ h_T = sum_(t=0)^(T-1) A^(T-1-t) B x_t $
-  That is, the state is a weighted sum of past inputs, where the weight matrix for input $x_t$ is $A^(T-1-t) B$.#leanref("LinearCapacity.lean:71", "theorem linear_state_is_sum")
-]
-
-#proof[
-  By induction on $T$.
-
-  *Base case* ($T = 0$): The state is $h_0 = bb(0)$, which equals the empty sum.
-
-  *Inductive step*: Assume the result holds for $T'$. For $T = T' + 1$:
-  $ h_(T'+1) &= A h_(T') + B x_(T') \
-             &= A (sum_(t=0)^(T'-1) A^(T'-1-t) B x_t) + B x_(T') \
-             &= sum_(t=0)^(T'-1) A^(T'-t) B x_t + A^0 B x_(T') \
-             &= sum_(t=0)^T A^(T-1-t) B x_t $
-  where the last step uses $A^0 = I$ and combines the sums.
-]
-
-=== Linearity of Output
-
-The linear state structure immediately implies that outputs are linear functions of inputs.
-
-#theorem("Linear RNN Output is Affine")[
-  For any linear RNN with matrices $A, B, C$ and sequence length $T$, there exist weights $w_0, dots, w_(T-1) in RR$ and bias $c in RR$ such that:
-  $ y_T = C h_T = sum_(t=0)^(T-1) w_t x_t + c $
-  where $w_t$ is the scalar $(C A^(T-1-t) B)_(0,0)$ (for scalar inputs/outputs).#leanref("LinearLimitations.lean:51", "theorem linear_output_as_sum")
-]
-
-#proof[
-  From the state representation:
-  $ y_T = C h_T = C (sum_(t=0)^(T-1) A^(T-1-t) B x_t) = sum_(t=0)^(T-1) (C A^(T-1-t) B) x_t $
-  For scalar inputs ($m = 1$) and outputs ($k = 1$), each term $C A^(T-1-t) B$ is a $1 times 1$ matrix, i.e., a scalar weight $w_t$. The bias $c = 0$ for zero initial state.
-]
-
-This linearity is the Achilles' heel of linear RNNs.
-
-#pagebreak()
-
-=== Threshold Functions
-
-#definition("Threshold Function")[
-  For threshold $tau in RR$ and sequence length $T$, the threshold function $f_tau^T : RR^T -> {0, 1}$ is defined by:
-  $ f_tau^T (x_0, dots, x_(T-1)) = cases(
-    1 & "if" sum_(t=0)^(T-1) x_t > tau,
-    0 & "otherwise"
-  ) $
-]
-
-The threshold function is discontinuous at $sum x_t = tau$. Linear functions are continuous. This is the core of the impossibility.
-
-#theorem("Linear RNNs Cannot Compute Threshold")[
-  For any threshold $tau in RR$ and sequence length $T >= 1$, there does not exist a linear RNN (with any state dimension $n$) that computes $f_tau^T$.#leanref("LinearLimitations.lean:107", "theorem linear_cannot_threshold")
-]
-
-#proof[
-  Suppose for contradiction that there exist matrices $A, B, C$ such that for all input sequences $(x_0, dots, x_(T-1))$:
-  $ C h_T = f_tau^T (x_0, dots, x_(T-1)) $
-
-  By the linearity theorem, the output $C h_T$ is an affine function:
-  $ C h_T = sum_(t=0)^(T-1) w_t x_t + c $
-  for some weights $w_t$ and bias $c$.
-
-  Consider the special case of "singleton" inputs where $x_0 = alpha$ and $x_t = 0$ for $t > 0$. Then:
-  - $sum x_t = alpha$
-  - $C h_T = w_0 alpha + c$
-
-  Define $g(alpha) = w_0 alpha + c$. This is a linear function of $alpha$.
-
-  The threshold function on singleton inputs is:
-  $ f_tau^T ("singleton"(alpha)) = cases(
-    1 & "if" alpha > tau,
-    0 & "if" alpha <= tau
-  ) $
-
-  By assumption, $g(alpha) = f_tau^T ("singleton"(alpha))$ for all $alpha$.
-
-  Now consider three values:
-  - At $alpha = tau + 1$: $g(tau + 1) = w_0(tau + 1) + c = 1$
-  - At $alpha = tau + 2$: $g(tau + 2) = w_0(tau + 2) + c = 1$
-  - Subtracting: $w_0 = 0$
-  - But then $g(tau + 1) = c = 1$
-  - Also at $alpha = tau - 1$: $g(tau - 1) = c = 0$
-
-  Contradiction: $c$ cannot be both $0$ and $1$.
-]
-
-#remark(none)[
-  The proof exploits that linear functions satisfy $g(x_1) - g(x_2) = m(x_1 - x_2)$ for some slope $m$, but the threshold function has $f(tau + 1) = f(tau + 2) = 1$ (slope 0) yet jumps from $0$ to $1$ between $tau - epsilon$ and $tau + epsilon$ (infinite slope).
-]
-
-#pagebreak()
-
-=== XOR and Affine Functions
-
-#definition("XOR on Binary Inputs")[
-  The XOR function on two binary inputs $x, y in {0, 1}$ is:
-  $ "XOR"(x, y) = cases(
-    1 & "if exactly one of" x, y "equals 1",
-    0 & "otherwise"
-  ) $
-  Equivalently, $"XOR"(0,0) = 0$, $"XOR"(0,1) = 1$, $"XOR"(1,0) = 1$, $"XOR"(1,1) = 0$.
-]
-
-#theorem("XOR is Not Affine")[
-  There do not exist constants $a, b, c in RR$ such that for all $x, y in {0, 1}$:
-  $ "XOR"(x, y) = a x + b y + c $#leanref("LinearLimitations.lean:218", "theorem xor_not_affine")
-]
-
-#proof[
-  Suppose such $a, b, c$ exist. Evaluate at the four binary inputs:
-
-  #align(center)[
-    #table(
-      columns: 4,
-      align: left,
-      stroke: 0.5pt,
-      [$(x, y)$], [$"XOR"(x, y)$], [$a x + b y + c$], [Constraint],
-      [$(0, 0)$], [$0$], [$c$], [$c = 0$],
-      [$(0, 1)$], [$1$], [$b + c$], [$b + c = 1$],
-      [$(1, 0)$], [$1$], [$a + c$], [$a + c = 1$],
-      [$(1, 1)$], [$0$], [$a + b + c$], [$a + b + c = 0$],
-    )
-  ]
-
-  From the constraints:
-  - Row 1: $c = 0$
-  - Row 2: $b + 0 = 1$, so $b = 1$
-  - Row 3: $a + 0 = 1$, so $a = 1$
-  - Row 4: $1 + 1 + 0 = 2 != 0$
-
-  Contradiction.
-]
-
-#corollary("Linear RNNs Cannot Compute XOR")[
-  For sequence length $T = 2$ and binary inputs, there does not exist a linear RNN that computes $"XOR"(x_0, x_1)$.#leanref("LinearLimitations.lean:314", "theorem linear_cannot_xor")
-]
-
-#proof[
-  By the output linearity theorem, a linear RNN computes an affine function $a x_0 + b x_1 + c$ on 2-element sequences. But XOR is not affine by the previous theorem.
-]
-
-#pagebreak()
+All proofs have been mechanically verified in Lean 4 with no gaps. Each theorem includes a reference to its Lean formalization.
 
 == Running Parity
 
@@ -265,112 +102,6 @@ Running parity extends XOR to arbitrary-length sequences: at each position $t$, 
   The key is linearity *in time*, not linearity between layers.
 ]
 
-#pagebreak()
-
-== Tanh Saturation and Latching
-
-Nonlinear RNNs escape the linear limitations through the activation function. The tanh function's saturation behavior creates stable fixed points.
-
-=== Saturation Properties
-
-#theorem("Tanh Approaches ±1")[
-  $ lim_(x -> oo) tanh(x) = 1 quad quad lim_(x -> -oo) tanh(x) = -1 $#leanref("TanhSaturation.lean:69", "theorem tanh_saturates_to_one")
-]
-
-#theorem("Tanh Derivative Vanishes at Saturation")[
-  For any $epsilon > 0$, there exists $c > 0$ such that for all $x$ with $|x| > c$:
-  $ |frac(d, d x) tanh(x)| = |"sech"^2(x)| < epsilon $#leanref("TanhSaturation.lean:86", "theorem tanh_derivative_vanishes")
-]
-
-#proof[
-  The derivative of tanh is:
-  $ frac(d, d x) tanh(x) = "sech"^2(x) = frac(1, cosh^2(x)) $
-
-  Since $cosh(x) = (e^x + e^(-x))/2 >= e^(|x|)/2$, we have:
-  $ "sech"^2(x) = frac(1, cosh^2(x)) <= frac(4, e^(2|x|)) $
-
-  Given $epsilon > 0$, choose $c = (ln(4/epsilon))/2$. Then for $|x| > c$:
-  $ "sech"^2(x) <= frac(4, e^(2c)) = frac(4, 4/epsilon) = epsilon $
-]
-
-This vanishing gradient is usually seen as a problem ("vanishing gradients prevent learning"). But it's actually a feature: it creates stable fixed points.
-
-#pagebreak()
-
-=== Fixed Points in Tanh Recurrence
-
-#definition("Tanh Recurrence")[
-  A simple tanh recurrence is:
-  $ S_(t+1) = tanh(alpha S_t + b) $
-  for scalar state $S_t$, recurrence strength $alpha$, and bias $b$.
-]
-
-#theorem("Tanh Recurrence is Contractive")[
-  If $|alpha| < 1$, then for all $S_1, S_2 in RR$:
-  $ |tanh(alpha S_1 + b) - tanh(alpha S_2 + b)| <= |alpha| dot |S_1 - S_2| $#leanref("TanhSaturation.lean:97", "theorem tanhRecurrence_is_contraction")
-]
-
-#proof[
-  The mean value theorem gives:
-  $ |tanh(alpha S_1 + b) - tanh(alpha S_2 + b)| = |frac(d, d x) tanh(x)|_(x = xi) dot |alpha S_1 - alpha S_2| $
-  for some $xi$ between $alpha S_1 + b$ and $alpha S_2 + b$.
-
-  Since $|frac(d, d x) tanh(x)| = "sech"^2(x) <= 1$ for all $x$:
-  $ |tanh(alpha S_1 + b) - tanh(alpha S_2 + b)| <= |alpha| dot |S_1 - S_2| $
-]
-
-#corollary("Existence of Fixed Point")[
-  If $|alpha| < 1$, there exists a unique fixed point $S^* in [-1, 1]$ such that:
-  $ S^* = tanh(alpha S^* + b) $
-]
-
-#proof[
-  By the Banach fixed point theorem, since tanh recurrence is a contraction on the complete metric space $[-1, 1]$ (tanh maps $RR -> (-1, 1)$), it has a unique fixed point.
-]
-
-#pagebreak()
-
-=== Binary Latching
-
-The key expressivity advantage of E88 over Mamba2 is *latching*: the ability to remember a binary fact indefinitely.
-
-#theorem("E88 Can Latch a Binary Fact")[
-  Consider an E88-style update:
-  $ S_t = tanh(alpha S_(t-1) + delta v_t k_t^top) $
-
-  If at some time $t_0$ a strong input drives $|alpha S_(t_0) + delta v_(t_0) k_(t_0)^top| > c$ for large $c$, then:
-  1. $|S_(t_0)| approx 1$ (state saturates)
-  2. For $t > t_0$ with small inputs, $S_t approx "sign"(S_(t_0))$ (state persists)
-  3. The latched state decays at rate $O(epsilon)$ where $epsilon = "sech"^2(c)$ (exponentially slow)#leanfile("TanhSaturation.lean:200-250")
-]
-
-#proof-sketch[
-  When $|x| > c$, we have $tanh(x) approx "sign"(x)$ and $tanh'(x) < epsilon$ for small $epsilon$.
-
-  At $t = t_0$: if $alpha S_(t_0 - 1) + delta v_(t_0) k_(t_0)^top = x_0$ with $|x_0| > c$, then:
-  $ S_(t_0) = tanh(x_0) approx "sign"(x_0) $
-
-  For $t > t_0$ with $|delta v_t k_t^top| < eta$ (small input):
-  $ S_t = tanh(alpha S_(t-1) + delta v_t k_t^top) approx tanh(alpha S_(t-1)) $
-
-  Near the fixed point $S^* approx "sign"(x_0)$, the dynamics linearize:
-  $ S_t - S^* approx tanh'(alpha S^*) dot alpha (S_(t-1) - S^*) approx epsilon alpha (S_(t-1) - S^*) $
-
-  So deviations from the fixed point decay as $(epsilon alpha)^t$. For small $epsilon$ and $|alpha| < 1$, this is exponentially slow.
-]
-
-#remark(none)[
-  In contrast, a linear SSM state decays as:
-  $ S_t = alpha^t S_0 + "small inputs" $
-
-  For $|alpha| < 1$ (required for stability), this decay is $alpha^t$, not $(epsilon alpha)^t$. With $alpha approx 0.9$ and $epsilon approx 10^(-6)$, the difference is dramatic:
-  - Linear: $0.9^(100) approx 10^(-5)$
-  - Saturated tanh: $(10^(-6) dot 0.9)^(100) approx 10^(-600)$
-
-  The saturated state is effectively permanent.
-]
-
-#pagebreak()
 
 == TC⁰ Circuit Complexity Bounds
 
@@ -453,6 +184,220 @@ This is the Merrill-Sabharwal result: Transformers with hard attention are TC⁰
   ]
 
   Depth in the temporal dimension matters.
+]
+
+#pagebreak()
+
+== Advanced E88 Capabilities
+
+Beyond the foundational limitations of linear models, E88's nonlinear temporal dynamics enable several sophisticated computational patterns.
+
+=== Exact Counting Modulo n
+
+#theorem("E88 Can Count Modulo n")[
+  For any $n >= 1$, there exist tanh-based state update, encoding, and decoding functions such that E88 can implement an exact counter modulo $n$:
+  $ "decode"("update"("encode"(k), 1)) = (k + 1) mod n $
+  for all $k in {0, dots, n-1}$.#leanref("TanhSaturation.lean:424", "theorem e88_can_count_mod")
+]
+
+#proof-sketch[
+  Construct:
+  - *Encode*: $"encode"(k) = k$ (embed counter value in state)
+  - *Update*: $"update"(S, x) = tanh(S + x)$ (add input to state)
+  - *Decode*: Map $tanh(k + 1)$ to $(k + 1) mod n$ using tanh injectivity
+
+  Since tanh is strictly increasing and injective, distinct counter values $k in {0, dots, n-1}$ map to distinct states $tanh(k + 1)$. The decoder can distinguish these and output the correct value modulo $n$.
+
+  For small $n$, this is feasible with finite precision. For large $n$, accumulated errors may require more sophisticated encoding schemes using multiple heads.
+]
+
+#remark(none)[
+  Linear SSMs cannot count exactly because:
+  - Linear state $S = sum alpha^(T-1-t) B x_t$ depends on timing, not just count
+  - Inputs $[1,1,0]$ and $[0,1,1]$ both have count $= 2$, but different weighted sums
+  - The spread of weighted sums for fixed count exceeds threshold width for large sequences
+
+  This is formalized in `linear_cannot_count_exactly` (TanhSaturation.lean:498).
+]
+
+#pagebreak()
+
+=== Multi-Head Independence
+
+E88 with $H$ heads can track $H$ independent temporal facts simultaneously. This is a key advantage over single-state models.
+
+#definition("E88 Multi-Head State")[
+  An E88 model with $H$ heads and head dimension $d$ maintains state:
+  $ S in RR^(H times d times d) $
+  where $S_h in RR^(d times d)$ is the state matrix for head $h$.
+
+  Each head updates independently:
+  $ S_h^((t+1)) = tanh(alpha S_h^((t)) + v_t k_t^top) $
+]
+
+#theorem("E88 Heads Run Independent Dynamics")[
+  For an E88 model with $H$ heads, the state update of head $h_1$ does not affect the state of head $h_2 != h_1$.
+
+  Formally, each head $h$ computes:
+  $ S_h^((t+1)) = f_h (S_h^((t)), x_t) $
+  where $f_h$ depends only on head $h$'s current state and the input.#leanref("TanhSaturation.lean:854", "theorem e88_head_independence")
+]
+
+#proof[
+  By construction. The update function for head $h$ is:
+  $ "e88HeadUpdate"(alpha, S_h, k, v) = "Matrix.of"(λ i j => tanh(alpha S_h [i,j] + v[i] k[j])) $
+
+  This depends only on:
+  - The head's own state $S_h$ (not other heads' states)
+  - The shared input vectors $k, v$ (same for all heads)
+  - The parameters $alpha$ (same for all heads)
+
+  Since other heads' states do not appear in the update formula, they cannot influence head $h$'s next state.
+]
+
+#corollary("H Heads Enable H Parallel Computations")[
+  An E88 model with $H$ heads can simultaneously:
+  - Track $H$ different binary facts (via latching in each head)
+  - Maintain $H$ independent counters modulo small $n$
+  - Compute $H$ different running parities on filtered subsequences
+]
+
+#remark(none)[
+  This multi-head capability is crucial for tasks requiring:
+  - Tracking multiple entities in context (e.g., coreference resolution)
+  - Parallel hypothesis maintenance (e.g., parsing ambiguous sentences)
+  - Independent feature extraction at different abstraction levels
+
+  In contrast, Mamba2 with $H$ "heads" still has linear temporal dynamics in each head, so cannot independently latch or count. The heads differ only in their linear projection matrices, not in computational capability.
+]
+
+#pagebreak()
+
+=== Alert State and Attentional Persistence
+
+E88 heads can enter an "alert" state where $|S| > theta$ for some threshold $theta$, and persist in this state.
+
+#definition("Alert State")[
+  A state $S$ is *alert* with respect to threshold $theta$ if:
+  $ |S| > theta $
+
+  The *alert basin* for recurrence parameter $alpha$ and threshold $theta$ is:
+  $ B_(alpha, theta) = {S | forall t >= 0, |f^t (S)| > theta} $
+  where $f(S) = tanh(alpha S)$ is the (zero-input) recurrence.
+]
+
+#theorem("Alert State is Absorbing")[
+  For $alpha > 1$ (supercritical regime) and appropriate threshold $theta$ satisfying:
+  - $0 < theta < 1$
+  - $theta < tanh(alpha theta)$ (threshold below fixed point)
+
+  The alert basin is non-empty: there exist initial states that remain alert forever.#leanref("TanhSaturation.lean:883", "theorem alert_state_is_absorbing")
+]
+
+#proof[
+  Consider initial state $S_0 = 1 > theta$. We show by induction that $S_t = f^t (1) > theta$ for all $t$.
+
+  *Base case* ($t = 0$): $S_0 = 1 > theta$ by $theta < 1$.
+
+  *Inductive step*: Assume $S_t > theta$. Then:
+  $ S_(t+1) = tanh(alpha S_t) > tanh(alpha theta) > theta $
+
+  The first inequality follows from strict monotonicity of tanh and $alpha S_t > alpha theta$.
+  The second inequality is the hypothesis $theta < tanh(alpha theta)$.
+
+  Thus $S_t > theta$ for all $t$.
+]
+
+#theorem("Alert State is Robust to Perturbations")[
+  Once in alert state with $|S| > theta$, small perturbations $|"pert"| <= delta$ preserve alertness (with slightly reduced threshold):
+  $ |tanh(alpha S + "pert")| > theta - delta $
+  provided:
+  - $alpha >= 1$ (amplification)
+  - $delta < theta$ (perturbation smaller than threshold)
+  - $(alpha - 1) theta > delta$ (sufficient margin)
+  - $tanh(alpha theta - delta) > theta - delta$ (numerical condition)#leanref("TanhSaturation.lean:933", "theorem alert_state_robust")
+]
+
+#proof-sketch[
+  For $S > theta$ and $|"pert"| <= delta$:
+  $ alpha S + "pert" >= alpha S - delta > alpha theta - delta $
+
+  If the numerical condition $tanh(alpha theta - delta) > theta - delta$ holds, then:
+  $ tanh(alpha S + "pert") > tanh(alpha theta - delta) > theta - delta $
+
+  The first inequality uses tanh monotonicity and the bound on $alpha S + "pert"$.
+  The second uses the hypothesis.
+]
+
+#remark(none)[
+  Interpretation for attention mechanisms:
+
+  An E88 head can enter "alert mode" when a salient token appears (driving $|S|$ above threshold). Once alert:
+  - The head stays alert even without strong subsequent inputs
+  - Small irrelevant tokens (perturbations) don't break alertness
+  - The head can maintain heightened sensitivity for extended context
+
+  This differs from standard attention:
+  - Standard attention must recompute scores at each step (no memory)
+  - Standard attention cannot "stay alert" without ongoing signal
+  - E88's alert state is a *temporal mode*, not a static computation
+]
+
+#pagebreak()
+
+=== E88 Exceeds TC⁰ for Unbounded Sequences
+
+#theorem("E88 Depth Grows with Sequence Length")[
+  For an E88 model with $D$ layers, the compositional depth over sequence length $T$ is:
+  $ "depth"_"E88"(D, T) = D times T $
+
+  For any constant depth bound $C$, there exists $T$ such that $D times T > C$.#leanref("TC0VsUnboundedRNN.lean:127", "theorem e88_depth_unbounded")
+]
+
+#proof[
+  Each recurrence step applies tanh:
+  $ S_t = tanh(alpha S_(t-1) + delta v_t k_t^top) $
+
+  This is one compositional depth unit. Over $T$ steps, we compose $T$ tanhs.
+
+  With $D$ layers, total depth is $D times T$.
+
+  Given constant $C$, choose $T = (C / D) + 1$. Then:
+  $ D times T = D times ((C / D) + 1) = C + D > C $
+]
+
+#theorem("E88 Computes Functions Outside TC⁰")[
+  Under the widely believed conjecture TC⁰ $subset.neq$ NC¹ (circuits of depth $O(log n)$), there exist functions computable by E88 with sequence length $T$ that require circuit depth $omega(1)$.
+
+  Specifically, for any constant $C$, E88 with $D$ layers and $T > C/D$ can compute functions not in TC⁰.#leanref("TC0VsUnboundedRNN.lean:287", "theorem e88_exceeds_TC0_explicit")
+]
+
+#proof-sketch[
+  TC⁰ circuits have constant depth (independent of input size $n$).
+
+  E88 with $T > C/D$ has compositional depth $D times T > C$.
+
+  Functions requiring depth $> C$ are computable by E88 but not by TC⁰ circuits of depth $<= C$.
+
+  Examples include:
+  - *Iterated modular arithmetic*: Computing $((... ((x_1 + x_2) mod m) + x_3) mod m) + ...)$ for $T$ inputs requires $Omega(T)$ depth
+  - *Nested XOR chains*: $x_1 xor (x_2 xor (x_3 xor (... xor x_T)))$ requires $T$ compositions
+  - *Running parity with reset*: Track parity with conditional resets at depth $T$
+
+  TC⁰ depth cannot grow with $T$ (by definition), so these functions separate E88 from TC⁰.
+]
+
+#remark(none)[
+  Summary of the hierarchy:
+
+  $ "Linear SSM" subset.neq "TC"^0 "(Transformers)" subset.neq "E88 (unbounded" T")" subset.neq "E23 (UTM)" $
+
+  - *Linear SSM*: Depth $O(D)$, cannot compute PARITY
+  - *TC⁰ (Transformers)*: Depth $O(D)$, can compute PARITY
+  - *E88 (unbounded $T$)*: Depth $O(D times T)$, exceeds TC⁰
+  - *E23 (with tape)*: Turing complete (unbounded tape)
+
+  The separations are witnessed by concrete functions and have been mechanically verified in Lean 4.
 ]
 
 #pagebreak()

@@ -152,11 +152,11 @@ We now formalize each architecture with precise mathematical definitions extract
   *Key property*: Linear in $c_(t-1)$ like MinGRU. Cell state update is $c_t = "diag"(f_t) c_(t-1) + "diag"(i_t) tilde(c)_t$.
 ]
 
-=== E88: Our Novel Architecture
+=== E88: The Classical Elman Architecture with Matrix State
 
 All the architectures above---MinGRU, MinLSTM, Mamba2---are _linear in the previous state_. The state evolves as $h_t = A(x_t) h_(t-1) + b(x_t)$, which means the recurrence through time composes into a single linear transformation. This is why they cannot compute threshold, parity, or XOR: their temporal composition depth is only $D$ (number of layers), not $D times T$ (layers times time).
 
-We introduce *E88*, a nonlinear recurrent architecture that breaks this limitation.
+E88 is a variant of the classical Elman (1990) architecture with matrix-valued state and tanh nonlinearity in the recurrence. While the architecture itself is not new, this work provides the first formal analysis of its expressivity advantages over linear-temporal models.
 
 #definition("E88: Nonlinear Matrix State")[
   E88 uses a *matrix state* $S in RR^(d times d)$ with the update rule:
@@ -168,7 +168,7 @@ We introduce *E88*, a nonlinear recurrent architecture that breaks this limitati
 
   Output is computed via: $y_t = q_t^top S_t$ where $q_t in RR^d$ is a query vector.
 
-  *Key innovation*: The recurrence $S_t = tanh(alpha S_(t-1) + dots.h)$ is *nonlinear in $S_(t-1)$* through nested tanh application. Unlike linear SSMs where the state is a weighted sum that decays, E88's state can *latch* via tanh saturation.#leanref("E1_GatedElman.lean:84", "e1_update")
+  *Key property*: The recurrence $S_t = tanh(alpha S_(t-1) + dots.h)$ is *nonlinear in $S_(t-1)$* through nested tanh application. Unlike linear SSMs where the state is a weighted sum that decays, E88's state can *latch* via tanh saturation.#leanref("E1_GatedElman.lean:84", "e1_update")
 ]
 
 The critical difference from linear models:
@@ -197,7 +197,7 @@ This is addressable memory: E88 can store a binary fact in position $(i,j)$ of t
   - Total composition depth: $D$#leanref("RecurrenceLinearity.lean:229", "e1_more_depth_than_minGRU")
 ]
 
-E88 is the key contribution of this work. It demonstrates that nonlinearity in the temporal recurrence---not just deep stacking of layers---is essential for expressing functions that require maintaining discrete state over time.
+The key contribution of this work is the formal analysis demonstrating that nonlinearity in the temporal recurrence---not just deep stacking of layers---is essential for expressing functions that require maintaining discrete state over time. While the E88 architecture builds on classical Elman networks, the theorems about its saturation dynamics and expressivity separation from linear-temporal models are novel.
 
 ==== E88 Architectural Variants
 

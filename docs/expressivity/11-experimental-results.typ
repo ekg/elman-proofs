@@ -135,6 +135,23 @@ From separate 100M parameter experiments (10 min training):
 
 _Key Finding_: Multi-head variants (E75, E88) significantly outperform sparse routing (E87, MoM-E88) at current scales.
 
+=== Long-Context CMA-ES Results (32K)
+
+A two-phase progressive pipeline evaluated E88, FLA-GDN, and Mamba2 at 32K context: Phase 1 trains 10 minutes at 512 tokens (bs=16), Phase 2 resumes and trains 10 minutes at 32K tokens. CMA-ES optimizes dim, depth, and heads within ~480M parameters, fitness = Phase 2 loss.
+
+#simpletable(
+  columns: 4,
+  align: (left, center, left, left),
+  [*Architecture*], [*Loss @ 32K*], [*Optimal Config*], [*vs 512-token rank*],
+  [E88 n16], [1.1000], [dim=1280, h=187, d=25, 485M], [↑ 3rd → 1st],
+  [FLA-GDN], [1.1345], [dim=1664, exp=3, d=13, 433M], [2nd (stable)],
+  [Mamba2], [1.1882], [dim=1920, d_state=208, d=21, 482M], [↓ 1st → 3rd],
+)
+
+_Ranking inversion_: At 512 tokens, E88 trailed Mamba2 by ~0.04 nats. At 32K, E88 leads by 0.088 nats over Mamba2. The nonlinear-in-time compositional depth advantage manifests at long context, consistent with theoretical predictions.
+
+_Architectural shift_: E88's 32K-optimal config scales by adding more independent memory heads (h=187 vs h=141 at 512 tokens), not by increasing depth. All models prefer wider state at long context; E88 uniquely scales by multiplying independent nonlinear state machines.
+
 == The Ablation That Reveals Everything
 
 We replaced E88's tanh with linear recurrence. If temporal nonlinearity matters for language modeling, this should degrade performance.
@@ -155,7 +172,7 @@ Running parity, exact threshold, state machine simulation---these do not manifes
   [Tanh → Linear state], [~0.00 nats], [No difference: nonlinearity unused!],
 )
 
-_Critical finding_: SiLU gate activation and L2 normalization are essential for stability. The tanh nonlinearity in the recurrence contributes nothing to language modeling performance, despite being theoretically necessary for computing parity.
+_Critical finding_: At 512 tokens, SiLU gate activation and L2 normalization are essential for stability. The tanh nonlinearity in the recurrence contributes nothing to language modeling performance at short context, despite being theoretically necessary for computing parity. (The 32K inversion above reflects E88's architectural advantage—more heads, larger matrix state—not specifically the tanh.)
 
 == Two Types of Efficiency
 
@@ -180,7 +197,8 @@ _When training budget is unlimited_: Given infinite time, E88's expressivity adv
   align: (left, center, center),
   [*Property*], [*Theory Predicts*], [*Empirical Observation*],
   [Running parity], [E88 > Mamba2], [Mamba2 stuck at 50%],
-  [Language modeling], [E88 $>=$ Mamba2], [Mamba2 > E88],
+  [LM @ 512 tokens], [E88 $>=$ Mamba2], [Mamba2 > E88 by 0.04 nats],
+  [LM @ 32K tokens], [E88 $>=$ Mamba2], [E88 > Mamba2 by 0.09 nats],
 )
 
 == Interpreting the Gap

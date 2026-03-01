@@ -47,6 +47,12 @@ import ElmanProofs.Architectures.MatrixStateRNN
 import ElmanProofs.Architectures.E22_PracticalUTM
 import ElmanProofs.Architectures.E23_DualMemory
 
+-- Expressivity Hierarchy
+import ElmanProofs.Expressivity.E1HDefinition
+import ElmanProofs.Expressivity.E1HTemporalTheorems
+import ElmanProofs.Expressivity.E88ExceedsE1HCapacity
+import ElmanProofs.Expressivity.ExpressivityHierarchy
+
 -- Information Theory of Language
 import ElmanProofs.Information.LanguageComplexity
 import ElmanProofs.Information.CompositionDepth
