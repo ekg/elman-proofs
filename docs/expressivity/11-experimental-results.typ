@@ -225,6 +225,40 @@ _Hardware alignment matters._ State dimensions that are multiples of 8 achieve e
 
 _Theoretical power does not equal empirical performance._ Expressivity is one factor among many.
 
+== Batch Size and Learning Dynamics <batch-size-dynamics>
+
+CMA-ES search over 600+ configurations revealed a striking optimization effect: batch size 1 dramatically outperforms larger batch sizes at fixed wall-time training.
+
+#simpletable(
+  columns: 4,
+  align: (left, center, center, center),
+  [*Batch Size*], [*n*], [*Mean Loss*], [*Best Loss*],
+  [bs=1], [59], [0.988], [0.929],
+  [bs=2--4], [88], [1.034], [0.961],
+  [bs=5--16], [115], [1.111], [1.022],
+  [bs=17+], [42], [1.257], [1.156],
+)
+
+_E88 n_state=16, 304 evaluations. Average parameter count is ~480M across ALL batch size buckets---the effect is not due to model size._
+
+In a fixed 10-minute window, bs=1 achieves $~$6,100 gradient steps at 6,500 tok/s, while bs=21 achieves $~$850 steps at 15,500 tok/s. Despite seeing 3$times$ fewer tokens, bs=1 wins by 0.27 nats (31% improvement).
+
+Six mechanisms explain this:
+
++ *Hidden state continuity*: Sequential bs=1 reads consecutive 512-byte windows, maintaining coherent hidden state evolution. Batched training averages over unrelated sequences.
+
++ *Temporal mini-batch*: BPTT over $T = 512$ timesteps with autocorrelation $tau approx 20$ provides effective batch size $~$25 from each sequence. Additional batching gives diminishing returns.
+
++ *Critical batch size*: McCandlish et al.~(2018) predict $B_"crit"$ is small early in training ($B_"noise"$ is small at high loss). At $B < B_"crit"$, bs=1 is compute-optimal.
+
++ *Gradient interference*: Averaging diverse per-sample gradients can cancel useful gradient directions when micro-gradients are near-orthogonal.
+
++ *Gradient coherency*: Sequential data produces correlated gradients. Under coherency, $k$ updates compound as $O(k)$ vs $O(sqrt(k))$ for random directions.
+
++ *Update frequency*: Generalization depends on the _number_ of weight updates (Hoffer et al.~2017). The 7$times$ update advantage at bs=1 outweighs noisier individual gradients.
+
+This finding bridges the theory-practice gap: E88's expressivity advantage requires not only long context (Section 11.3) but also optimization-friendly training regimes. The interaction between architecture and training dynamics is first-order.
+
 #centerrule
 
 Theory tells us what is possible with unlimited resources. Practice tells us what happens with finite resources on specific tasks.

@@ -57,3 +57,9 @@ import ElmanProofs.Expressivity.ExpressivityHierarchy
 import ElmanProofs.Information.LanguageComplexity
 import ElmanProofs.Information.CompositionDepth
 import ElmanProofs.Information.LinearVsNonlinear
+
+-- Learning Dynamics (Batch Size Theory)
+import ElmanProofs.Learning.BatchedGradient
+import ElmanProofs.Learning.GradientCoherency
+import ElmanProofs.Learning.CriticalBatchSize
+import ElmanProofs.Learning.FixedBudgetTradeoff

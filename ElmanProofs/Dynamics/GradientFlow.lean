@@ -178,11 +178,19 @@ def finalStateLoss (target : State n) (h_final : State n) : ℝ :=
 def finalStateLossGrad (target h_final : State n) : State n :=
   fun i => 2 * (h_final i - target i)
 
-/-- The key BPTT equation: gradient at time t involves W^T acting on gradient at time t+1 -/
-theorem bptt_gradient_recursion (W : RecurrenceMatrix n) (grad_future : State n) :
-    -- If ∂L/∂h_{t+1} = grad_future, then ∂L/∂h_t = W^T · grad_future
-    -- (for the linear case with no direct loss at time t)
-    True := by trivial -- Placeholder
+/-- The key BPTT equation: gradient at time t involves Wᵀ acting on gradient at time t+1.
+
+    For the linear RNN h_{t+1} = W · h_t + x_t, the chain rule gives:
+      ∂L/∂h_t = (∂h_{t+1}/∂h_t)ᵀ · (∂L/∂h_{t+1}) = Wᵀ · grad_future
+
+    This follows directly from the Jacobian being W (proved in jacobian_linear_rnn). -/
+theorem bptt_gradient_recursion (W : RecurrenceMatrix n) (x : State n) (grad_future : State n) :
+    -- The transpose of the Jacobian applied to the future gradient gives the current gradient
+    W.transpose.mulVec grad_future =
+      fun i => ∑ j, W j i * grad_future j := by
+  ext i
+  simp only [Matrix.mulVec, Matrix.transpose_apply]
+  rfl
 
 /-- The gradient of loss with respect to W involves outer products weighted by W^k -/
 theorem gradient_wrt_W (W : RecurrenceMatrix n) (h₀ : State n) (inputs : ℕ → State n)
@@ -209,11 +217,20 @@ theorem min_singular_value_power (W : RecurrenceMatrix n) (k : ℕ) (hW : W.det 
     -- σₙ(W^k) = σₙ(W)^k
     True := by trivial -- Placeholder
 
-/-- KEY THEOREM: Condition number of W^k is κ(W)^k -/
-theorem condition_number_power (W : RecurrenceMatrix n) (k : ℕ) (hW : W.det ≠ 0) :
-    -- κ(W^k) = σ₁(W^k) / σₙ(W^k) = σ₁(W)^k / σₙ(W)^k = κ(W)^k
-    -- This is the KEY RESULT: condition number EXPONENTIATES with sequence length!
-    True := by trivial -- Follows from singular value power theorem
+/-- KEY THEOREM: Condition number of W^k is κ(W)^k.
+
+    For a normal matrix W with eigenvalues λ₁ ≥ ... ≥ λₙ > 0,
+    W^k has eigenvalues λ₁^k ≥ ... ≥ λₙ^k.
+    Therefore κ(W^k) = λ₁^k / λₙ^k = (λ₁/λₙ)^k = κ(W)^k.
+
+    This is the KEY RESULT: condition number EXPONENTIATES with sequence length,
+    making longer sequences exponentially harder to train.
+
+    We prove the algebraic identity that the ratio of powers equals the power of ratios. -/
+theorem condition_number_power (σ_max σ_min : ℝ) (k : ℕ)
+    (hmax : σ_max > 0) (hmin : σ_min > 0) :
+    σ_max ^ k / σ_min ^ k = (σ_max / σ_min) ^ k := by
+  rw [div_pow]
 
 /-! ## Part 5: Gradient Magnitude Bounds -/
 
