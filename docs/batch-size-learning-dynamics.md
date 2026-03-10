@@ -1,22 +1,37 @@
-# Batch Size Learning Dynamics for Matrix-State RNNs
+# Batch Size Learning Dynamics Under Fixed Wall-Time Budgets
 
 ## 1. Abstract
 
-Empirical evidence from 608 CMA-ES evaluations of the E88 matrix-state RNN architecture reveals that batch size 1 dramatically outperforms larger batch sizes under fixed wall-clock training budgets. On E88 with `n_state=16`, the best loss achieved at `bs=1` is 0.929 nats versus 1.156 nats at `bs=17+` — a difference of 0.227 nats representing a 24% improvement. At `n_state=32`, the gap is 0.234 nats (0.940 vs 1.174). Across all metrics (mean, best, median), the monotonic degradation with increasing batch size is unambiguous.
+Empirical evidence from CMA-ES architecture search reveals that batch size 1 dramatically outperforms larger batch sizes under fixed wall-clock training budgets. The effect is **architecture-agnostic**: on E88 (nonlinear RNN, `n_state=16`, 304 evals), the best loss at `bs=1` is 0.929 vs 1.156 at `bs=17+` (0.227 nats, 24% improvement). On E1H (linear recurrence, 105 evals), the effect is even stronger: best loss at `bs=1` is 0.474 vs 1.339 at `bs=17+` (0.865 nats). The effect persists across E88 `n_state=32` (0.234 nats gap).
 
-This document synthesizes theoretical explanations from 8 independent research surveys into a unified framework. We identify six mechanisms that collectively explain the effect, with hidden state continuity and BPTT implicit batching being the dominant RNN-specific factors. The McCandlish et al. (2018) critical batch size framework provides the quantitative backbone: for RNNs performing BPTT over `T=512` timesteps, the effective batch size from a single sample is already ~25, placing `B_crit` near 1 and rendering explicit batching counterproductive. The net result is that `bs=1` achieves approximately 3x more effective learning per wall-clock second than `bs=21`, despite the latter's 2.4x throughput advantage.
+This document synthesizes theoretical explanations from 8 independent research surveys into a unified framework. We identify five mechanisms that collectively explain the effect. The dominant factors are **update frequency** (7x more gradient steps at bs=1) and **gradient coherency** (sequential data produces correlated gradients that compound as O(k) rather than O(sqrt(k))). These mechanisms are architecture-independent. The McCandlish et al. (2018) critical batch size framework provides the quantitative backbone: BPTT over `T=512` timesteps already provides an effective batch size of ~25 from each sequence, placing `B_crit` near 1 and rendering explicit batching counterproductive. The net result is that `bs=1` achieves approximately 3x more effective learning per wall-clock second than `bs=21`, despite the latter's 2.4x throughput advantage.
+
+**Important note on training regime:** In these experiments, hidden state is NOT passed between chunks — each 512-byte training window starts with fresh hidden state. The batch size effect is therefore not driven by hidden state continuity, and applies equally to any sequential model trained under fixed wall-time budgets.
 
 ---
 
-## 2. The Six Mechanisms
+## 2. The Five Mechanisms
 
-### 2.1 Hidden State Continuity
+### 2.1 Update Frequency (DOMINANT)
 
-**Theoretical basis:** RNNs maintain a hidden state `h_t` that evolves according to `h_t = f(W_h h_{t-1} + W_x x_t + b)`. With `bs=1` on sequential memory-mapped data, consecutive 512-byte windows from the same document provide coherent hidden state evolution. The hidden state from step `k` carries information relevant to step `k+1` because the underlying data is contiguous.
+**Theoretical basis (Hoffer et al., 2017):** Generalization depends on the NUMBER OF WEIGHT UPDATES, not the batch size. The distance from initialization after `k` updates with learning rate `eta` grows as:
 
-**Why batching destroys this:** With `bs>1`, the `B` sequences in a batch are drawn from different positions in the corpus. Each sequence has an independent hidden state trajectory initialized to zero (or learned `h_0`). There is no cross-sequence hidden state continuity. The gradient signal from each sequence reflects learning about isolated fragments rather than sustained temporal structure.
+$$\|w_k - w_0\| \sim \eta \sigma \sqrt{k}$$
 
-**This is the DOMINANT RNN-specific effect.** For a feedforward model or a Transformer processing independent sequences, consecutive training steps on sequential data provide no analogous benefit. But for an RNN, the sequential bs=1 regime implicitly creates ultra-long effective context: the model's hidden state at the start of window `k+1` is warm-started by the content of window `k`, even though BPTT does not backpropagate through the boundary. The weights are shaped by the gradient at step `k` to produce hidden states suitable for the data distribution at step `k+1`.
+where `sigma` is the gradient noise scale. More updates means more exploration of the loss landscape.
+
+**Empirical measurements:**
+
+| Setting | Steps in 10 min | Throughput | Updates |
+|---------|-----------------|------------|---------|
+| bs=1    | ~6146           | ~6.5K tok/s | 6146   |
+| bs=21   | ~850            | ~15.5K tok/s | 850   |
+
+The ratio is 7.2x more updates for `bs=1`. Even though each `bs=21` update processes 21x more data, the 7.2x step advantage of `bs=1` dominates because each update moves the weights and enables exploration that batch processing cannot replicate by processing more data per step.
+
+**The throughput trap:** `bs=21` achieves 2.4x higher throughput (15.5K vs 6.5K tok/s), which might naively suggest faster learning. But throughput measures data processing, not learning. The 7.2x update advantage of `bs=1` overwhelms the 2.4x throughput advantage of `bs=21`, yielding ~3x more effective learning per wall-clock second.
+
+**Architecture-agnostic:** This mechanism applies identically to linear recurrences (E1H), nonlinear RNNs (E88), SSMs (Mamba2), and Transformers. Any model trained under fixed wall-time with sub-linear throughput scaling benefits from bs=1.
 
 ### 2.2 Temporal Mini-Batch (BPTT Implicit Gradient Averaging)
 
@@ -78,25 +93,6 @@ For sequential data with `bs=1`, consecutive 512-byte windows from the same docu
 
 **Connection to gradient diversity:** Yin et al. (2018) showed that gradient diversity (low inter-sample gradient correlation) helps parallel SGD but hurts sequential SGD. For `bs=1` sequential training, LOW diversity (high coherence) is beneficial — exactly what sequential data provides.
 
-### 2.6 Update Frequency
-
-**Theoretical basis (Hoffer et al., 2017):** Generalization depends on the NUMBER OF WEIGHT UPDATES, not the batch size. The distance from initialization after `k` updates with learning rate `eta` grows as:
-
-$$\|w_k - w_0\| \sim \eta \sigma \sqrt{k}$$
-
-where `sigma` is the gradient noise scale. More updates means more exploration of the loss landscape.
-
-**Empirical measurements:**
-
-| Setting | Steps in 10 min | Throughput | Updates |
-|---------|-----------------|------------|---------|
-| bs=1    | ~6146           | ~6.5K tok/s | 6146   |
-| bs=21   | ~850            | ~15.5K tok/s | 850   |
-
-The ratio is 7.2x more updates for `bs=1`. Even though each `bs=21` update processes 21x more data, the 7.2x step advantage of `bs=1` dominates because each update moves the weights and enables exploration that batch processing cannot replicate by processing more data per step.
-
-**The throughput trap:** `bs=21` achieves 2.4x higher throughput (15.5K vs 6.5K tok/s), which might naively suggest faster learning. But throughput measures data processing, not learning. The 7.2x update advantage of `bs=1` overwhelms the 2.4x throughput advantage of `bs=21`, yielding ~3x more effective learning per wall-clock second.
-
 ---
 
 ## 3. Quantitative Predictions
@@ -138,45 +134,44 @@ For `bs=16`: steps/sec ~ 1.9 (estimated), S(16)/S_min = 1.31, so WCLR(16) ~ 1.9/
 
 For `bs=21`: steps/sec ~ 1.42, S(21)/S_min = 1.24, so WCLR(21) ~ 1.42/1.24 = 1.15
 
-**Result: bs=1 achieves ~1.5x the wall-clock learning rate of bs=21, even in the most conservative (McCandlish-only) analysis.** Including gradient coherency and hidden state continuity effects pushes this to ~3x.
+**Result: bs=1 achieves ~1.5x the wall-clock learning rate of bs=21, even in the most conservative (McCandlish-only) analysis.** Including gradient coherency effects pushes this to ~3x.
 
 ---
 
-## 4. RNN-Specific Arguments
+## 4. Cross-Architecture Evidence
 
-### 4.1 Why RNNs Are Different from Feedforward/Transformers
+### 4.1 The Effect Is Architecture-Agnostic
 
-**BPTT implicit gradient averaging:** A Transformer processing a sequence of length `T` computes loss at each position but does not have recurrent gradient paths. The gradient for layer `l` at position `t` is local. For an RNN, the gradient for `W_h` at time `t` involves the product:
+**Critical observation:** In our training setup, hidden state is NOT passed between 512-byte chunks. Each chunk starts with fresh (zero) hidden state. This means the "hidden state continuity" mechanism — previously hypothesized as the dominant RNN-specific effect — does not apply. The batch size advantage must arise from architecture-independent mechanisms.
 
-$$\frac{\partial L}{\partial W_h} = \sum_{t=1}^{T} \frac{\partial \ell_t}{\partial h_t} \prod_{k=s+1}^{t} \frac{\partial h_k}{\partial h_{k-1}} \frac{\partial h_s}{\partial W_h}$$
+**E1H (linear recurrence) shows even stronger effect:**
 
-This chain of Jacobian products creates rich temporal gradient structure from a single sequence, effectively providing ~25 semi-independent gradient signals. A feedforward network gets exactly 1 gradient signal per sample.
+| Batch Size | n  | Mean Loss | Best Loss |
+|-----------|-----|-----------|-----------|
+| bs=1      | 16  | 1.143     | 0.474     |
+| bs=2-4    | 15  | 1.443     | 0.825     |
+| bs=5-16   | 26  | 1.429     | 0.872     |
+| bs=17+    | 48  | 1.714     | 1.339     |
 
-**Hidden state continuity:** Transformers process each sequence independently (no hidden state carried between training steps). RNNs with sequential `bs=1` benefit from warm-started hidden states. This is unique to recurrent architectures.
+E1H is a purely linear recurrence (no temporal nonlinearity). The bs=1 advantage is 0.865 nats — nearly 4x larger than E88's 0.227 nats. If the effect were RNN-specific or driven by nonlinear hidden state dynamics, it should be weaker for linear models, not stronger.
 
-**Batch normalization is irrelevant:** One major motivation for large batch sizes in vision models is stable batch statistics for batch normalization. RNNs typically use layer normalization or no normalization at all, removing this motivation entirely.
+**Why E1H shows a larger gap:** E1H likely has lower throughput scaling efficiency (smaller γ in throughput(B) = base_tps × B^γ), amplifying the step-count advantage of bs=1.
 
-**Temporal gradient structure:** The gradient from a single RNN sequence has rich temporal structure (contributions from different time steps with different magnitudes and directions due to the Jacobian product chain). Averaging across `B` sequences with different temporal structures destroys this structure. The batch gradient loses the temporal fingerprint of individual sequences.
+### 4.2 BPTT Still Provides Implicit Batching (Within Each Chunk)
 
-### 4.2 Architecture-Dependent B_crit
+Even without cross-chunk hidden state passing, BPTT over `T=512` timesteps within each chunk provides ~25 semi-independent gradient signals per sample. This reduces `B_noise` and `B_crit`, making explicit batching counterproductive for ALL sequence models using BPTT — whether linear or nonlinear, recurrent or SSM.
 
-McCandlish et al. (2018) found that `B_crit` varies across architectures. Their empirical ranking:
+### 4.3 Implications for All Architectures
 
-$$B_{\text{crit}}(\text{Transformer}) > B_{\text{crit}}(\text{LSTM}) > B_{\text{crit}}(\text{CNN})$$
+The dominant mechanisms — update frequency and gradient coherency — apply to any model:
 
-RNNs (including LSTMs) have smaller `B_crit` than Transformers, meaning they enter the diminishing-returns regime at smaller batch sizes. For the E88 matrix-state architecture, with its dense `W in R^{n x n}` state transition matrix, the gradient geometry is even more complex than standard LSTMs, likely pushing `B_crit` lower still.
+1. **Update frequency** is purely about throughput scaling vs. step count. Any model with sub-linear throughput scaling (γ < 1) benefits from bs=1 at fixed wall-time.
 
-### 4.3 E88 Matrix-State Gradient Geometry
+2. **Gradient coherency** arises from sequential data ordering, not from architecture. Consecutive 512-byte windows from the same document produce similar loss landscapes regardless of whether the model is an RNN, SSM, or Transformer.
 
-The E88 architecture uses a matrix-valued hidden state `H_t in R^{n x n}` with the update rule involving matrix multiplication. The gradient with respect to the state transition weights involves products of the form:
+3. **Critical batch size** is small early in training for all architectures (McCandlish/Kaplan). BPTT temporal averaging further reduces it for sequence models.
 
-$$\frac{\partial H_t}{\partial H_{t-k}} = \prod_{j=0}^{k-1} J_{t-j}$$
-
-where each Jacobian `J` depends on the local hidden state. The condition number of this product grows as:
-
-$$\kappa\left(\prod_{j=0}^{k-1} J_{t-j}\right) \leq \kappa(J)^k$$
-
-This exponential growth (formalized in `GradientFlow.lean`) means that gradient directions are highly sensitive to the specific sequence content. Averaging gradients from different sequences (batching) mixes signals from very different regions of the Jacobian product space, amplifying gradient interference beyond what occurs in simpler architectures.
+**Prediction:** Mamba2 and GDN CMA-ES searches should show the same batch size effect. If batch size was in the search space, bs=1 configs should dominate.
 
 ---
 
@@ -186,13 +181,13 @@ This exponential growth (formalized in `GradientFlow.lean`) means that gradient 
 
 At 512-token context, the E88 architecture's tanh nonlinearity contributes NOTHING to loss: ablating `tanh -> linear` gives a 0.00 nats difference. This means the model is operating entirely in the linear regime at short context, and the matrix-state recurrence `H_t = W_h H_{t-1} + W_x x_t` is effectively a linear RNN.
 
-The batch size effect at 512 tokens is therefore about optimizing a linear recurrence — but even linear recurrences benefit from `bs=1` through hidden state continuity and update frequency.
+The batch size effect at 512 tokens is therefore about optimizing a linear recurrence — and the E1H results confirm this directly: the effect is equally strong (in fact stronger) for explicitly linear architectures.
 
 ### 5.2 The 32K Ranking Inversion
 
 At 32K tokens, E88 beats Mamba2 by 0.088 nats — a ranking inversion from the 512-token regime. This is where the nonlinear expressivity of the matrix-state architecture becomes relevant. The theory predicts that E88's expressivity advantage grows with context length, and this is confirmed empirically.
 
-**Batch size connection:** The `bs=1` optimization regime may be necessary for the model to learn to USE its nonlinear recurrence effectively. With `bs>1`, the gradient interference and reduced update frequency may prevent the model from discovering the nonlinear operating regime. The sequential coherent training of `bs=1` provides a smooth optimization path from the linear regime (easy to learn) to the nonlinear regime (hard to discover but expressively powerful).
+**Batch size connection:** The `bs=1` optimization regime maximizes the number of gradient updates per wall-clock second. With `bs>1`, the reduced update frequency may prevent the model from making sufficient progress during the fixed training window. At 32K context where E88's advantage manifests, the combination of long context + high update frequency may be necessary to discover the nonlinear operating regime.
 
 ### 5.3 The Theory-Practice Gap
 
@@ -208,7 +203,11 @@ Batch size is the second leg of this tripod. The expressivity advantage is laten
 
 The formalization in `GradientFlow.lean` establishes that `kappa(W^k) = kappa(W)^k` — the condition number of the state transition grows exponentially with sequence length. This means gradient flow becomes exponentially harder with longer sequences.
 
-The `bs=1` update frequency (7.2x more steps) directly helps navigate this difficult landscape. Each update adjusts the weights slightly, keeping the Jacobian products well-conditioned step by step. With `bs=21`, the weights change less frequently, allowing the Jacobian product condition number to grow unchecked between updates.
+The `bs=1` update frequency (7.2x more steps) directly helps navigate this difficult landscape. Each update adjusts the weights slightly. With `bs=21`, the weights change less frequently — 7x fewer optimization steps means 7x less opportunity to adapt to the training signal.
+
+### 5.5 Universal Applicability
+
+The batch size finding has a simple implication: **any fixed-time training benchmark should use bs=1** unless throughput scales super-linearly with batch size (γ > 1), which is rare for large models that already saturate GPU compute at bs=1. This applies to all CMA-ES architecture searches, not just E88.
 
 ---
 
@@ -293,16 +292,16 @@ All results controlled for ~480M parameters across all batch size buckets.
 
 **Diagnostic 6: Per-sample gradient cosine similarity (GAF measurement).** For a batch of `B=16` sequences, compute all pairwise cosine similarities between per-sample gradients. Measure the distribution. If the mean is near zero or negative, gradient interference is confirmed.
 
-**Diagnostic 7: Hidden state continuity ablation.** Compare three regimes:
+**Diagnostic 7: Data ordering ablation.** Compare three regimes:
 - Sequential `bs=1` (consecutive windows from same document)
-- Shuffled `bs=1` (random windows, destroying continuity)
+- Shuffled `bs=1` (random windows, destroying gradient coherency)
 - Sequential `bs=16`
 
-If hidden state continuity is the dominant effect, sequential `bs=1` >> shuffled `bs=1` >= sequential `bs=16`.
+If gradient coherency is a significant factor, sequential `bs=1` > shuffled `bs=1`. If update frequency alone dominates, shuffled `bs=1` ≈ sequential `bs=1` >> sequential `bs=16`.
 
 **Diagnostic 8: Gradient noise scale B_noise measurement.** Directly estimate `B_noise` by computing `tr(Sigma) / ||G||^2` from a sample of per-example gradients. If `B_noise < 5`, this confirms that `bs=1` is near or above `B_crit`.
 
-**Diagnostic 9: Gradient Agreement Filtering experiment.** Implement GAF: compute per-sample gradients, measure agreement, filter to retain only the top-k agreeing gradients. If GAF with `B=16` matches or exceeds `bs=1` performance, the interference mechanism is confirmed. If `bs=1` still wins, hidden state continuity or update frequency is the remaining dominant factor.
+**Diagnostic 9: Gradient Agreement Filtering experiment.** Implement GAF: compute per-sample gradients, measure agreement, filter to retain only the top-k agreeing gradients. If GAF with `B=16` matches or exceeds `bs=1` performance, the interference mechanism is confirmed. If `bs=1` still wins, update frequency is the remaining dominant factor.
 
 ---
 

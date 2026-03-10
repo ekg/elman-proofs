@@ -243,9 +243,9 @@ _E88 n_state=16, 304 evaluations. Average parameter count is ~480M across ALL ba
 
 In a fixed 10-minute window, bs=1 achieves $~$6,100 gradient steps at 6,500 tok/s, while bs=21 achieves $~$850 steps at 15,500 tok/s. Despite seeing 3$times$ fewer tokens, bs=1 wins by 0.27 nats (31% improvement).
 
-Six mechanisms explain this:
+Five mechanisms explain this:
 
-+ *Hidden state continuity*: Sequential bs=1 reads consecutive 512-byte windows, maintaining coherent hidden state evolution. Batched training averages over unrelated sequences.
++ *Update frequency (dominant)*: Generalization depends on the _number_ of weight updates (Hoffer et al.~2017). The 7$times$ update advantage at bs=1 outweighs noisier individual gradients.
 
 + *Temporal mini-batch*: BPTT over $T = 512$ timesteps with autocorrelation $tau approx 20$ provides effective batch size $~$25 from each sequence. Additional batching gives diminishing returns.
 
@@ -255,9 +255,7 @@ Six mechanisms explain this:
 
 + *Gradient coherency*: Sequential data produces correlated gradients. Under coherency, $k$ updates compound as $O(k)$ vs $O(sqrt(k))$ for random directions.
 
-+ *Update frequency*: Generalization depends on the _number_ of weight updates (Hoffer et al.~2017). The 7$times$ update advantage at bs=1 outweighs noisier individual gradients.
-
-This finding bridges the theory-practice gap: E88's expressivity advantage requires not only long context (Section 11.3) but also optimization-friendly training regimes. The interaction between architecture and training dynamics is first-order.
+_Architecture-agnostic_: E1H (linear recurrence) shows the same effect at even larger magnitude (0.865 nats gap). Hidden state is not passed between training chunks, so the effect is not driven by recurrence-specific dynamics. This finding applies to all fixed-time architecture search: any model with sub-linear throughput scaling benefits from bs=1.
 
 #centerrule
 
