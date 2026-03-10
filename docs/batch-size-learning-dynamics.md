@@ -2,7 +2,7 @@
 
 ## 1. Abstract
 
-Empirical evidence from CMA-ES architecture search reveals that batch size 1 dramatically outperforms larger batch sizes under fixed wall-clock training budgets. The effect is **architecture-agnostic**: on E88 (nonlinear RNN, `n_state=16`, 304 evals), the best loss at `bs=1` is 0.929 vs 1.156 at `bs=17+` (0.227 nats, 24% improvement). On E1H (linear recurrence, 105 evals), the effect is even stronger: best loss at `bs=1` is 0.474 vs 1.339 at `bs=17+` (0.865 nats). The effect persists across E88 `n_state=32` (0.234 nats gap).
+Empirical evidence from CMA-ES architecture search reveals that batch size 1 dramatically outperforms larger batch sizes under fixed wall-clock training budgets. The effect is **architecture-agnostic**: on E88 (nonlinear matrix-state RNN, `n_state=16`, 304 evals), the best loss at `bs=1` is 0.929 vs 1.156 at `bs=17+` (0.227 nats, 24% improvement). On E1H (nonlinear vector-state Elman RNN, 105 evals), the effect is even stronger: best loss at `bs=1` is 0.474 vs 1.339 at `bs=17+` (0.865 nats). The effect persists across E88 `n_state=32` (0.234 nats gap).
 
 This document synthesizes theoretical explanations from 8 independent research surveys into a unified framework. We identify five mechanisms that collectively explain the effect. The dominant factors are **update frequency** (7x more gradient steps at bs=1) and **gradient coherency** (sequential data produces correlated gradients that compound as O(k) rather than O(sqrt(k))). These mechanisms are architecture-independent. The McCandlish et al. (2018) critical batch size framework provides the quantitative backbone: BPTT over `T=512` timesteps already provides an effective batch size of ~25 from each sequence, placing `B_crit` near 1 and rendering explicit batching counterproductive. The net result is that `bs=1` achieves approximately 3x more effective learning per wall-clock second than `bs=21`, despite the latter's 2.4x throughput advantage.
 
@@ -31,7 +31,7 @@ The ratio is 7.2x more updates for `bs=1`. Even though each `bs=21` update proce
 
 **The throughput trap:** `bs=21` achieves 2.4x higher throughput (15.5K vs 6.5K tok/s), which might naively suggest faster learning. But throughput measures data processing, not learning. The 7.2x update advantage of `bs=1` overwhelms the 2.4x throughput advantage of `bs=21`, yielding ~3x more effective learning per wall-clock second.
 
-**Architecture-agnostic:** This mechanism applies identically to linear recurrences (E1H), nonlinear RNNs (E88), SSMs (Mamba2), and Transformers. Any model trained under fixed wall-time with sub-linear throughput scaling benefits from bs=1.
+**Architecture-agnostic:** This mechanism applies identically to vector-state RNNs (E1H), matrix-state RNNs (E88), SSMs (Mamba2), and Transformers. Any model trained under fixed wall-time with sub-linear throughput scaling benefits from bs=1.
 
 ### 2.2 Temporal Mini-Batch (BPTT Implicit Gradient Averaging)
 
@@ -144,7 +144,7 @@ For `bs=21`: steps/sec ~ 1.42, S(21)/S_min = 1.24, so WCLR(21) ~ 1.42/1.24 = 1.1
 
 **Critical observation:** In our training setup, hidden state is NOT passed between 512-byte chunks. Each chunk starts with fresh (zero) hidden state. This means the "hidden state continuity" mechanism — previously hypothesized as the dominant RNN-specific effect — does not apply. The batch size advantage must arise from architecture-independent mechanisms.
 
-**E1H (linear recurrence) shows even stronger effect:**
+**E1H (vector-state Elman RNN) shows even stronger effect:**
 
 | Batch Size | n  | Mean Loss | Best Loss |
 |-----------|-----|-----------|-----------|
@@ -153,7 +153,7 @@ For `bs=21`: steps/sec ~ 1.42, S(21)/S_min = 1.24, so WCLR(21) ~ 1.42/1.24 = 1.1
 | bs=5-16   | 26  | 1.429     | 0.872     |
 | bs=17+    | 48  | 1.714     | 1.339     |
 
-E1H is a purely linear recurrence (no temporal nonlinearity). The bs=1 advantage is 0.865 nats — nearly 4x larger than E88's 0.227 nats. If the effect were RNN-specific or driven by nonlinear hidden state dynamics, it should be weaker for linear models, not stronger.
+E1H uses the same tanh nonlinearity as E88 but with vector state (D scalars per head) instead of matrix state (D² scalars per head). The bs=1 advantage is 0.865 nats — nearly 4x larger than E88's 0.227 nats. The effect holds across architectures with different state representations and capacities.
 
 **Why E1H shows a larger gap:** E1H likely has lower throughput scaling efficiency (smaller γ in throughput(B) = base_tps × B^γ), amplifying the step-count advantage of bs=1.
 
@@ -181,7 +181,7 @@ The dominant mechanisms — update frequency and gradient coherency — apply to
 
 At 512-token context, the E88 architecture's tanh nonlinearity contributes NOTHING to loss: ablating `tanh -> linear` gives a 0.00 nats difference. This means the model is operating entirely in the linear regime at short context, and the matrix-state recurrence `H_t = W_h H_{t-1} + W_x x_t` is effectively a linear RNN.
 
-The batch size effect at 512 tokens is therefore about optimizing a linear recurrence — and the E1H results confirm this directly: the effect is equally strong (in fact stronger) for explicitly linear architectures.
+The batch size effect at 512 tokens is therefore about optimizing an effectively linear recurrence — and the E1H results confirm the effect holds across different architectures (vector-state vs matrix-state), with E1H showing an even larger gap.
 
 ### 5.2 The 32K Ranking Inversion
 

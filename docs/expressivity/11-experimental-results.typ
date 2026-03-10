@@ -255,7 +255,7 @@ Five mechanisms explain this:
 
 + *Gradient coherency*: Sequential data produces correlated gradients. Under coherency, $k$ updates compound as $O(k)$ vs $O(sqrt(k))$ for random directions.
 
-_Architecture-agnostic_: E1H (linear recurrence) shows the same effect at even larger magnitude (0.865 nats gap). Hidden state is not passed between training chunks, so the effect is not driven by recurrence-specific dynamics. This finding applies to all fixed-time architecture search: any model with sub-linear throughput scaling benefits from bs=1.
+_Architecture-agnostic_: E1H (vector-state Elman RNN) shows the same effect at even larger magnitude (0.865 nats gap). Hidden state is not passed between training chunks, so the effect is not driven by recurrence-specific dynamics. This finding applies to all fixed-time architecture search: any model with sub-linear throughput scaling benefits from bs=1.
 
 #centerrule
 
