@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-28",
-  "executor": "lean-fix",
-  "pid": 68025,
-  "started_at": "2026-01-30T00:26:54.884418817+00:00",
-  "task_id": "strategy-prove-continuity",
-  "timeout": null
+  "executor": "claude",
+  "model": "sonnet",
+  "pid": 2473110,
+  "started_at": "2026-03-01T02:43:54.613944664+00:00",
+  "task_id": "compile-typst-final",
+  "timeout_secs": 1800
 }

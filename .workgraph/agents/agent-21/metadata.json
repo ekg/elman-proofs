@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-21",
-  "executor": "lean-fix",
-  "pid": 4177080,
-  "started_at": "2026-01-29T21:28:07.518565297+00:00",
-  "task_id": "iteration-4-fix",
-  "timeout": null
+  "executor": "claude",
+  "model": "sonnet",
+  "pid": 2266467,
+  "started_at": "2026-03-01T00:40:56.040435924+00:00",
+  "task_id": "verify-fix-loop",
+  "timeout_secs": 1800
 }

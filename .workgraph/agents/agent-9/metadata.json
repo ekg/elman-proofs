@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-9",
   "executor": "claude",
-  "pid": 4001581,
-  "started_at": "2026-01-29T17:06:57.847360537+00:00",
-  "task_id": "formalize-exact-counting",
-  "timeout": null
+  "model": "haiku",
+  "pid": 2135248,
+  "started_at": "2026-02-28T23:03:18.160382554+00:00",
+  "task_id": "assign-expressivity-hierarchy",
+  "timeout_secs": 1800
 }

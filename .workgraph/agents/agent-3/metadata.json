@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-3",
   "executor": "claude",
-  "pid": 3950925,
-  "started_at": "2026-01-29T16:30:55.682022867+00:00",
-  "task_id": "q3-design-synthetic",
-  "timeout": null
+  "model": "haiku",
+  "pid": 2093098,
+  "started_at": "2026-02-28T22:43:29.669066664+00:00",
+  "task_id": "assign-e88-exceeds-e1h-capacity",
+  "timeout_secs": 1800
 }

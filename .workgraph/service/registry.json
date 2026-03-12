@@ -1,35 +1,324 @@
 {
   "agents": {
-    "agent-115": {
-      "id": "agent-115",
-      "pid": 1203841,
-      "task_id": "formalize-e88-multi",
+    "agent-18": {
+      "id": "agent-18",
+      "pid": 2248388,
+      "task_id": "verify-zero-sorries",
       "executor": "claude",
-      "started_at": "2026-01-31T21:32:56.406232357+00:00",
-      "last_heartbeat": "2026-01-31T21:32:56.406232357+00:00",
-      "status": "starting",
-      "output_file": ".workgraph/agents/agent-115/output.log"
+      "started_at": "2026-03-01T00:39:37.816269234+00:00",
+      "last_heartbeat": "2026-03-01T00:40:15.761066204+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-18/output.log",
+      "model": "sonnet"
     },
-    "agent-116": {
-      "id": "agent-116",
-      "pid": 1207746,
-      "task_id": "formalize-tape-modification",
+    "agent-10": {
+      "id": "agent-10",
+      "pid": 2146458,
+      "task_id": "expressivity-hierarchy",
       "executor": "claude",
-      "started_at": "2026-01-31T21:32:57.528105627+00:00",
-      "last_heartbeat": "2026-01-31T21:32:57.528105627+00:00",
-      "status": "starting",
-      "output_file": ".workgraph/agents/agent-116/output.log"
+      "started_at": "2026-02-28T23:03:47.106501074+00:00",
+      "last_heartbeat": "2026-02-28T23:14:11.097644174+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-10/output.log",
+      "model": "sonnet"
     },
-    "agent-114": {
-      "id": "agent-114",
-      "pid": 1203517,
-      "task_id": "final-document-assembly-3",
+    "agent-24": {
+      "id": "agent-24",
+      "pid": 2427225,
+      "task_id": "fix-lean-line-refs",
       "executor": "claude",
-      "started_at": "2026-01-31T21:32:55.149257707+00:00",
-      "last_heartbeat": "2026-01-31T21:32:55.149257707+00:00",
-      "status": "starting",
-      "output_file": ".workgraph/agents/agent-114/output.log"
+      "started_at": "2026-03-01T02:36:13.164329004+00:00",
+      "last_heartbeat": "2026-03-01T02:42:53.007644484+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-24/output.log",
+      "model": "sonnet"
+    },
+    "agent-26": {
+      "id": "agent-26",
+      "pid": 2456949,
+      "task_id": "evaluate-fix-lean-line-refs",
+      "executor": "eval",
+      "started_at": "2026-03-01T02:42:53.015412204+00:00",
+      "last_heartbeat": "2026-03-01T02:42:53.015412204+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-26/output.log",
+      "model": "haiku"
+    },
+    "agent-25": {
+      "id": "agent-25",
+      "pid": 2445988,
+      "task_id": "evaluate-add-cmaes-to-main",
+      "executor": "eval",
+      "started_at": "2026-03-01T02:38:13.912510894+00:00",
+      "last_heartbeat": "2026-03-01T02:38:15.915956944+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-25/output.log",
+      "model": "haiku"
+    },
+    "agent-11": {
+      "id": "agent-11",
+      "pid": 2160407,
+      "task_id": "evaluate-expressivity-hierarchy",
+      "executor": "eval",
+      "started_at": "2026-02-28T23:14:11.104226384+00:00",
+      "last_heartbeat": "2026-02-28T23:14:35.244293124+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-11/output.log",
+      "model": "haiku"
+    },
+    "agent-16": {
+      "id": "agent-16",
+      "pid": 2237027,
+      "task_id": "evaluate-fix-e1h-sorry",
+      "executor": "eval",
+      "started_at": "2026-03-01T00:38:59.541050454+00:00",
+      "last_heartbeat": "2026-03-01T00:39:12.165543104+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-16/output.log",
+      "model": "haiku"
+    },
+    "agent-3": {
+      "id": "agent-3",
+      "pid": 2093098,
+      "task_id": "assign-e88-exceeds-e1h-capacity",
+      "executor": "claude",
+      "started_at": "2026-02-28T22:43:29.668602004+00:00",
+      "last_heartbeat": "2026-02-28T22:44:18.877994814+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-3/output.log",
+      "model": "haiku"
+    },
+    "agent-15": {
+      "id": "agent-15",
+      "pid": 2217367,
+      "task_id": "fix-e1h-sorry",
+      "executor": "claude",
+      "started_at": "2026-03-01T00:13:50.714054534+00:00",
+      "last_heartbeat": "2026-03-01T00:38:59.531494904+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-15/output.log",
+      "model": "sonnet"
+    },
+    "agent-8": {
+      "id": "agent-8",
+      "pid": 2135246,
+      "task_id": "evaluate-e1h-temporal-theorems",
+      "executor": "eval",
+      "started_at": "2026-02-28T23:03:18.154173504+00:00",
+      "last_heartbeat": "2026-02-28T23:03:47.094502854+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-8/output.log",
+      "model": "haiku"
+    },
+    "agent-2": {
+      "id": "agent-2",
+      "pid": 2093095,
+      "task_id": "assign-e1h-temporal-theorems",
+      "executor": "claude",
+      "started_at": "2026-02-28T22:43:29.663990584+00:00",
+      "last_heartbeat": "2026-02-28T22:44:08.854432784+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-2/output.log",
+      "model": "haiku"
+    },
+    "agent-12": {
+      "id": "agent-12",
+      "pid": 2160409,
+      "task_id": "assign-validate-e1h-docs",
+      "executor": "claude",
+      "started_at": "2026-02-28T23:14:11.109258434+00:00",
+      "last_heartbeat": "2026-02-28T23:14:35.244295834+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-12/output.log",
+      "model": "haiku"
+    },
+    "agent-5": {
+      "id": "agent-5",
+      "pid": 2110366,
+      "task_id": "e1h-temporal-theorems",
+      "executor": "claude",
+      "started_at": "2026-02-28T22:44:05.949105544+00:00",
+      "last_heartbeat": "2026-02-28T23:03:18.146610384+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-5/output.log",
+      "model": "sonnet"
+    },
+    "agent-17": {
+      "id": "agent-17",
+      "pid": 2237029,
+      "task_id": "assign-verify-zero-sorries",
+      "executor": "claude",
+      "started_at": "2026-03-01T00:38:59.547516004+00:00",
+      "last_heartbeat": "2026-03-01T00:39:37.808097734+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-17/output.log",
+      "model": "haiku"
+    },
+    "agent-20": {
+      "id": "agent-20",
+      "pid": 2254885,
+      "task_id": "assign-verify-fix-loop",
+      "executor": "claude",
+      "started_at": "2026-03-01T00:40:15.770525504+00:00",
+      "last_heartbeat": "2026-03-01T00:40:56.031880624+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-20/output.log",
+      "model": "haiku"
+    },
+    "agent-22": {
+      "id": "agent-22",
+      "pid": 2272287,
+      "task_id": "evaluate-verify-fix-loop",
+      "executor": "eval",
+      "started_at": "2026-03-01T00:41:20.086644844+00:00",
+      "last_heartbeat": "2026-03-01T00:41:20.086644844+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-22/output.log",
+      "model": "haiku"
+    },
+    "agent-6": {
+      "id": "agent-6",
+      "pid": 2115939,
+      "task_id": "e88-exceeds-e1h-capacity",
+      "executor": "claude",
+      "started_at": "2026-02-28T22:44:16.472950874+00:00",
+      "last_heartbeat": "2026-02-28T23:02:38.783248944+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-6/output.log",
+      "model": "sonnet"
+    },
+    "agent-7": {
+      "id": "agent-7",
+      "pid": 2129327,
+      "task_id": "evaluate-e88-exceeds-e1h-capacity",
+      "executor": "eval",
+      "started_at": "2026-02-28T23:02:38.789011584+00:00",
+      "last_heartbeat": "2026-02-28T23:02:53.405762964+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-7/output.log",
+      "model": "haiku"
+    },
+    "agent-9": {
+      "id": "agent-9",
+      "pid": 2135248,
+      "task_id": "assign-expressivity-hierarchy",
+      "executor": "claude",
+      "started_at": "2026-02-28T23:03:18.159912404+00:00",
+      "last_heartbeat": "2026-02-28T23:03:47.094496734+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-9/output.log",
+      "model": "haiku"
+    },
+    "agent-14": {
+      "id": "agent-14",
+      "pid": 2181021,
+      "task_id": "evaluate-validate-e1h-docs",
+      "executor": "eval",
+      "started_at": "2026-02-28T23:16:53.536667494+00:00",
+      "last_heartbeat": "2026-02-28T23:16:53.536667494+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-14/output.log",
+      "model": "haiku"
+    },
+    "agent-19": {
+      "id": "agent-19",
+      "pid": 2254883,
+      "task_id": "evaluate-verify-zero-sorries",
+      "executor": "eval",
+      "started_at": "2026-03-01T00:40:15.767128544+00:00",
+      "last_heartbeat": "2026-03-01T00:40:15.767128544+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-19/output.log",
+      "model": "haiku"
+    },
+    "agent-21": {
+      "id": "agent-21",
+      "pid": 2266467,
+      "task_id": "verify-fix-loop",
+      "executor": "claude",
+      "started_at": "2026-03-01T00:40:56.040018844+00:00",
+      "last_heartbeat": "2026-03-01T00:41:20.080177634+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-21/output.log",
+      "model": "sonnet"
+    },
+    "agent-28": {
+      "id": "agent-28",
+      "pid": 2473110,
+      "task_id": "compile-typst-final",
+      "executor": "claude",
+      "started_at": "2026-03-01T02:43:54.613448324+00:00",
+      "last_heartbeat": "2026-03-01T02:44:29.070310784+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-28/output.log",
+      "model": "sonnet"
+    },
+    "agent-1": {
+      "id": "agent-1",
+      "pid": 2083970,
+      "task_id": "formalize-e1h-arch",
+      "executor": "claude",
+      "started_at": "2026-02-28T22:34:44.584493264+00:00",
+      "last_heartbeat": "2026-02-28T22:43:29.657987794+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-1/output.log",
+      "model": "sonnet"
+    },
+    "agent-4": {
+      "id": "agent-4",
+      "pid": 2093100,
+      "task_id": "evaluate-formalize-e1h-arch",
+      "executor": "eval",
+      "started_at": "2026-02-28T22:43:29.672645364+00:00",
+      "last_heartbeat": "2026-02-28T22:44:00.228308534+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-4/output.log",
+      "model": "haiku"
+    },
+    "agent-27": {
+      "id": "agent-27",
+      "pid": 2456951,
+      "task_id": "assign-compile-typst-final",
+      "executor": "claude",
+      "started_at": "2026-03-01T02:42:53.020173014+00:00",
+      "last_heartbeat": "2026-03-01T02:43:54.604445984+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-27/output.log",
+      "model": "haiku"
+    },
+    "agent-23": {
+      "id": "agent-23",
+      "pid": 2427222,
+      "task_id": "add-cmaes-to-main",
+      "executor": "claude",
+      "started_at": "2026-03-01T02:36:13.158551124+00:00",
+      "last_heartbeat": "2026-03-01T02:38:15.915959754+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-23/output.log",
+      "model": "sonnet"
+    },
+    "agent-29": {
+      "id": "agent-29",
+      "pid": 2480470,
+      "task_id": "evaluate-compile-typst-final",
+      "executor": "eval",
+      "started_at": "2026-03-01T02:44:29.077214184+00:00",
+      "last_heartbeat": "2026-03-01T02:44:29.077214184+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-29/output.log",
+      "model": "haiku"
+    },
+    "agent-13": {
+      "id": "agent-13",
+      "pid": 2171812,
+      "task_id": "validate-e1h-docs",
+      "executor": "claude",
+      "started_at": "2026-02-28T23:14:35.251389204+00:00",
+      "last_heartbeat": "2026-02-28T23:16:53.531194474+00:00",
+      "status": "dead",
+      "output_file": ".workgraph/agents/agent-13/output.log",
+      "model": "sonnet"
     }
   },
-  "next_agent_id": 117
+  "next_agent_id": 30
 }

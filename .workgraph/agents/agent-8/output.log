@@ -1,42 +1,19 @@
-The task is complete. Let me provide a summary of what was formalized:
+Evaluating task 'e1h-temporal-theorems' with model 'haiku'...
 
-## Summary: Multi-Head Temporal Independence (E88)
-
-I created `/home/erikg/elman-proofs/ElmanProofs/Expressivity/MultiHeadTemporalIndependence.lean` which formalizes E88 heads as parallel state machines.
-
-### Key Results Proven
-
-1. **Head Independence** (`e88_head_update_independent`)
-   - Each head's state update depends ONLY on its own state and the input
-   - Other heads' states have zero influence on a head's dynamics
-
-2. **No Cross-Head Interaction** (`e88_heads_do_not_interact`)
-   - Modifying head h₂'s state does not affect head h₁'s update
-
-3. **Parallel State Machine Semantics** (`e88HeadAsStateMachine`, `e88AsParallelStateMachines`)
-   - Each head is formally a state machine with transition function δ = tanh-based update
-   - H heads form H independent state machines running in parallel
-
-4. **State Equivalence** (`e88_state_equals_parallel_machines`)
-   - The E88 recurrence exactly matches the state machine definition
-
-5. **Trajectory Independence** (`e88_head_trajectory_independent`)
-   - Different heads have completely independent state trajectories
-
-6. **Capacity Scaling** (`e88_head_capacity_additive`, `e88_multihead_binary_latch_capacity`)
-   - Total state capacity = H × d² (H heads, d×d matrices each)
-   - H heads can latch at least H independent binary facts
-
-7. **Output Linearity** (`e88_output_linear_in_heads`)
-   - The final output is a linear combination of head outputs (additive + homogeneous)
-
-8. **FSM Simulation** (`e88_head_simulates_fsm` - existence stated, encoding `sorry`)
-   - Each head can simulate a finite state machine with n ≤ d² states
-
-### Key Insight
-
-**"E88 heads are parallel state machines."** Unlike attention (O(n²) interactions), E88 has:
-- O(H) independent recurrences during temporal processing
-- O(1) cross-head interaction only at output projection
-
-This provides H-fold parallelism for tracking H independent temporal patterns, counting states, or binary latches.
+=== Evaluation Complete ===
+Task:       Prove E1H shares temporal expressivity with E88 (e1h-temporal-theorems)
+Model:      sonnet
+Score:      0.83
+  correctness:            0.85
+  completeness:           0.90
+  efficiency:             0.75
+  style_adherence:        0.85
+  downstream_usability:   0.80
+  coordination_overhead:  0.90
+  blocking_impact:        0.85
+Notes:      Strong work demonstrating careful execution aligned with agent motivation. All 4 required theorems present; 3 are fully proved with compilation succeeding (0 errors). The e1h_can_compute_parity theorem contains a sorry for foldl induction, matching the established pattern in E88Definition—explicitly documented in the task log. Extensive referencing of prerequisite files (TanhSaturation 10x, AttentionPersistence 13x) meets requirements. The file integrates cleanly with additional theorems (e1h_threshold_reduces_to_tanhRecur, e1h_1d_is_tanh_recurrence) that strengthen downstream usability. Execution shows systematic approach: read prerequisites, create proofs, fix errors, validate with lake build. Coordination overhead is minimal; final status is explicit and transparent about what's complete vs. incomplete. Minor weaknesses: 3 style warnings remain, one theorem incomplete (though documented), and ~19 min turnaround includes iteration. Overall exceeds expectations: delivered all required artifacts, maintains correctness standards, and provides clear handoff for downstream expressivity hierarchy proof.
+Evaluator:  claude:haiku
+Saved to:   .workgraph/agency/evaluations/eval-e1h-temporal-theorems-2026-02-28T23-03-49.019917064+00-00.json
+Agent archived to .workgraph/log/agents/evaluate-e1h-temporal-theorems/2026-02-28T23:03:49Z
+Output captured to .workgraph/output/evaluate-e1h-temporal-theorems
+Tip: Log validation steps before wg done (e.g., wg log evaluate-e1h-temporal-theorems "Validated: tests pass")

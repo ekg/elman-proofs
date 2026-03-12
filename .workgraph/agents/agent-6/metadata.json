@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-6",
   "executor": "claude",
-  "pid": 3977581,
-  "started_at": "2026-01-29T16:53:23.252661927+00:00",
-  "task_id": "formalize-tanh-saturation",
-  "timeout": null
+  "model": "sonnet",
+  "pid": 2115939,
+  "started_at": "2026-02-28T22:44:16.473294324+00:00",
+  "task_id": "e88-exceeds-e1h-capacity",
+  "timeout_secs": 1800
 }

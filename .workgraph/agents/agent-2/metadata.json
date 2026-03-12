@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-2",
   "executor": "claude",
-  "pid": 3933086,
-  "started_at": "2026-01-29T16:27:27.734989387+00:00",
-  "task_id": "q2-find-separation",
-  "timeout": null
+  "model": "haiku",
+  "pid": 2093095,
+  "started_at": "2026-02-28T22:43:29.664449744+00:00",
+  "task_id": "assign-e1h-temporal-theorems",
+  "timeout_secs": 1800
 }

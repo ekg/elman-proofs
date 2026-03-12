@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-27",
-  "executor": "lean-fix",
-  "pid": 68009,
-  "started_at": "2026-01-30T00:26:54.245236147+00:00",
-  "task_id": "strategy-analyze-broken",
-  "timeout": null
+  "executor": "claude",
+  "model": "haiku",
+  "pid": 2456951,
+  "started_at": "2026-03-01T02:42:53.020648334+00:00",
+  "task_id": "assign-compile-typst-final",
+  "timeout_secs": 1800
 }

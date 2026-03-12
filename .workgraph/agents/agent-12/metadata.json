@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-12",
   "executor": "claude",
-  "pid": 4035996,
-  "started_at": "2026-01-29T17:34:24.302253637+00:00",
-  "task_id": "complete-separation-theorems",
-  "timeout": null
+  "model": "haiku",
+  "pid": 2160409,
+  "started_at": "2026-02-28T23:14:11.109707034+00:00",
+  "task_id": "assign-validate-e1h-docs",
+  "timeout_secs": 1800
 }

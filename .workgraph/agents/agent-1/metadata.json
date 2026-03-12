@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-1",
   "executor": "claude",
-  "pid": 3932250,
-  "started_at": "2026-01-29T16:27:26.159429257+00:00",
-  "task_id": "q1-analyze-multi",
-  "timeout": null
+  "model": "sonnet",
+  "pid": 2083970,
+  "started_at": "2026-02-28T22:34:44.585078544+00:00",
+  "task_id": "formalize-e1h-arch",
+  "timeout_secs": 1800
 }

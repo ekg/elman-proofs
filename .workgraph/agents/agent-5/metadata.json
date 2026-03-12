@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-5",
   "executor": "claude",
-  "pid": 3969587,
-  "started_at": "2026-01-29T16:36:14.769257887+00:00",
-  "task_id": "consolidate-findings-into",
-  "timeout": null
+  "model": "sonnet",
+  "pid": 2110366,
+  "started_at": "2026-02-28T22:44:05.949672724+00:00",
+  "task_id": "e1h-temporal-theorems",
+  "timeout_secs": 1800
 }

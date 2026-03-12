@@ -1,8 +1,9 @@
 {
   "agent_id": "agent-10",
   "executor": "claude",
-  "pid": 4007909,
-  "started_at": "2026-01-29T17:08:58.599782357+00:00",
-  "task_id": "formalize-running-parity",
-  "timeout": null
+  "model": "sonnet",
+  "pid": 2146458,
+  "started_at": "2026-02-28T23:03:47.107013914+00:00",
+  "task_id": "expressivity-hierarchy",
+  "timeout_secs": 1800
 }
