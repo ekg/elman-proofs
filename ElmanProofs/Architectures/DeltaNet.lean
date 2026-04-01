@@ -220,15 +220,84 @@ theorem householder_preserves_norm (k : Fin n → ℝ) (hk : DeltaRule.sqNorm k 
   -- Goal: ∑ j, ∑ l, if j = l then v j * v l else 0 = ∑ x, v x * v x
   simp_rw [Finset.sum_ite_eq, Finset.mem_univ, ite_true]
 
-/-- The determinant of a Householder reflection is -1.
+/-! ## Part 2b: Eigenvalue Structure -/
 
-    Since H is orthogonal (Hᵀ H = I) and is a reflection (not a rotation),
-    det(H) = -1. This follows from the fact that H has one eigenvalue -1
-    (eigenvector k) and n-1 eigenvalues +1 (vectors orthogonal to k). -/
-theorem householder_det_neg_one (_k : Fin n → ℝ) (_hk : DeltaRule.sqNorm _k ≠ 0) :
-    -- det(householderNormalized k) = -1
-    -- H has eigenvalue -1 for k and eigenvalue 1 for all v ⊥ k
-    True := trivial  -- Full determinant computation requires Mathlib's det API
+/-- Householder reflection sends k to -k (eigenvalue -1).
+    H·k = (I - 2/‖k‖²·kkᵀ)·k = k - 2/‖k‖²·k·(kᵀk) = k - 2k = -k -/
+theorem householder_eigenvalue_neg_one (k : Fin n → ℝ) (hk : DeltaRule.sqNorm k ≠ 0) :
+    (householderNormalized k).mulVec k = fun i => -(k i) := by
+  ext i
+  simp only [Matrix.mulVec, householderNormalized, householder, Matrix.sub_apply, Matrix.one_apply,
+             Matrix.smul_apply, DeltaRule.outer, Matrix.of_apply, smul_eq_mul, dotProduct]
+  -- Goal: ∑ j, (δ_{ij} - 2/‖k‖² · k_i · k_j) · k_j = -k_i
+  have h_rw : ∀ j : Fin n,
+      ((if i = j then (1 : ℝ) else 0) - 2 / DeltaRule.sqNorm k * (k i * k j)) * k j =
+      (if i = j then k j else 0) - 2 / DeltaRule.sqNorm k * k i * k j ^ 2 := by
+    intro j; split_ifs <;> ring
+  simp_rw [h_rw, Finset.sum_sub_distrib]
+  rw [Fintype.sum_eq_single i (by intro j hj; simp [if_neg (Ne.symm hj)])]
+  simp only [ite_true, ← Finset.mul_sum, DeltaRule.sqNorm] at hk ⊢
+  field_simp [hk]
+  ring
+
+/-- Householder reflection fixes vectors orthogonal to k (eigenvalue +1).
+    If kᵀv = 0, then H·v = (I - 2/‖k‖²·kkᵀ)·v = v - 2/‖k‖²·k·(kᵀv) = v - 0 = v -/
+theorem householder_eigenvalue_one (k v : Fin n → ℝ) (hk : DeltaRule.sqNorm k ≠ 0)
+    (hv : DeltaRule.inner k v = 0) :
+    (householderNormalized k).mulVec v = v := by
+  ext i
+  simp only [Matrix.mulVec, householderNormalized, householder, Matrix.sub_apply, Matrix.one_apply,
+             Matrix.smul_apply, DeltaRule.outer, Matrix.of_apply, smul_eq_mul, dotProduct]
+  have h_rw : ∀ j : Fin n,
+      ((if i = j then (1 : ℝ) else 0) - 2 / DeltaRule.sqNorm k * (k i * k j)) * v j =
+      (if i = j then v j else 0) - 2 / DeltaRule.sqNorm k * k i * (k j * v j) := by
+    intro j; split_ifs <;> ring
+  simp_rw [h_rw, Finset.sum_sub_distrib]
+  rw [Fintype.sum_eq_single i (by intro j hj; simp [if_neg (Ne.symm hj)])]
+  simp only [ite_true, ← Finset.mul_sum]
+  -- ∑ j, k_j * v_j = inner k v = 0
+  have : Finset.univ.sum (fun j => k j * v j) = 0 := hv
+  rw [this, mul_zero, sub_zero]
+
+/-! ## Part 2c: Orthogonality Helpers -/
+
+/-- Product of two orthogonal matrices is orthogonal:
+    (A·B)ᵀ · (A·B) = Bᵀ·Aᵀ·A·B = Bᵀ·I·B = Bᵀ·B = I -/
+theorem orthogonal_mul_orthogonal (A B : Matrix (Fin n) (Fin n) ℝ)
+    (hA : Aᵀ * A = 1) (hB : Bᵀ * B = 1) :
+    (A * B)ᵀ * (A * B) = 1 := by
+  rw [Matrix.transpose_mul, Matrix.mul_assoc,
+      ← Matrix.mul_assoc Aᵀ A B, hA, Matrix.one_mul, hB]
+
+/-- Any orthogonal matrix preserves sqNorm: ‖M·v‖² = ‖v‖² when MᵀM = I. -/
+theorem orthogonal_preserves_sqnorm (M : Matrix (Fin n) (Fin n) ℝ)
+    (hM : Mᵀ * M = 1) (v : Fin n → ℝ) :
+    DeltaRule.sqNorm (M.mulVec v) = DeltaRule.sqNorm v := by
+  have h_entry : ∀ j l : Fin n,
+      Finset.univ.sum (fun i => M i j * M i l) = if j = l then 1 else 0 := by
+    intro j l
+    have := congr_fun (congr_fun hM j) l
+    simp only [Matrix.mul_apply, Matrix.transpose_apply, Matrix.one_apply] at this
+    exact this
+  simp only [DeltaRule.sqNorm, Matrix.mulVec, dotProduct]
+  simp_rw [sq]
+  have h_expand : ∀ i : Fin n,
+      (Finset.univ.sum fun j => M i j * v j) * (Finset.univ.sum fun l => M i l * v l) =
+      Finset.univ.sum fun j => Finset.univ.sum fun l => M i j * v j * (M i l * v l) := by
+    intro i; rw [Finset.sum_mul]; apply Finset.sum_congr rfl; intro j _; rw [Finset.mul_sum]
+  simp_rw [h_expand]
+  simp_rw [show ∀ (i j l : Fin n),
+      M i j * v j * (M i l * v l) = v j * v l * (M i j * M i l) from fun _ _ _ => by ring]
+  rw [Finset.sum_comm]
+  conv_lhs => arg 2; ext j; rw [Finset.sum_comm]
+  conv_lhs => arg 2; ext j; arg 2; ext l; rw [← Finset.mul_sum]
+  simp_rw [h_entry]
+  conv_lhs =>
+    arg 2; ext j
+    rw [show (Finset.univ.sum fun l => v j * v l * if j = l then (1 : ℝ) else 0) =
+        Finset.univ.sum fun l => if j = l then v j * v l else 0 from by
+      apply Finset.sum_congr rfl; intro l _; split_ifs <;> ring]
+  simp_rw [Finset.sum_ite_eq, Finset.mem_univ, ite_true]
 
 /-! ## Part 3: Products of Householder Matrices -/
 
@@ -237,31 +306,43 @@ noncomputable def householderProduct (T : ℕ) (ks : Fin T → (Fin n → ℝ))
     (βs : Fin T → ℝ) : Matrix (Fin n) (Fin n) ℝ :=
   (List.ofFn fun t => householder (βs t) (ks t)).foldl (· * ·) 1
 
+/-- Foldl product of orthogonal matrices is orthogonal.
+    Generalized with arbitrary orthogonal accumulator. -/
+theorem orthogonal_foldl
+    (matrices : List (Matrix (Fin n) (Fin n) ℝ))
+    (h_orth : ∀ M ∈ matrices, Mᵀ * M = 1)
+    (acc : Matrix (Fin n) (Fin n) ℝ) (h_acc : accᵀ * acc = 1) :
+    let P := matrices.foldl (· * ·) acc
+    Pᵀ * P = 1 := by
+  induction matrices generalizing acc with
+  | nil => simpa using h_acc
+  | cons M rest ih =>
+    simp only [List.foldl_cons]
+    exact ih (fun M' hM' => h_orth M' (.tail M hM'))
+      (acc * M)
+      (orthogonal_mul_orthogonal acc M h_acc (h_orth M (.head rest)))
+
 /-- Product of orthogonal matrices is orthogonal.
-
-    If H_i · H_i = I for each i, then (H_T · ... · H_1)ᵀ · (H_T · ... · H_1) = I.
-    Proof: (AB)ᵀ = BᵀAᵀ, so Pᵀ·P = H_1ᵀ·...·H_Tᵀ·H_T·...·H_1 = I. -/
+    If each H_t satisfies HᵀH = I, then (∏ H_t)ᵀ(∏ H_t) = I. -/
 theorem householder_product_orthogonal (T : ℕ) (ks : Fin T → (Fin n → ℝ))
-    (_h_unit : ∀ t, DeltaRule.sqNorm (ks t) ≠ 0)
-    : True := trivial  -- Product of orthogonal matrices is orthogonal
+    (h_nonzero : ∀ t, DeltaRule.sqNorm (ks t) ≠ 0) :
+    let P := (List.ofFn fun t => householderNormalized (ks t)).foldl (· * ·) 1
+    Pᵀ * P = 1 := by
+  apply orthogonal_foldl
+  · intro M hM
+    rw [List.mem_ofFn] at hM
+    obtain ⟨t, rfl⟩ := hM
+    simp only [householderNormalized, householder_symmetric]
+    exact householder_mul_self _ (h_nonzero t)
+  · simp [Matrix.transpose_one]
 
-/-- Product of norm-preserving matrices is norm-preserving.
-
-    If each H_t preserves ‖v‖, then their product preserves ‖v‖. -/
-theorem householder_product_norm_preserving (T : ℕ) (_ks : Fin T → (Fin n → ℝ))
-    (_h_unit : ∀ t, DeltaRule.sqNorm (_ks t) ≠ 0) (_v : Fin n → ℝ) :
-    -- ‖(∏ H_t) · v‖ = ‖v‖ when each H_t is a normalized Householder
-    -- This follows from each H_t preserving norms (householder_preserves_norm)
-    True := trivial
-
-/-- The condition number of a product of orthogonal Householder matrices is 1.
-
-    For orthogonal P, σ_max(P) = σ_min(P) = 1, so κ(P) = 1.
-    This is the best possible condition number. -/
-theorem householder_product_condition_one :
-    -- For orthogonal matrices, all singular values equal 1
-    -- Therefore κ = σ_max / σ_min = 1/1 = 1
-    True := trivial
+/-- Product of norm-preserving orthogonal matrices preserves norms:
+    ‖(∏ H_t) · v‖² = ‖v‖² when each H_t is a normalized Householder. -/
+theorem householder_product_norm_preserving (T : ℕ) (ks : Fin T → (Fin n → ℝ))
+    (h_nonzero : ∀ t, DeltaRule.sqNorm (ks t) ≠ 0) (v : Fin n → ℝ) :
+    let P := (List.ofFn fun t => householderNormalized (ks t)).foldl (· * ·) 1
+    DeltaRule.sqNorm (P.mulVec v) = DeltaRule.sqNorm v :=
+  orthogonal_preserves_sqnorm _ (householder_product_orthogonal T ks h_nonzero) v
 
 /-! ## Part 4: DeltaNet State Update -/
 
@@ -308,15 +389,59 @@ theorem deltanet_jacobian_is_householder (β : ℝ) (k v : Fin n → ℝ) :
   rw [add_sub_add_right_eq_sub]
   rw [Matrix.mul_sub]
 
+/-- Helper: left-multiplication foldl distributes over the initial accumulator.
+    foldl(M_t · ⟨·⟩, init) = foldl(M_t · ⟨·⟩, 1) * init -/
+private theorem foldl_left_mul_init {ι : Type*}
+    (steps : List ι) (M : ι → Matrix (Fin n) (Fin n) ℝ)
+    (init : Matrix (Fin n) (Fin n) ℝ) :
+    steps.foldl (fun acc t => M t * acc) init =
+    steps.foldl (fun acc t => M t * acc) 1 * init := by
+  induction steps generalizing init with
+  | nil => simp
+  | cons t rest ih =>
+    simp only [List.foldl_cons]
+    rw [ih (M t * init), ih (M t * 1)]
+    simp only [mul_one, mul_assoc]
+
+/-- Left-multiply foldl of orthogonal matrices is orthogonal. -/
+theorem orthogonal_foldl_left {ι : Type*}
+    (matrices : List ι)
+    (M : ι → Matrix (Fin n) (Fin n) ℝ)
+    (h_orth : ∀ t ∈ matrices, (M t)ᵀ * M t = 1)
+    (acc : Matrix (Fin n) (Fin n) ℝ) (h_acc : accᵀ * acc = 1) :
+    let P := matrices.foldl (fun a t => M t * a) acc
+    Pᵀ * P = 1 := by
+  induction matrices generalizing acc with
+  | nil => simpa using h_acc
+  | cons t rest ih =>
+    simp only [List.foldl_cons]
+    apply ih
+    · intro t' ht'; exact h_orth t' (List.mem_cons_of_mem t ht')
+    · exact orthogonal_mul_orthogonal (M t) acc
+        (h_orth t (.head rest)) h_acc
+
 /-- Gradient through T steps of DeltaNet is the product of T Householder matrices.
 
-    ∂S_0/∂S_T = H(β_1, k_1) · H(β_2, k_2) · ... · H(β_T, k_T)
+    The state difference ΔS_T factors as:
+      ΔS_T = H_{T-1} · ... · H_1 · H_0 · ΔS_0
 
-    This is a product of T matrices, each of which is a Householder matrix. -/
-theorem deltanet_gradient_through_T :
-    -- The T-step gradient is the product of T Householder matrices
-    -- Each factor is I - β_t · k_t · k_tᵀ
-    True := trivial  -- Follows from deltanet_jacobian_is_householder by chain rule
+    where each H_t = I - β_t · k_t · k_tᵀ is the per-step Jacobian.
+    This follows from each step being affine in S_{t-1}. -/
+theorem deltanet_gradient_through_T (T : ℕ)
+    (ks : Fin T → (Fin n → ℝ)) (vs : Fin T → (Fin n → ℝ)) (βs : Fin T → ℝ)
+    (S₁ S₂ : Matrix (Fin n) (Fin n) ℝ) :
+    deltaNetStateAfterT T ks vs βs S₁ - deltaNetStateAfterT T ks vs βs S₂ =
+    (List.ofFn fun t : Fin T => t).foldl
+      (fun acc t => householder (βs t) (ks t) * acc) 1 * (S₁ - S₂) := by
+  simp only [deltaNetStateAfterT]
+  generalize List.ofFn (fun t : Fin T => t) = steps
+  induction steps generalizing S₁ S₂ with
+  | nil => simp
+  | cons t rest ih =>
+    simp only [List.foldl_cons, mul_one]
+    rw [ih, deltanet_jacobian_is_householder]
+    conv_rhs => rw [foldl_left_mul_init]
+    rw [mul_assoc]
 
 /-- DeltaNet gradient norm is preserved when using normalized Householder updates.
 
@@ -325,16 +450,11 @@ theorem deltanet_gradient_through_T :
 
     This means: NO vanishing gradients, NO exploding gradients.
     The gradient flows perfectly through arbitrary time horizons. -/
-theorem deltanet_gradient_norm_preserved (T : ℕ) (_ks : Fin T → (Fin n → ℝ))
-    (_h_nonzero : ∀ t, DeltaRule.sqNorm (_ks t) ≠ 0)
-    (_grad_T : Fin n → ℝ) :
-    -- When each H_t is a normalized Householder (β_t = 2/‖k_t‖²),
-    -- ‖grad_0‖ = ‖grad_T‖
-    -- This is because:
-    -- 1. Each H_t preserves norms (householder_preserves_norm)
-    -- 2. The product preserves norms (by induction)
-    True := by
-  exact trivial
+theorem deltanet_gradient_norm_preserved (T : ℕ) (ks : Fin T → (Fin n → ℝ))
+    (h_nonzero : ∀ t, DeltaRule.sqNorm (ks t) ≠ 0) (v : Fin n → ℝ) :
+    let P := (List.ofFn fun t => householderNormalized (ks t)).foldl (· * ·) 1
+    DeltaRule.sqNorm (P.mulVec v) = DeltaRule.sqNorm v :=
+  householder_product_norm_preserving T ks h_nonzero v
 
 /-- DeltaNet has condition number κ = 1 (optimal).
 
@@ -343,14 +463,17 @@ theorem deltanet_gradient_norm_preserved (T : ℕ) (_ks : Fin T → (Fin n → �
     - σ_max / σ_min = 1/1 = 1
     - This is the theoretical minimum condition number
 
+    The formal statement: Pᵀ · P = I, meaning P is orthogonal with κ = 1.
+
     Compare:
     - E1H: κ = κ(W_h)^T (grows exponentially with T)
     - E88: κ = ∞ when tanh saturates (bimodal: 0 or 1)
     - Mamba2: κ = (1-δ)/δ (bounded but > 1) -/
-theorem deltanet_condition_number_one :
-    -- The effective condition number of the T-step gradient is 1
-    -- This is because the product of orthogonal matrices is orthogonal
-    True := trivial
+theorem deltanet_condition_number_one (T : ℕ) (ks : Fin T → (Fin n → ℝ))
+    (h_nonzero : ∀ t, DeltaRule.sqNorm (ks t) ≠ 0) :
+    let P := (List.ofFn fun t => householderNormalized (ks t)).foldl (· * ·) 1
+    Pᵀ * P = 1 :=
+  householder_product_orthogonal T ks h_nonzero
 
 /-! ## Part 6: Four-Way Architecture Comparison -/
 
