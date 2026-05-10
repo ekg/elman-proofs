@@ -363,6 +363,20 @@ theorem linearDeltaWrite_overwrites_one_preserves_others {N : Nat}
 
 /-! ## Resource Interpretation Hooks -/
 
+/-- Uniform one-step overwrite: for every old memory, every unit key, and every
+desired value, one write makes that key read as the desired value. -/
+def UniformOneStepOverwrite
+    (write : Memory K V → KeyVec K → ValueVec V → Memory K V) : Prop :=
+  ∀ (S : Memory K V) (k : KeyVec K) (v : ValueVec V),
+    keyDot k k = 1 → read (write S k v) k = v
+
+/-- Uniform orthogonal preservation: a write at key `k` leaves any orthogonal
+query `q` unchanged. -/
+def UniformOrthogonalPreservation
+    (write : Memory K V → KeyVec K → ValueVec V → Memory K V) : Prop :=
+  ∀ (S : Memory K V) (k q : KeyVec K) (v : ValueVec V),
+    keyDot k q = 0 → read (write S k v) q = read S q
+
 /-- A model family has one-step exact overwrite semantics for orthogonal keys if
 its write operation satisfies exact overwrite and non-target preservation.
 
@@ -387,5 +401,68 @@ def linearDeltaOneStepOverwriteSpec (K V : Nat) : OneStepOverwriteSpec K V where
   preservesOrthogonal := by
     intro S k q v horth
     exact linearDeltaWrite_preserves_orthogonal_query S k q v horth
+
+/-- The ideal delta rule satisfies the uniform one-step overwrite target. -/
+theorem linearDeltaWrite_uniformOneStepOverwrite :
+    UniformOneStepOverwrite (K := K) (V := V) linearDeltaWrite := by
+  intro S k v hk
+  exact linearDeltaWrite_exact_overwrite S k v hk
+
+/-- The ideal delta rule satisfies the uniform non-target preservation target. -/
+theorem linearDeltaWrite_uniformOrthogonalPreservation :
+    UniformOrthogonalPreservation (K := K) (V := V) linearDeltaWrite := by
+  intro S k q v horth
+  exact linearDeltaWrite_preserves_orthogonal_query S k q v horth
+
+/-- A structure-level spec entails the two uniform operational obligations for
+its write function. -/
+theorem oneStepOverwriteSpec_has_uniform_obligations
+    (spec : OneStepOverwriteSpec K V) :
+    UniformOneStepOverwrite spec.write ∧
+    UniformOrthogonalPreservation spec.write := by
+  constructor
+  · intro S k v hk
+    exact spec.exactOverwrite S k v hk
+  · intro S k q v horth
+    exact spec.preservesOrthogonal S k q v horth
+
+/-- The two uniform obligations are exactly the data needed to package a write
+function as a one-step overwrite spec. -/
+theorem exists_oneStepOverwriteSpec_iff_uniform_obligations
+    (write : Memory K V → KeyVec K → ValueVec V → Memory K V) :
+    (∃ spec : OneStepOverwriteSpec K V, spec.write = write) ↔
+    UniformOneStepOverwrite write ∧
+    UniformOrthogonalPreservation write := by
+  constructor
+  · rintro ⟨spec, hwrite⟩
+    rw [← hwrite]
+    exact oneStepOverwriteSpec_has_uniform_obligations spec
+  · intro h
+    refine ⟨{
+      write := write
+      exactOverwrite := ?_
+      preservesOrthogonal := ?_
+    }, rfl⟩
+    · exact h.1
+    · exact h.2
+
+/-- A state-independent additive write cannot satisfy the same uniform overwrite
+target when there exist two old memories with different content at the addressed
+key.
+
+This is the spec-level separation: delta memory satisfies the uniform one-step
+overwrite obligation; raw/state-independent additive writes cannot satisfy it
+uniformly unless the old addressed content is somehow already fixed or canceled
+by extra machinery. -/
+theorem stateIndependentAdditiveWrite_not_uniformOneStepOverwrite
+    (term : KeyVec K → ValueVec V → Memory K V)
+    (S₁ S₂ : Memory K V) (k : KeyVec K) (v : ValueVec V) (j : Fin V)
+    (hunit : keyDot k k = 1)
+    (hread : read S₁ k j ≠ read S₂ k j) :
+    ¬ UniformOneStepOverwrite (K := K) (V := V)
+      (stateIndependentAdditiveWrite term) := by
+  intro hspec
+  exact stateIndependentAdditiveWrite_cannot_exact_overwrite_two_memories
+    term S₁ S₂ k v j hread ⟨hspec S₁ k v hunit, hspec S₂ k v hunit⟩
 
 end OnlineMemory
