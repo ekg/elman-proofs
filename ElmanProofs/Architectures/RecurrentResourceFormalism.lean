@@ -375,6 +375,41 @@ theorem agrees_with_m2rnn_comparison_on_m2rnn_raw_write_axis :
     hasDeltaCorrectingWrite (m2rnnPure 1 1 1).writeRule = false := by
   constructor <;> rfl
 
+/-! ## Concrete One-Step Transition Separation -/
+
+abbrev TwoVec := M2RNNComparison.Vec 2
+abbrev TwoMat := Matrix (Fin 2) (Fin 2) Real
+
+/-- First basis key in a two-dimensional key space. -/
+def key0 : TwoVec :=
+  fun i => if i = 0 then 1 else 0
+
+/-- Second basis key in a two-dimensional key space. -/
+def key1 : TwoVec :=
+  fun i => if i = 1 then 1 else 0
+
+/-- E88's expanded delta transition is genuinely key-dependent: two different
+keys induce two different left-transition matrices.
+
+This is the concrete core of the one-step transition-family separation. M2RNN's
+learned right transition `W` is fixed across keys inside a layer; E88's delta
+rule induces `lambda I - k k^T`, which changes with the current key. -/
+theorem e88_two_keys_induce_distinct_left_transitions :
+    M2RNNComparison.e88DeltaTransition (K := 2) 1 key0 ≠
+      M2RNNComparison.e88DeltaTransition (K := 2) 1 key1 := by
+  intro h
+  have h00 := congrArg (fun M : TwoMat => M 0 0) h
+  simp [M2RNNComparison.e88DeltaTransition, M2RNNComparison.outerKV, key0, key1] at h00
+
+/-- No fixed two-dimensional transition matrix can equal E88's key-dependent
+transition for both basis keys. -/
+theorem no_fixed_transition_matches_e88_two_basis_keys
+    (A : TwoMat) :
+    ¬ (A = M2RNNComparison.e88DeltaTransition (K := 2) 1 key0 ∧
+       A = M2RNNComparison.e88DeltaTransition (K := 2) 1 key1) := by
+  intro h
+  exact e88_two_keys_induce_distinct_left_transitions (h.1.symm.trans h.2)
+
 /-! ## Interpretation Hooks
 
 These are not capability theorems yet. They are hooks for the theorems we want:
