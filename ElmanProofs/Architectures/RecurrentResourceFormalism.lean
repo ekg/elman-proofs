@@ -110,6 +110,14 @@ def hasDeltaCorrectingWrite : WriteRule → Bool
   | .deltaCorrecting => true
   | _ => false
 
+/-- Boolean version of the broader GDN/E88 delta-family write axis. GDN uses a
+linear selective erase/write delta rule; E88/NDM uses a nonlinear
+delta-correcting version. -/
+def hasDeltaStyleWrite : WriteRule → Bool
+  | .selectiveEraseWrite => true
+  | .deltaCorrecting => true
+  | _ => false
+
 /-- Boolean version of "uses matrix-valued persistent state". -/
 def hasMatrixState : StateGeometry → Bool
   | .matrix => true
@@ -322,6 +330,18 @@ theorem hybrid_m2rnn_is_not_pure_recurrent_stack
 theorem gated_delta_net_has_matrix_state_but_no_temporal_nonlinearity
     (layers heads state : Nat) :
     hasMatrixState (gatedDeltaNet layers heads state).stateGeometry = true ∧
+    hasTemporalNonlinearity (gatedDeltaNet layers heads state).temporalNonlinearity = false := by
+  constructor <;> rfl
+
+theorem e88_and_gdn_share_delta_style_write
+    (layers heads state : Nat) :
+    hasDeltaStyleWrite e88NDM_1p27B.writeRule = true ∧
+    hasDeltaStyleWrite (gatedDeltaNet layers heads state).writeRule = true := by
+  constructor <;> rfl
+
+theorem e88_and_gdn_split_on_temporal_nonlinearity
+    (layers heads state : Nat) :
+    hasTemporalNonlinearity e88NDM_1p27B.temporalNonlinearity = true ∧
     hasTemporalNonlinearity (gatedDeltaNet layers heads state).temporalNonlinearity = false := by
   constructor <;> rfl
 
