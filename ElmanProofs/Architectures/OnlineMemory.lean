@@ -248,6 +248,119 @@ theorem shared_delta_core_exact_overwrite
     read (ndmPreTanhWrite S k v) k = v := by
   constructor <;> exact linearDeltaWrite_exact_overwrite S k v hk
 
+/-! ## Multi-Key Orthogonal Capacity -/
+
+/-- A finite family of keys is orthonormal when self-overlap is one and
+cross-overlap is zero. -/
+def OrthonormalKeys {N : Nat} (keys : Fin N → KeyVec K) : Prop :=
+  ∀ i j, keyDot (keys i) (keys j) = if i = j then 1 else 0
+
+/-- The explicit associative-memory table for a finite family of key/value
+pairs. -/
+def memoryTable {N : Nat}
+    (keys : Fin N → KeyVec K) (values : Fin N → ValueVec V) : Memory K V :=
+  Finset.univ.sum fun i => M2RNNComparison.outerKV (keys i) (values i)
+
+/-- Orthonormal keys support exact finite-table retrieval. This is the capacity
+upper bound shared by ideal GDN-style delta memory and E88/NDM's pre-tanh delta
+core: `N` orthogonal keys can store `N` independent value vectors in a matrix
+state. -/
+theorem memoryTable_retrieves_orthonormal {N : Nat}
+    (keys : Fin N → KeyVec K) (values : Fin N → ValueVec V)
+    (horth : OrthonormalKeys keys) :
+    ∀ j, read (memoryTable keys values) (keys j) = values j := by
+  intro j
+  ext dim
+  simp [memoryTable, read, M2RNNComparison.queryReadout,
+    M2RNNComparison.outerKV, Matrix.sum_apply, Matrix.of_apply,
+    Matrix.mulVec, dotProduct]
+  calc
+    Finset.univ.sum
+        (fun x : Fin K => (Finset.univ.sum fun i : Fin N =>
+          keys i x * values i dim) * keys j x)
+        =
+      Finset.univ.sum
+        (fun x : Fin K => Finset.univ.sum fun i : Fin N =>
+          values i dim * keys i x * keys j x) := by
+          apply Finset.sum_congr rfl
+          intro x _
+          rw [Finset.sum_mul]
+          apply Finset.sum_congr rfl
+          intro i _
+          ring
+    _ =
+      Finset.univ.sum
+        (fun i : Fin N => Finset.univ.sum fun x : Fin K =>
+          values i dim * keys i x * keys j x) := by
+          rw [Finset.sum_comm]
+    _ =
+      Finset.univ.sum
+        (fun i : Fin N => values i dim *
+          Finset.univ.sum (fun x : Fin K => keys i x * keys j x)) := by
+          apply Finset.sum_congr rfl
+          intro i _
+          rw [Finset.mul_sum]
+          apply Finset.sum_congr rfl
+          intro x _
+          ring
+    _ =
+      Finset.univ.sum
+        (fun i : Fin N => values i dim * keyDot (keys i) (keys j)) := by
+          rfl
+    _ =
+      Finset.univ.sum
+        (fun i : Fin N => values i dim * (if i = j then 1 else 0)) := by
+          apply Finset.sum_congr rfl
+          intro i _
+          rw [horth i j]
+    _ = values j dim := by
+          rw [Fintype.sum_eq_single j]
+          · simp
+          · intro i hi
+            simp [hi]
+
+/-- Online extension step: if `S` already stores an orthogonal family of keys,
+a delta write to a new orthogonal unit key stores the new value and preserves
+all existing readouts. This is the induction step behind online associative
+memory. -/
+theorem linearDeltaWrite_extends_orthogonal_readouts {N : Nat}
+    (S : Memory K V) (keys : Fin N → KeyVec K) (values : Fin N → ValueVec V)
+    (newKey : KeyVec K) (newValue : ValueVec V)
+    (hunit : keyDot newKey newKey = 1)
+    (horth : ∀ i, keyDot newKey (keys i) = 0)
+    (hstored : ∀ i, read S (keys i) = values i) :
+    read (linearDeltaWrite S newKey newValue) newKey = newValue ∧
+    ∀ i, read (linearDeltaWrite S newKey newValue) (keys i) = values i := by
+  constructor
+  · exact linearDeltaWrite_exact_overwrite S newKey newValue hunit
+  · intro i
+    rw [linearDeltaWrite_preserves_orthogonal_query S newKey (keys i) newValue (horth i)]
+    exact hstored i
+
+/-- Online overwrite step for an orthonormal table: rewriting one key replaces
+only that key and preserves every other key. -/
+theorem linearDeltaWrite_overwrites_one_preserves_others {N : Nat}
+    (keys : Fin N → KeyVec K) (values : Fin N → ValueVec V)
+    (horth : OrthonormalKeys keys) (target : Fin N) (newValue : ValueVec V) :
+    read (linearDeltaWrite (memoryTable keys values) (keys target) newValue)
+        (keys target) = newValue ∧
+    ∀ i, i ≠ target →
+      read (linearDeltaWrite (memoryTable keys values) (keys target) newValue)
+        (keys i) = values i := by
+  have hunit : keyDot (keys target) (keys target) = 1 := by
+    have h := horth target target
+    simpa using h
+  constructor
+  · exact linearDeltaWrite_exact_overwrite (memoryTable keys values) (keys target) newValue hunit
+  · intro i hi
+    have horth_i : keyDot (keys target) (keys i) = 0 := by
+      have h := horth target i
+      simp [hi.symm] at h
+      exact h
+    rw [linearDeltaWrite_preserves_orthogonal_query
+      (memoryTable keys values) (keys target) (keys i) newValue horth_i]
+    exact memoryTable_retrieves_orthonormal keys values horth i
+
 /-! ## Resource Interpretation Hooks -/
 
 /-- A model family has one-step exact overwrite semantics for orthogonal keys if
