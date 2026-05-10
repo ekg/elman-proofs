@@ -506,6 +506,60 @@ theorem no_fixed_m2rnn_candidate_matches_e88_two_basis_keys
       M2RNNComparison.m2rnnCandidate, M2RNNComparison.e88DeltaUpdateExpanded,
       M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap] using hpre
 
+/-- The two basis keys still induce distinct E88/NDM updates after the
+elementwise `tanh` nonlinearity.
+
+The witness fixes `H = I` and `v = 0`. The preactivations are just the two
+key-dependent E88 transition matrices, and elementwise `tanh` is injective. -/
+theorem e88_two_keys_induce_distinct_updates_at_identity_zero :
+    M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key0 (0 : TwoVec) ≠
+      M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key1 (0 : TwoVec) := by
+  intro h
+  apply e88_two_keys_induce_distinct_left_transitions
+  ext i j
+  have hij := congrArg (fun M : TwoMat => M i j) h
+  have hpre := Activation.tanh_injective hij
+  simpa [M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.matrixTanh,
+    M2RNNComparison.matrixMap, M2RNNComparison.outerKV] using hpre
+
+/-- Adding M2RNN's external scalar forget carry does not remove the
+fixed-transition separation.
+
+For any fixed right-transition matrix `W` and scalar forget gate `f`, the full
+M2RNN update
+
+`f H + (1 - f) tanh(H W + k vᵀ)`
+
+cannot uniformly match E88/NDM's expanded delta update for both basis keys. The
+witness again sets `H = I` and `v = 0`: M2RNN's full update is identical for
+`key0` and `key1`, because the key only appears through the zero raw-write term,
+while E88's update remains key-dependent through `(I - k kᵀ) H`. -/
+theorem no_fixed_m2rnn_update_matches_e88_two_basis_keys
+    (W : TwoMat) (f : Real) :
+    ¬ ((∀ H v,
+          M2RNNComparison.m2rnnUpdate W f H key0 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key0 v) ∧
+       (∀ H v,
+          M2RNNComparison.m2rnnUpdate W f H key1 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key1 v)) := by
+  intro h
+  have hm2 :
+      M2RNNComparison.m2rnnUpdate W f (1 : TwoMat) key0 (0 : TwoVec) =
+        M2RNNComparison.m2rnnUpdate W f (1 : TwoMat) key1 (0 : TwoVec) := by
+    simp [M2RNNComparison.m2rnnUpdate, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.outerKV]
+  have he88 :
+      M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key0 (0 : TwoVec) =
+        M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key1 (0 : TwoVec) := by
+    calc
+      M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key0 (0 : TwoVec)
+          = M2RNNComparison.m2rnnUpdate W f (1 : TwoMat) key0 (0 : TwoVec) :=
+            (h.1 (1 : TwoMat) (0 : TwoVec)).symm
+      _ = M2RNNComparison.m2rnnUpdate W f (1 : TwoMat) key1 (0 : TwoVec) := hm2
+      _ = M2RNNComparison.e88DeltaUpdateExpanded 1 (1 : TwoMat) key1 (0 : TwoVec) :=
+            h.2 (1 : TwoMat) (0 : TwoVec)
+  exact e88_two_keys_induce_distinct_updates_at_identity_zero he88
+
 /-! ## Interpretation Hooks
 
 These are not capability theorems yet. They are hooks for the theorems we want:
