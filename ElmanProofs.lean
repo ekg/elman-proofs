@@ -57,12 +57,10 @@ import ElmanProofs.Expressivity.E88ExceedsE1HCapacity
 import ElmanProofs.Expressivity.ExpressivityHierarchy
 
 -- Information Theory of Language
-import ElmanProofs.Information.LanguageComplexity
-import ElmanProofs.Information.CompositionDepth
 import ElmanProofs.Information.LinearVsNonlinear
 
--- Learning Dynamics (Batch Size Theory)
-import ElmanProofs.Learning.BatchedGradient
-import ElmanProofs.Learning.GradientCoherency
-import ElmanProofs.Learning.CriticalBatchSize
-import ElmanProofs.Learning.FixedBudgetTradeoff
+/-!
+The root `ElmanProofs` target is the trusted proof surface. Modules with
+unfinished proof placeholders or explicit research assumptions are intentionally
+not imported here; see `ElmanProofs.Sketches` for the quarantine aggregate.
+-/
