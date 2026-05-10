@@ -3,6 +3,7 @@ Copyright (c) 2026 Elman-Proofs Contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Mathlib.Data.Nat.Basic
+import ElmanProofs.Activations.Lipschitz
 import ElmanProofs.Architectures.M2RNNComparison
 
 /-!
@@ -429,6 +430,81 @@ theorem no_fixed_transition_matches_e88_two_basis_keys
        A = M2RNNComparison.e88DeltaTransition (K := 2) 1 key1) := by
   intro h
   exact e88_two_keys_induce_distinct_left_transitions (h.1.symm.trans h.2)
+
+/-- M2RNN preactivation in the 2×2 witness setting:
+`H W + k vᵀ`. -/
+def m2rnnPreactivation2
+    (W H : TwoMat) (k v : TwoVec) : TwoMat :=
+  H * W + M2RNNComparison.outerKV k v
+
+/-- E88/NDM expanded delta preactivation in the 2×2 witness setting:
+`(I - k kᵀ) H + k vᵀ`. -/
+def e88DeltaPreactivation2
+    (H : TwoMat) (k v : TwoVec) : TwoMat :=
+  M2RNNComparison.e88DeltaTransition (K := 2) 1 k * H +
+    M2RNNComparison.outerKV k v
+
+/-- No fixed M2RNN right-transition matrix can make the M2RNN preactivation
+family match E88's key-dependent delta preactivation for two basis keys.
+
+This is the one-step transition-family version of the separation. M2RNN's
+candidate path has a fixed right transition `W`; E88/NDM's expanded delta rule
+has an input-dependent left transition `I - k kᵀ`. If the two families matched
+for all states and values at both `key0` and `key1`, then testing on `H = I`
+and `v = 0` would force the same fixed `W` to equal two distinct E88
+transitions. -/
+theorem no_fixed_m2rnn_preactivation_matches_e88_two_basis_keys
+    (W : TwoMat) :
+    ¬ ((∀ H v,
+          m2rnnPreactivation2 W H key0 v =
+            e88DeltaPreactivation2 H key0 v) ∧
+       (∀ H v,
+          m2rnnPreactivation2 W H key1 v =
+            e88DeltaPreactivation2 H key1 v)) := by
+  intro h
+  have hw0 :
+      W = M2RNNComparison.e88DeltaTransition (K := 2) 1 key0 := by
+    simpa [m2rnnPreactivation2, e88DeltaPreactivation2,
+      M2RNNComparison.outerKV] using h.1 (1 : TwoMat) (0 : TwoVec)
+  have hw1 :
+      W = M2RNNComparison.e88DeltaTransition (K := 2) 1 key1 := by
+    simpa [m2rnnPreactivation2, e88DeltaPreactivation2,
+      M2RNNComparison.outerKV] using h.2 (1 : TwoMat) (0 : TwoVec)
+  exact no_fixed_transition_matches_e88_two_basis_keys W ⟨hw0, hw1⟩
+
+/-- The same fixed-transition separation lifts through the `tanh` candidate
+path. Since `tanh` is injective over reals, uniformly matching the M2RNN
+candidate `tanh(H W + k vᵀ)` to the E88 candidate
+`tanh((I - k kᵀ) H + k vᵀ)` would imply equality of the preactivations, which
+the previous theorem rules out for two basis keys.
+
+This still isolates the candidate path. The external M2RNN forget interpolation
+is a further resource axis handled by later theorems. -/
+theorem no_fixed_m2rnn_candidate_matches_e88_two_basis_keys
+    (W : TwoMat) :
+    ¬ ((∀ H v,
+          M2RNNComparison.m2rnnCandidate W H key0 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key0 v) ∧
+       (∀ H v,
+          M2RNNComparison.m2rnnCandidate W H key1 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key1 v)) := by
+  intro h
+  apply no_fixed_m2rnn_preactivation_matches_e88_two_basis_keys W
+  constructor
+  · intro H v
+    ext i j
+    have hij := congrArg (fun M : TwoMat => M i j) (h.1 H v)
+    have hpre := Activation.tanh_injective hij
+    simpa [m2rnnPreactivation2, e88DeltaPreactivation2,
+      M2RNNComparison.m2rnnCandidate, M2RNNComparison.e88DeltaUpdateExpanded,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap] using hpre
+  · intro H v
+    ext i j
+    have hij := congrArg (fun M : TwoMat => M i j) (h.2 H v)
+    have hpre := Activation.tanh_injective hij
+    simpa [m2rnnPreactivation2, e88DeltaPreactivation2,
+      M2RNNComparison.m2rnnCandidate, M2RNNComparison.e88DeltaUpdateExpanded,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap] using hpre
 
 /-! ## Interpretation Hooks
 
