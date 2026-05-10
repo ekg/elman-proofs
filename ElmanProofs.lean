@@ -45,6 +45,7 @@ import ElmanProofs.Architectures.Mamba2VsE1
 import ElmanProofs.Architectures.Mamba2Verified
 import ElmanProofs.Architectures.MatrixStateRNN
 import ElmanProofs.Architectures.M2RNNComparison
+import ElmanProofs.Architectures.RecurrentResourceFormalism
 import ElmanProofs.Architectures.E22_PracticalUTM
 import ElmanProofs.Architectures.E23_DualMemory
 
