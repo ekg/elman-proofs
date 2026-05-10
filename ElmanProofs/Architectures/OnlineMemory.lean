@@ -22,6 +22,12 @@ full-state map (tanh in the current implementation). The later separation target
 is therefore not "delta memory versus GDN"; it is linear/scan-compatible delta
 memory versus nonlinear recurrent delta memory, and raw-write/fixed-transition
 matrix RNNs versus delta-correcting memory.
+
+M2RNN's matrix-state recurrence contains a raw association term `k v^T`. The
+theorems below separate that raw association primitive from the GDN/E88 delta
+primitive as an online overwrite memory. This is intentionally a one-step memory
+semantics theorem, not yet a full lower bound for the complete M2RNN recurrence
+with `tanh`, forget interpolation, and learned state transition.
 -/
 
 namespace OnlineMemory
@@ -414,6 +420,18 @@ theorem linearDeltaWrite_uniformOrthogonalPreservation :
   intro S k q v horth
   exact linearDeltaWrite_preserves_orthogonal_query S k q v horth
 
+/-- Gated DeltaNet's ideal delta core satisfies the uniform overwrite target. -/
+theorem gdnIdealWrite_uniformOneStepOverwrite :
+    UniformOneStepOverwrite (K := K) (V := V) gdnIdealWrite := by
+  intro S k v hk
+  exact linearDeltaWrite_exact_overwrite S k v hk
+
+/-- E88/NDM's pre-nonlinearity delta core satisfies the uniform overwrite target. -/
+theorem ndmPreTanhWrite_uniformOneStepOverwrite :
+    UniformOneStepOverwrite (K := K) (V := V) ndmPreTanhWrite := by
+  intro S k v hk
+  exact linearDeltaWrite_exact_overwrite S k v hk
+
 /-- A structure-level spec entails the two uniform operational obligations for
 its write function. -/
 theorem oneStepOverwriteSpec_has_uniform_obligations
@@ -464,5 +482,44 @@ theorem stateIndependentAdditiveWrite_not_uniformOneStepOverwrite
   intro hspec
   exact stateIndependentAdditiveWrite_cannot_exact_overwrite_two_memories
     term S₁ S₂ k v j hread ⟨hspec S₁ k v hunit, hspec S₂ k v hunit⟩
+
+/-- The raw outer-product association primitive used by M2RNN-style matrix
+state updates cannot be a uniform one-step overwrite memory when two old
+memories disagree at the addressed key. -/
+theorem rawOuterWrite_not_uniformOneStepOverwrite
+    (S₁ S₂ : Memory K V) (k : KeyVec K) (v : ValueVec V) (j : Fin V)
+    (hunit : keyDot k k = 1)
+    (hread : read S₁ k j ≠ read S₂ k j) :
+    ¬ UniformOneStepOverwrite (K := K) (V := V) rawOuterWrite := by
+  intro hspec
+  let term : KeyVec K → ValueVec V → Memory K V :=
+    fun k v => M2RNNComparison.outerKV k v
+  have h₁ :
+      read (stateIndependentAdditiveWrite term S₁ k v) k = v := by
+    simpa [term, stateIndependentAdditiveWrite, rawOuterWrite]
+      using hspec S₁ k v hunit
+  have h₂ :
+      read (stateIndependentAdditiveWrite term S₂ k v) k = v := by
+    simpa [term, stateIndependentAdditiveWrite, rawOuterWrite]
+      using hspec S₂ k v hunit
+  exact stateIndependentAdditiveWrite_cannot_exact_overwrite_two_memories
+    term S₁ S₂ k v j hread ⟨h₁, h₂⟩
+
+/-- Memory-semantics separation for the direct comparison with M2RNN:
+GDN's ideal delta core and E88/NDM's pre-tanh delta core satisfy uniform
+one-step overwrite, while M2RNN's raw association primitive cannot satisfy that
+same target without extra state-dependent correction or other machinery. -/
+theorem delta_core_separates_gdn_ndm_from_m2rnn_raw_write
+    (S₁ S₂ : Memory K V) (k : KeyVec K) (v : ValueVec V) (j : Fin V)
+    (hunit : keyDot k k = 1)
+    (hread : read S₁ k j ≠ read S₂ k j) :
+    UniformOneStepOverwrite (K := K) (V := V) gdnIdealWrite ∧
+    UniformOneStepOverwrite (K := K) (V := V) ndmPreTanhWrite ∧
+    ¬ UniformOneStepOverwrite (K := K) (V := V) rawOuterWrite := by
+  constructor
+  · exact gdnIdealWrite_uniformOneStepOverwrite
+  constructor
+  · exact ndmPreTanhWrite_uniformOneStepOverwrite
+  · exact rawOuterWrite_not_uniformOneStepOverwrite S₁ S₂ k v j hunit hread
 
 end OnlineMemory
