@@ -56,6 +56,25 @@ def linearDeltaWrite
     (S : Memory K V) (k : KeyVec K) (v : ValueVec V) : Memory K V :=
   S + M2RNNComparison.outerKV k (correction S k v)
 
+/-- Raw outer-product write:
+
+`S' = S + k v^T`.
+
+This is the common raw associative-memory core. It can add an association, but
+without state-dependent correction it does not implement overwrite for arbitrary
+existing memory.
+-/
+def rawOuterWrite
+    (S : Memory K V) (k : KeyVec K) (v : ValueVec V) : Memory K V :=
+  S + M2RNNComparison.outerKV k v
+
+/-- General state-independent additive write. The added matrix may depend on the
+current key and desired value, but not on the old memory `S`. -/
+def stateIndependentAdditiveWrite
+    (term : KeyVec K → ValueVec V → Memory K V)
+    (S : Memory K V) (k : KeyVec K) (v : ValueVec V) : Memory K V :=
+  S + term k v
+
 /-- Gated DeltaNet's ideal write with unit write gate and no global decay. -/
 def gdnIdealWrite
     (S : Memory K V) (k : KeyVec K) (v : ValueVec V) : Memory K V :=
@@ -72,6 +91,24 @@ noncomputable def ndmNonlinearWrite
   M2RNNComparison.matrixTanh (linearDeltaWrite S k v)
 
 /-! ## Delta-Memory Semantics -/
+
+/-- Reads distribute over matrix addition. -/
+theorem read_add
+    (A B : Memory K V) (q : KeyVec K) :
+    read (A + B) q = read A q + read B q := by
+  ext j
+  simp [read, M2RNNComparison.queryReadout, Matrix.mulVec, dotProduct]
+  calc
+    Finset.univ.sum (fun x : Fin K => (A x j + B x j) * q x)
+        =
+      Finset.univ.sum (fun x : Fin K => A x j * q x + B x j * q x) := by
+        apply Finset.sum_congr rfl
+        intro i _
+        ring
+    _ =
+      Finset.univ.sum (fun x : Fin K => A x j * q x) +
+      Finset.univ.sum (fun x : Fin K => B x j * q x) := by
+        rw [Finset.sum_add_distrib]
 
 /-- Reading an outer-product write returns the written value scaled by key
 overlap. -/
@@ -120,6 +157,62 @@ theorem read_linearDeltaWrite
       (Finset.univ.sum fun i : Fin K => k i * q i) *
         (v j - Finset.univ.sum (fun x => S x j * k x)) := by
           rw [Finset.sum_mul]
+
+/-! ## Raw Writes Versus Delta Writes -/
+
+/-- Raw outer-product write changes a query in proportion to key overlap, but it
+does not subtract existing retrieved content. -/
+theorem read_rawOuterWrite
+    (S : Memory K V) (k q : KeyVec K) (v : ValueVec V) :
+    read (rawOuterWrite S k v) q =
+      read S q + fun j => keyDot k q * v j := by
+  rw [rawOuterWrite, read_add, read_outerKV]
+
+/-- With a unit key, raw writing reads back "old content plus new value". -/
+theorem rawOuterWrite_reads_existing_plus_value_unit
+    (S : Memory K V) (k : KeyVec K) (v : ValueVec V)
+    (hk : keyDot k k = 1) :
+    read (rawOuterWrite S k v) k = read S k + v := by
+  rw [read_rawOuterWrite]
+  ext j
+  simp [hk]
+
+/-- A raw outer-product write cannot be an exact overwrite when the addressed
+slot already contains nonzero content. -/
+theorem rawOuterWrite_not_exact_overwrite_with_existing_content
+    (S : Memory K V) (k : KeyVec K) (v : ValueVec V)
+    (hk : keyDot k k = 1) (j : Fin V)
+    (hprev : read S k j ≠ 0) :
+    read (rawOuterWrite S k v) k ≠ v := by
+  intro h
+  rw [rawOuterWrite_reads_existing_plus_value_unit S k v hk] at h
+  have hj := congrFun h j
+  change read S k j + v j = v j at hj
+  have hz : read S k j = 0 := by
+    linarith
+  exact hprev hz
+
+/-- More generally, no state-independent additive write can overwrite two old
+memories that disagree at the addressed key in one step.
+
+This is the resource-separation hook: to implement overwrite uniformly, the
+write term must either depend on the old state, add extra machinery, or use
+additional steps/resources to infer and cancel the old content. -/
+theorem stateIndependentAdditiveWrite_cannot_exact_overwrite_two_memories
+    (term : KeyVec K → ValueVec V → Memory K V)
+    (S₁ S₂ : Memory K V) (k : KeyVec K) (v : ValueVec V) (j : Fin V)
+    (hread : read S₁ k j ≠ read S₂ k j) :
+    ¬ (read (stateIndependentAdditiveWrite term S₁ k v) k = v ∧
+       read (stateIndependentAdditiveWrite term S₂ k v) k = v) := by
+  intro h
+  simp [stateIndependentAdditiveWrite, read_add] at h
+  have h₁ := congrFun h.1 j
+  have h₂ := congrFun h.2 j
+  change read S₁ k j + read (term k v) k j = v j at h₁
+  change read S₂ k j + read (term k v) k j = v j at h₂
+  have heq : read S₁ k j = read S₂ k j := by
+    linarith
+  exact hread heq
 
 /-- Unit-key delta write exactly overwrites the addressed readout. -/
 theorem linearDeltaWrite_exact_overwrite
