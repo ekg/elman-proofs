@@ -560,6 +560,157 @@ theorem no_fixed_m2rnn_update_matches_e88_two_basis_keys
             h.2 (1 : TwoMat) (0 : TwoVec)
   exact e88_two_keys_induce_distinct_updates_at_identity_zero he88
 
+/-! ## Input-Dependent Forget Gates -/
+
+/-- `tanh(1)` is nonzero. -/
+theorem tanh_one_ne_zero : Real.tanh (1 : Real) ≠ 0 := by
+  intro h
+  have hzero : Real.tanh (1 : Real) = Real.tanh 0 := by
+    simpa [Real.tanh_zero] using h
+  have hone : (1 : Real) = 0 := Activation.tanh_injective hzero
+  norm_num at hone
+
+/-- `tanh(-1)` is nonzero. -/
+theorem tanh_neg_one_ne_zero : Real.tanh (-1 : Real) ≠ 0 := by
+  intro h
+  have hzero : Real.tanh (-1 : Real) = Real.tanh 0 := by
+    simpa [Real.tanh_zero] using h
+  have hneg : (-1 : Real) = 0 := Activation.tanh_injective hzero
+  norm_num at hneg
+
+/-- Even if the scalar M2RNN forget gate is allowed to depend on the input key,
+the fixed-transition/scalar-carry update cannot uniformly match E88/NDM on the
+two basis keys.
+
+The key point is that matching writes from an empty state forces the scalar
+forget gate to be `0` for each basis key: with `H = 0`, E88 writes
+`tanh(k vᵀ)`, while M2RNN writes `(1 - f(k)) tanh(k vᵀ)`. Since `tanh(1) ≠ 0`,
+uniform equality forces `f(key0) = f(key1) = 0`, reducing the claim to the
+candidate-path separation above. -/
+theorem no_fixed_m2rnn_update_with_key_scalar_forget_matches_e88_two_basis_keys
+    (W : TwoMat) (f0 f1 : Real) :
+    ¬ ((∀ H v,
+          M2RNNComparison.m2rnnUpdate W f0 H key0 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key0 v) ∧
+       (∀ H v,
+          M2RNNComparison.m2rnnUpdate W f1 H key1 v =
+            M2RNNComparison.e88DeltaUpdateExpanded 1 H key1 v)) := by
+  intro h
+  have hf0 : f0 = 0 := by
+    have hentry := congrArg (fun M : TwoMat => M 0 0) (h.1 (0 : TwoMat) key0)
+    have hentry' : (1 - f0) * Real.tanh (1 : Real) = Real.tanh (1 : Real) := by
+      simpa [M2RNNComparison.m2rnnUpdate, M2RNNComparison.m2rnnCandidate,
+        M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+        M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+        M2RNNComparison.outerKV, key0] using hentry
+    have hmul : f0 * Real.tanh (1 : Real) = 0 := by nlinarith
+    exact (mul_eq_zero.mp hmul).resolve_right tanh_one_ne_zero
+  have hf1 : f1 = 0 := by
+    have hentry := congrArg (fun M : TwoMat => M 1 1) (h.2 (0 : TwoMat) key1)
+    have hentry' : (1 - f1) * Real.tanh (1 : Real) = Real.tanh (1 : Real) := by
+      simpa [M2RNNComparison.m2rnnUpdate, M2RNNComparison.m2rnnCandidate,
+        M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+        M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+        M2RNNComparison.outerKV, key1] using hentry
+    have hmul : f1 * Real.tanh (1 : Real) = 0 := by nlinarith
+    exact (mul_eq_zero.mp hmul).resolve_right tanh_one_ne_zero
+  apply no_fixed_m2rnn_candidate_matches_e88_two_basis_keys W
+  constructor
+  · intro H v
+    simpa [hf0, M2RNNComparison.m2rnnUpdate] using h.1 H v
+  · intro H v
+    simpa [hf1, M2RNNComparison.m2rnnUpdate] using h.2 H v
+
+/-! ## Vector/Row/Column Forget-Gate Characterization -/
+
+/-- A mixed key that exposes the cross-row part of E88's `k kᵀ H` correction. -/
+def mixedKey : TwoVec :=
+  fun _ => 1
+
+/-- A state whose first row is zero and whose second row has one active cell. -/
+def lowerLeftState : TwoMat :=
+  Matrix.of fun i j => if i = 1 then if j = 0 then 1 else 0 else 0
+
+/-- Row-vector external carry: each row has its own forget value. -/
+def rowForgetCarry2 (r : TwoVec) (H Z : TwoMat) : TwoMat :=
+  Matrix.of fun i j => r i * H i j + (1 - r i) * Z i j
+
+/-- Column-vector external carry: each column has its own forget value. -/
+def columnForgetCarry2 (c : TwoVec) (H Z : TwoMat) : TwoMat :=
+  Matrix.of fun i j => c j * H i j + (1 - c j) * Z i j
+
+/-- Cellwise external carry: every matrix cell has its own forget value. -/
+def cellForgetCarry2 (g : TwoMat) (H Z : TwoMat) : TwoMat :=
+  Matrix.of fun i j => g i j * H i j + (1 - g i j) * Z i j
+
+/-- M2RNN candidate followed by row-vector external forget carry. -/
+noncomputable def m2rnnRowForgetUpdate2
+    (W : TwoMat) (r : TwoVec) (H : TwoMat) (k v : TwoVec) : TwoMat :=
+  rowForgetCarry2 r H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- M2RNN candidate followed by column-vector external forget carry. -/
+noncomputable def m2rnnColumnForgetUpdate2
+    (W : TwoMat) (c : TwoVec) (H : TwoMat) (k v : TwoVec) : TwoMat :=
+  columnForgetCarry2 c H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- M2RNN candidate followed by cellwise external forget carry. -/
+noncomputable def m2rnnCellForgetUpdate2
+    (W : TwoMat) (g : TwoMat) (H : TwoMat) (k v : TwoVec) : TwoMat :=
+  cellForgetCarry2 g H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- A row-gated M2RNN external carry still cannot match E88/NDM's mixed-key
+delta correction.
+
+The witness fixes `k = (1, 1)`, `v = 0`, and a state whose first row is zero
+but second row is nonzero. A fixed right transition `H W` is row-local: the
+first output row depends only on the first input row, so the row-gated M2RNN
+entry `(0,0)` is zero. E88's `(I - k kᵀ) H` subtracts the second row from the
+first row, so the same entry is `tanh(-1)`. -/
+theorem row_forget_m2rnn_fails_mixed_key_delta_correction
+    (W : TwoMat) (r : TwoVec) :
+    m2rnnRowForgetUpdate2 W r lowerLeftState mixedKey (0 : TwoVec) ≠
+      M2RNNComparison.e88DeltaUpdateExpanded 1 lowerLeftState mixedKey (0 : TwoVec) := by
+  intro h
+  have hentry := congrArg (fun M : TwoMat => M 0 0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [m2rnnRowForgetUpdate2, rowForgetCarry2, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, lowerLeftState, mixedKey, Matrix.mul_apply] using hentry
+  exact tanh_one_ne_zero hbad
+
+/-- A column-gated M2RNN external carry still cannot match E88/NDM's mixed-key
+delta correction, for the same row-locality reason as the row-gated case. -/
+theorem column_forget_m2rnn_fails_mixed_key_delta_correction
+    (W : TwoMat) (c : TwoVec) :
+    m2rnnColumnForgetUpdate2 W c lowerLeftState mixedKey (0 : TwoVec) ≠
+      M2RNNComparison.e88DeltaUpdateExpanded 1 lowerLeftState mixedKey (0 : TwoVec) := by
+  intro h
+  have hentry := congrArg (fun M : TwoMat => M 0 0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [m2rnnColumnForgetUpdate2, columnForgetCarry2, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, lowerLeftState, mixedKey, Matrix.mul_apply] using hentry
+  exact tanh_one_ne_zero hbad
+
+/-- Even cellwise external carry cannot repair the missing mixed-key delta
+correction if the candidate path remains a fixed right transition plus raw
+outer-product write. Cell gates can retain or replace cells, but they do not
+create the cross-row term `-k kᵀ H` that E88/NDM applies before `tanh`. -/
+theorem cell_forget_m2rnn_fails_mixed_key_delta_correction
+    (W : TwoMat) (g : TwoMat) :
+    m2rnnCellForgetUpdate2 W g lowerLeftState mixedKey (0 : TwoVec) ≠
+      M2RNNComparison.e88DeltaUpdateExpanded 1 lowerLeftState mixedKey (0 : TwoVec) := by
+  intro h
+  have hentry := congrArg (fun M : TwoMat => M 0 0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [m2rnnCellForgetUpdate2, cellForgetCarry2, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, lowerLeftState, mixedKey, Matrix.mul_apply] using hentry
+  exact tanh_one_ne_zero hbad
+
 /-! ## Interpretation Hooks
 
 These are not capability theorems yet. They are hooks for the theorems we want:
