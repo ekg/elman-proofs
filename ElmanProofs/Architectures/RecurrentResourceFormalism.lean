@@ -183,12 +183,14 @@ inductive ComparisonMode where
 
 /-! ## Canonical Signatures -/
 
-/-- E88/NDM: pure nonlinear delta memory.
+/-- NDM: Nonlinear Delta Memory.
 
-The production 1.27B run currently instantiates this with 12 layers, 370 heads
-per layer, and 32×32 state per head.
+This is the paper-facing model family: a pure nonlinear recurrent stack with
+matrix state, input-dependent delta correction, and many independent recurrent
+programs per token. E88 is the current production implementation lineage of
+this family.
 -/
-def e88NDM (layers heads nState : Nat) : ArchitectureSignature where
+def ndm (layers heads nState : Nat) : ArchitectureSignature where
   name := "E88/NDM"
   stateGeometry := .matrix
   temporalNonlinearity := .fullState
@@ -204,6 +206,10 @@ def e88NDM (layers heads nState : Nat) : ArchitectureSignature where
   stateScalarsPerHead := nState * nState
   pureRecurrentStack := true
   scanCompatible := false
+
+/-- Backward-compatible name for the E88 implementation lineage of NDM. -/
+def e88NDM (layers heads nState : Nat) : ArchitectureSignature :=
+  ndm layers heads nState
 
 /-- Homogeneous/pure M2RNN: nonlinear matrix-state recurrence, but raw writes and
 a fixed learned right transition. -/
@@ -282,11 +288,40 @@ def mamba2SSM (layers heads stateScalarsPerHead : Nat) : ArchitectureSignature w
   pureRecurrentStack := true
   scanCompatible := true
 
-/-- Concrete current E88/NDM production geometry. -/
+/-- Concrete current production NDM geometry: 12 layers, 370 heads per layer,
+and 32×32 state per head. -/
+def ndm_1p27B : ArchitectureSignature :=
+  ndm 12 370 32
+
+/-- Backward-compatible name for the current E88 production geometry. -/
 def e88NDM_1p27B : ArchitectureSignature :=
-  e88NDM 12 370 32
+  ndm_1p27B
 
 /-! ## Basic Theorems -/
+
+theorem ndm_1p27B_is_pure_nonlinear_recurrent_stack :
+    isPureNonlinearRecurrentStack ndm_1p27B = true := by
+  rfl
+
+theorem ndm_1p27B_has_delta_memory :
+    hasDeltaCorrectingWrite ndm_1p27B.writeRule = true := by
+  rfl
+
+theorem ndm_1p27B_has_matrix_state :
+    hasMatrixState ndm_1p27B.stateGeometry = true := by
+  rfl
+
+theorem ndm_1p27B_programs_per_batch_token (batch : Nat) :
+    programsPerBatchToken ndm_1p27B batch = 12 * 370 * batch := by
+  rfl
+
+theorem ndm_1p27B_programs_per_batch_token_bs5 :
+    programsPerBatchToken ndm_1p27B 5 = 22200 := by
+  rfl
+
+theorem ndm_1p27B_state_scalars_per_layer :
+    stateScalarsPerLayer ndm_1p27B = 370 * (32 * 32) := by
+  rfl
 
 theorem e88NDM_1p27B_is_pure_nonlinear_recurrent_stack :
     isPureNonlinearRecurrentStack e88NDM_1p27B = true := by
@@ -340,9 +375,21 @@ theorem e88_and_gdn_share_delta_style_write
     hasDeltaStyleWrite (gatedDeltaNet layers heads state).writeRule = true := by
   constructor <;> rfl
 
+theorem ndm_and_gdn_share_delta_style_write
+    (layers heads state : Nat) :
+    hasDeltaStyleWrite ndm_1p27B.writeRule = true ∧
+    hasDeltaStyleWrite (gatedDeltaNet layers heads state).writeRule = true := by
+  constructor <;> rfl
+
 theorem e88_and_gdn_split_on_temporal_nonlinearity
     (layers heads state : Nat) :
     hasTemporalNonlinearity e88NDM_1p27B.temporalNonlinearity = true ∧
+    hasTemporalNonlinearity (gatedDeltaNet layers heads state).temporalNonlinearity = false := by
+  constructor <;> rfl
+
+theorem ndm_and_gdn_split_on_temporal_nonlinearity
+    (layers heads state : Nat) :
+    hasTemporalNonlinearity ndm_1p27B.temporalNonlinearity = true ∧
     hasTemporalNonlinearity (gatedDeltaNet layers heads state).temporalNonlinearity = false := by
   constructor <;> rfl
 
@@ -364,6 +411,19 @@ theorem e88_and_m2rnn_share_broad_nonlinear_matrix_family
   · rfl
   constructor <;> rfl
 
+/-- NDM and homogeneous M2RNN share the broad nonlinear matrix-state family. -/
+theorem ndm_and_m2rnn_share_broad_nonlinear_matrix_family
+    (m2Layers m2Heads m2State : Nat) :
+    hasMatrixState ndm_1p27B.stateGeometry = true ∧
+    hasTemporalNonlinearity ndm_1p27B.temporalNonlinearity = true ∧
+    hasMatrixState (m2rnnPure m2Layers m2Heads m2State).stateGeometry = true ∧
+    hasTemporalNonlinearity (m2rnnPure m2Layers m2Heads m2State).temporalNonlinearity = true := by
+  constructor
+  · rfl
+  constructor
+  · rfl
+  constructor <;> rfl
+
 /-- But E88/NDM and M2RNN are not the same one-step transition family. -/
 theorem e88_and_m2rnn_differ_as_one_step_transition_families
     (m2Layers m2Heads m2State : Nat) :
@@ -372,6 +432,24 @@ theorem e88_and_m2rnn_differ_as_one_step_transition_families
     e88NDM_1p27B.writeRule ≠
       (m2rnnPure m2Layers m2Heads m2State).writeRule ∧
     e88NDM_1p27B.transitionControl ≠
+      (m2rnnPure m2Layers m2Heads m2State).transitionControl := by
+  constructor
+  · intro h
+    cases h
+  constructor
+  · intro h
+    cases h
+  · intro h
+    cases h
+
+/-- NDM and M2RNN are not the same one-step transition family. -/
+theorem ndm_and_m2rnn_differ_as_one_step_transition_families
+    (m2Layers m2Heads m2State : Nat) :
+    ndm_1p27B.transitionSide ≠
+      (m2rnnPure m2Layers m2Heads m2State).transitionSide ∧
+    ndm_1p27B.writeRule ≠
+      (m2rnnPure m2Layers m2Heads m2State).writeRule ∧
+    ndm_1p27B.transitionControl ≠
       (m2rnnPure m2Layers m2Heads m2State).transitionControl := by
   constructor
   · intro h
