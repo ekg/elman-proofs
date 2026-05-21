@@ -789,6 +789,282 @@ theorem cell_forget_m2rnn_fails_mixed_key_delta_correction
       M2RNNComparison.outerKV, lowerLeftState, mixedKey, Matrix.mul_apply] using hentry
   exact tanh_one_ne_zero hbad
 
+/-! ## One-Step Resource Separation Target -/
+
+/-- The one-step mixed-key delta-correction target.
+
+This target isolates the operation that E88/NDM gets from its input-dependent
+left transition:
+
+`H ↦ tanh((I - k kᵀ) H + k vᵀ)`.
+
+At the witness state/key/value below, the correction moves information across
+rows. A fixed-right-transition M2RNN candidate can mix columns within each row,
+but cannot create this cross-row correction in one step; external row/column/cell
+forget gates can only retain or replace already-computed cells. -/
+def ImplementsMixedKeyDeltaCorrection
+    (update : TwoMat → TwoVec → TwoVec → TwoMat) : Prop :=
+  update lowerLeftState mixedKey (0 : TwoVec) =
+    M2RNNComparison.e88DeltaUpdateExpanded 1 lowerLeftState mixedKey (0 : TwoVec)
+
+/-- E88/NDM implements the mixed-key delta-correction target by definition. -/
+theorem e88_implements_mixed_key_delta_correction :
+    ImplementsMixedKeyDeltaCorrection (M2RNNComparison.e88DeltaUpdateExpanded 1) := by
+  rfl
+
+/-- A small resource class for M2RNN-style one-step updates with a fixed right
+transition, raw outer-product candidate, and external forget carry.
+
+The row/column/cell cases cover scalar and input-dependent variants at this
+witness: once the state/key/value are fixed, any such gate has some concrete
+row, column, or cell values. -/
+inductive FixedRightRawExternalForget2 where
+  | row (W : TwoMat) (r : TwoVec)
+  | column (W : TwoMat) (c : TwoVec)
+  | cell (W : TwoMat) (g : TwoMat)
+
+/-- Interpret a fixed-right/raw-write external-forget resource as an update
+function. -/
+noncomputable def FixedRightRawExternalForget2.update :
+    FixedRightRawExternalForget2 → TwoMat → TwoVec → TwoVec → TwoMat
+  | .row W r => m2rnnRowForgetUpdate2 W r
+  | .column W c => m2rnnColumnForgetUpdate2 W c
+  | .cell W g => m2rnnCellForgetUpdate2 W g
+
+/-- Row-gated fixed-right M2RNN resources do not implement the mixed-key delta
+correction target. -/
+theorem row_forget_m2rnn_not_implements_mixed_key_delta_correction
+    (W : TwoMat) (r : TwoVec) :
+    ¬ ImplementsMixedKeyDeltaCorrection (m2rnnRowForgetUpdate2 W r) := by
+  intro h
+  exact row_forget_m2rnn_fails_mixed_key_delta_correction W r h
+
+/-- Column-gated fixed-right M2RNN resources do not implement the mixed-key
+delta correction target. -/
+theorem column_forget_m2rnn_not_implements_mixed_key_delta_correction
+    (W : TwoMat) (c : TwoVec) :
+    ¬ ImplementsMixedKeyDeltaCorrection (m2rnnColumnForgetUpdate2 W c) := by
+  intro h
+  exact column_forget_m2rnn_fails_mixed_key_delta_correction W c h
+
+/-- Cellwise-gated fixed-right M2RNN resources do not implement the mixed-key
+delta correction target. -/
+theorem cell_forget_m2rnn_not_implements_mixed_key_delta_correction
+    (W : TwoMat) (g : TwoMat) :
+    ¬ ImplementsMixedKeyDeltaCorrection (m2rnnCellForgetUpdate2 W g) := by
+  intro h
+  exact cell_forget_m2rnn_fails_mixed_key_delta_correction W g h
+
+/-- Main one-step resource separation:
+
+E88/NDM implements the mixed-key delta correction in one recurrent step. The
+M2RNN-style resource class with fixed right transition, raw outer write, and
+external row/column/cell forget carry cannot implement that same target in one
+step.
+
+This is deliberately a one-step/resource theorem, not a broad computability
+separation. It identifies the extra mechanism M2RNN would need to simulate E88:
+an input-dependent left transition or additional resources/steps that recreate
+the missing `-k kᵀ H` correction. -/
+theorem ndm_m2rnn_one_step_resource_separation :
+    ImplementsMixedKeyDeltaCorrection (M2RNNComparison.e88DeltaUpdateExpanded 1) ∧
+    ∀ resource : FixedRightRawExternalForget2,
+      ¬ ImplementsMixedKeyDeltaCorrection resource.update := by
+  constructor
+  · exact e88_implements_mixed_key_delta_correction
+  · intro resource
+    cases resource with
+    | row W r =>
+        exact row_forget_m2rnn_not_implements_mixed_key_delta_correction W r
+    | column W c =>
+        exact column_forget_m2rnn_not_implements_mixed_key_delta_correction W c
+    | cell W g =>
+        exact cell_forget_m2rnn_not_implements_mixed_key_delta_correction W g
+
+/-! ## General-Dimension Embedding -/
+
+/-- Row-vector external carry for arbitrary key/value dimensions. -/
+def rowForgetCarryKV {K V : Nat}
+    (r : M2RNNComparison.Vec K)
+    (H Z : M2RNNComparison.MatState K V) : M2RNNComparison.MatState K V :=
+  Matrix.of fun i j => r i * H i j + (1 - r i) * Z i j
+
+/-- Column-vector external carry for arbitrary key/value dimensions. -/
+def columnForgetCarryKV {K V : Nat}
+    (c : M2RNNComparison.Vec V)
+    (H Z : M2RNNComparison.MatState K V) : M2RNNComparison.MatState K V :=
+  Matrix.of fun i j => c j * H i j + (1 - c j) * Z i j
+
+/-- Cellwise external carry for arbitrary key/value dimensions. -/
+def cellForgetCarryKV {K V : Nat}
+    (g H Z : M2RNNComparison.MatState K V) : M2RNNComparison.MatState K V :=
+  Matrix.of fun i j => g i j * H i j + (1 - g i j) * Z i j
+
+/-- M2RNN candidate followed by row-vector external forget carry. -/
+noncomputable def m2rnnRowForgetUpdateKV {K V : Nat}
+    (W : Matrix (Fin V) (Fin V) Real) (r : M2RNNComparison.Vec K)
+    (H : M2RNNComparison.MatState K V)
+    (k : M2RNNComparison.Vec K) (v : M2RNNComparison.Vec V) :
+    M2RNNComparison.MatState K V :=
+  rowForgetCarryKV r H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- M2RNN candidate followed by column-vector external forget carry. -/
+noncomputable def m2rnnColumnForgetUpdateKV {K V : Nat}
+    (W : Matrix (Fin V) (Fin V) Real) (c : M2RNNComparison.Vec V)
+    (H : M2RNNComparison.MatState K V)
+    (k : M2RNNComparison.Vec K) (v : M2RNNComparison.Vec V) :
+    M2RNNComparison.MatState K V :=
+  columnForgetCarryKV c H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- M2RNN candidate followed by cellwise external forget carry. -/
+noncomputable def m2rnnCellForgetUpdateKV {K V : Nat}
+    (W : Matrix (Fin V) (Fin V) Real)
+    (g H : M2RNNComparison.MatState K V)
+    (k : M2RNNComparison.Vec K) (v : M2RNNComparison.Vec V) :
+    M2RNNComparison.MatState K V :=
+  cellForgetCarryKV g H (M2RNNComparison.m2rnnCandidate W H k v)
+
+/-- The embedded two-direction mixed key in any key space of size at least two. -/
+def embeddedMixedKey {K : Nat} (hK : 1 < K) : M2RNNComparison.Vec K :=
+  fun i =>
+    if i = (⟨0, Nat.lt_trans Nat.zero_lt_one hK⟩ : Fin K) then 1
+    else if i = (⟨1, hK⟩ : Fin K) then 1
+    else 0
+
+/-- The embedded witness state: row 0 is zero; row 1 stores one active value in
+column 0; all other coordinates are zero. -/
+def embeddedLowerLeftState {K V : Nat} (hK : 1 < K) (hV : 0 < V) :
+    M2RNNComparison.MatState K V :=
+  Matrix.of fun i j =>
+    if i = (⟨1, hK⟩ : Fin K) then
+      if j = (⟨0, hV⟩ : Fin V) then 1 else 0
+    else 0
+
+/-- The arbitrary-dimensional mixed-key delta-correction target. It is the same
+2D obstruction embedded into any `K ≥ 2, V ≥ 1` state space. -/
+def ImplementsEmbeddedMixedKeyDeltaCorrection {K V : Nat} (hK : 1 < K) (hV : 0 < V)
+    (update :
+      M2RNNComparison.MatState K V →
+      M2RNNComparison.Vec K →
+      M2RNNComparison.Vec V →
+      M2RNNComparison.MatState K V) : Prop :=
+  update (embeddedLowerLeftState hK hV) (embeddedMixedKey hK)
+      (0 : M2RNNComparison.Vec V) =
+    M2RNNComparison.e88DeltaUpdateExpanded 1
+      (embeddedLowerLeftState hK hV) (embeddedMixedKey hK)
+      (0 : M2RNNComparison.Vec V)
+
+/-- E88/NDM implements the embedded mixed-key delta-correction target in any
+dimension with at least two key coordinates and one value coordinate. -/
+theorem e88_implements_embedded_mixed_key_delta_correction
+    {K V : Nat} (hK : 1 < K) (hV : 0 < V) :
+    ImplementsEmbeddedMixedKeyDeltaCorrection hK hV
+      (M2RNNComparison.e88DeltaUpdateExpanded 1) := by
+  rfl
+
+/-- Row-gated fixed-right M2RNN cannot implement the embedded mixed-key
+delta-correction target in any larger state space. -/
+theorem row_forget_m2rnn_fails_embedded_mixed_key_delta_correction
+    {K V : Nat} (hK : 1 < K) (hV : 0 < V)
+    (W : Matrix (Fin V) (Fin V) Real) (r : M2RNNComparison.Vec K) :
+    ¬ ImplementsEmbeddedMixedKeyDeltaCorrection hK hV
+      (m2rnnRowForgetUpdateKV W r) := by
+  intro h
+  let i0 : Fin K := ⟨0, Nat.lt_trans Nat.zero_lt_one hK⟩
+  let j0 : Fin V := ⟨0, hV⟩
+  have hentry := congrArg (fun M : M2RNNComparison.MatState K V => M i0 j0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [ImplementsEmbeddedMixedKeyDeltaCorrection, m2rnnRowForgetUpdateKV,
+      rowForgetCarryKV, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, embeddedLowerLeftState, embeddedMixedKey,
+      Matrix.mul_apply, i0, j0] using hentry
+  exact tanh_one_ne_zero hbad
+
+/-- Column-gated fixed-right M2RNN cannot implement the embedded mixed-key
+delta-correction target in any larger state space. -/
+theorem column_forget_m2rnn_fails_embedded_mixed_key_delta_correction
+    {K V : Nat} (hK : 1 < K) (hV : 0 < V)
+    (W : Matrix (Fin V) (Fin V) Real) (c : M2RNNComparison.Vec V) :
+    ¬ ImplementsEmbeddedMixedKeyDeltaCorrection hK hV
+      (m2rnnColumnForgetUpdateKV W c) := by
+  intro h
+  let i0 : Fin K := ⟨0, Nat.lt_trans Nat.zero_lt_one hK⟩
+  let j0 : Fin V := ⟨0, hV⟩
+  have hentry := congrArg (fun M : M2RNNComparison.MatState K V => M i0 j0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [ImplementsEmbeddedMixedKeyDeltaCorrection, m2rnnColumnForgetUpdateKV,
+      columnForgetCarryKV, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, embeddedLowerLeftState, embeddedMixedKey,
+      Matrix.mul_apply, i0, j0] using hentry
+  exact tanh_one_ne_zero hbad
+
+/-- Cellwise-gated fixed-right M2RNN cannot implement the embedded mixed-key
+delta-correction target in any larger state space. -/
+theorem cell_forget_m2rnn_fails_embedded_mixed_key_delta_correction
+    {K V : Nat} (hK : 1 < K) (hV : 0 < V)
+    (W : Matrix (Fin V) (Fin V) Real)
+    (g : M2RNNComparison.MatState K V) :
+    ¬ ImplementsEmbeddedMixedKeyDeltaCorrection hK hV
+      (m2rnnCellForgetUpdateKV W g) := by
+  intro h
+  let i0 : Fin K := ⟨0, Nat.lt_trans Nat.zero_lt_one hK⟩
+  let j0 : Fin V := ⟨0, hV⟩
+  have hentry := congrArg (fun M : M2RNNComparison.MatState K V => M i0 j0) h
+  have hbad : Real.tanh (1 : Real) = 0 := by
+    simpa [ImplementsEmbeddedMixedKeyDeltaCorrection, m2rnnCellForgetUpdateKV,
+      cellForgetCarryKV, M2RNNComparison.m2rnnCandidate,
+      M2RNNComparison.e88DeltaUpdateExpanded, M2RNNComparison.e88DeltaTransition,
+      M2RNNComparison.matrixTanh, M2RNNComparison.matrixMap,
+      M2RNNComparison.outerKV, embeddedLowerLeftState, embeddedMixedKey,
+      Matrix.mul_apply, i0, j0] using hentry
+  exact tanh_one_ne_zero hbad
+
+/-- Fixed-right/raw-write external-forget resources in arbitrary dimension. -/
+inductive FixedRightRawExternalForgetKV (K V : Nat) where
+  | row (W : Matrix (Fin V) (Fin V) Real) (r : M2RNNComparison.Vec K)
+  | column (W : Matrix (Fin V) (Fin V) Real) (c : M2RNNComparison.Vec V)
+  | cell (W : Matrix (Fin V) (Fin V) Real) (g : M2RNNComparison.MatState K V)
+
+/-- Interpret an arbitrary-dimensional fixed-right/raw-write resource as an
+update function. -/
+noncomputable def FixedRightRawExternalForgetKV.update {K V : Nat} :
+    FixedRightRawExternalForgetKV K V →
+      M2RNNComparison.MatState K V →
+      M2RNNComparison.Vec K →
+      M2RNNComparison.Vec V →
+      M2RNNComparison.MatState K V
+  | .row W r => m2rnnRowForgetUpdateKV W r
+  | .column W c => m2rnnColumnForgetUpdateKV W c
+  | .cell W g => m2rnnCellForgetUpdateKV W g
+
+/-- General embedding theorem: the one-step separation is not a 2D artifact.
+
+For every key dimension `K ≥ 2` and value dimension `V ≥ 1`, E88/NDM implements
+the embedded mixed-key delta correction in one recurrent step, while every
+fixed-right/raw-write M2RNN-style resource with external row/column/cell forget
+fails on the embedded witness.
+-/
+theorem ndm_m2rnn_one_step_resource_separation_embeds
+    {K V : Nat} (hK : 1 < K) (hV : 0 < V) :
+    ImplementsEmbeddedMixedKeyDeltaCorrection hK hV
+      (M2RNNComparison.e88DeltaUpdateExpanded 1) ∧
+    ∀ resource : FixedRightRawExternalForgetKV K V,
+      ¬ ImplementsEmbeddedMixedKeyDeltaCorrection hK hV resource.update := by
+  constructor
+  · exact e88_implements_embedded_mixed_key_delta_correction hK hV
+  · intro resource
+    cases resource with
+    | row W r =>
+        exact row_forget_m2rnn_fails_embedded_mixed_key_delta_correction hK hV W r
+    | column W c =>
+        exact column_forget_m2rnn_fails_embedded_mixed_key_delta_correction hK hV W c
+    | cell W g =>
+        exact cell_forget_m2rnn_fails_embedded_mixed_key_delta_correction hK hV W g
+
 /-! ## Interpretation Hooks
 
 These are not capability theorems yet. They are hooks for the theorems we want:

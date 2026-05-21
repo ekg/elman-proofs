@@ -55,6 +55,7 @@ import ElmanProofs.Expressivity.E1HDefinition
 import ElmanProofs.Expressivity.E1HTemporalTheorems
 import ElmanProofs.Expressivity.E88ExceedsE1HCapacity
 import ElmanProofs.Expressivity.ExpressivityHierarchy
+import ElmanProofs.Expressivity.S5Witness
 
 -- Information Theory of Language
 import ElmanProofs.Information.LinearVsNonlinear

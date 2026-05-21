@@ -6,6 +6,7 @@ import ElmanProofs.Architectures.M2RNNComparison
 import ElmanProofs.Architectures.OnlineMemory
 import ElmanProofs.Architectures.RecurrentResourceFormalism
 import ElmanProofs.Expressivity.E88ExceedsE1HCapacity
+import ElmanProofs.Expressivity.S5Witness
 
 /-!
 # Trusted Paper Core
@@ -23,8 +24,16 @@ paper-space claims:
 * M2RNN and NDM/E88 are distinct one-step transition families.
 * M2RNN's raw outer write is separated from the delta-correcting write shared
   by ideal GDN and NDM/E88 pre-nonlinearity.
+* NDM/E88 implements a mixed-key delta correction in one recurrent step that
+  fixed-right/raw-write M2RNN resources with external row/column/cell forget
+  cannot implement in one step; this witness embeds into every matrix state
+  with key dimension at least two and value dimension at least one.
+* Conversely, M2RNN-style raw writes exactly embed one NDM/E88 delta step once
+  given the extra read-then-delta resource `v - H^T k`.
 * NDM/E88 exposes the current 1.27B many-program production geometry.
 * E88 has the checked matrix-state capacity separation over E1H.
+* The S5 witness surface is checked: fixed-precision online recognizers have
+  finite state, S3 has six states, S5 has 120 states, and S5 is non-solvable.
 
 Use `scripts/check_paper_core.sh` to reject unfinished proof holes, explicit
 assumptions, opaque declarations, and kernel-bypassing computation in this

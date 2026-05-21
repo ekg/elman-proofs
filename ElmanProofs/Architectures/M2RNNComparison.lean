@@ -27,7 +27,7 @@ write, which expands to an input-dependent projection-like left transition.
 
 namespace M2RNNComparison
 
-open Matrix
+open Matrix BigOperators
 
 abbrev Vec (n : Nat) := Fin n → Real
 abbrev MatState (K V : Nat) := Matrix (Fin K) (Fin V) Real
@@ -241,5 +241,93 @@ theorem m2rnn_identity_no_forget_is_raw_write
     m2rnnUpdate (1 : Matrix (Fin V) (Fin V) Real) 0 H k v =
       rawWriteNonlinearUpdate H k v := by
   simp [m2rnnUpdate, m2rnnCandidate, rawWriteNonlinearUpdate]
+
+/-! ## Positive Simulation Hook
+
+The negative results in `RecurrentResourceFormalism` show that a fixed-right
+raw-write M2RNN candidate cannot implement E88/NDM's mixed-key delta correction
+in one step when its write value is state-independent.
+
+The theorem below records the matching upper-bound intuition: if an M2RNN-style
+raw write is given the retrieval error `v - Hᵀk` as its value path, then with
+`W = lambda I` it exactly implements the E88/NDM delta update. In other words,
+the separation is about the resource needed to form the state-dependent delta,
+not about an absolute computability barrier.
+-/
+
+/-- Direct and expanded E88/NDM delta updates are algebraically identical. -/
+theorem e88DeltaUpdateDirect_eq_expanded
+    (lambda : Real) (H : MatState K V) (k : Vec K) (v : Vec V) :
+    e88DeltaUpdateDirect lambda H k v =
+      e88DeltaUpdateExpanded lambda H k v := by
+  ext i j
+  unfold e88DeltaUpdateDirect e88DeltaUpdateExpanded matrixTanh matrixMap
+  simp only [Matrix.of_apply]
+  apply congrArg Real.tanh
+  simp [e88DeltaTransition, e88Delta, queryReadout, outerKV,
+    Matrix.mul_apply, Matrix.mulVec, dotProduct]
+  have h_id :
+      (∑ x : Fin K, lambda * ((1 : Matrix (Fin K) (Fin K) Real) i x) * H x j) =
+        lambda * H i j := by
+    rw [Fintype.sum_eq_single i]
+    · simp
+    · intro x hx
+      have hix : i ≠ x := by
+        intro h
+        exact hx h.symm
+      simp [hix]
+  have h_k :
+      (∑ x : Fin K, k i * k x * H x j) =
+        k i * ∑ x : Fin K, H x j * k x := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro x _
+    ring
+  have h_sum :
+      (∑ x : Fin K, (lambda * ((1 : Matrix (Fin K) (Fin K) Real) i x) - k i * k x) * H x j) =
+        lambda * H i j - k i * ∑ x : Fin K, H x j * k x := by
+    calc
+      (∑ x : Fin K, (lambda * ((1 : Matrix (Fin K) (Fin K) Real) i x) - k i * k x) * H x j)
+          = ∑ x : Fin K,
+              (lambda * ((1 : Matrix (Fin K) (Fin K) Real) i x) * H x j -
+                k i * k x * H x j) := by
+            apply Finset.sum_congr rfl
+            intro x _
+            ring
+      _ = (∑ x : Fin K, lambda * ((1 : Matrix (Fin K) (Fin K) Real) i x) * H x j) -
+          (∑ x : Fin K, k i * k x * H x j) := by
+            rw [Finset.sum_sub_distrib]
+      _ = lambda * H i j - k i * ∑ x : Fin K, H x j * k x := by
+            rw [h_id, h_k]
+  rw [h_sum]
+  ring
+
+/-- A fixed-right raw-write M2RNN candidate implements E88/NDM's direct delta
+update when its value path is the retrieval error and its fixed transition is
+`lambda I`. -/
+theorem m2rnnCandidate_with_delta_value_eq_e88_direct
+    (lambda : Real) (H : MatState K V) (k : Vec K) (v : Vec V) :
+    m2rnnCandidate (lambda • (1 : Matrix (Fin V) (Fin V) Real))
+        H k (e88Delta H k v) =
+      e88DeltaUpdateDirect lambda H k v := by
+  ext i j
+  simp [m2rnnCandidate, e88DeltaUpdateDirect, e88Delta, queryReadout,
+    outerKV, matrixTanh, matrixMap, Matrix.mulVec,
+    dotProduct]
+
+/-- Positive embedding theorem: M2RNN can match one E88/NDM delta step if it is
+given the extra read-then-delta resource that computes `v - Hᵀk` before the raw
+write.
+
+This is the formal complement to the one-step separation theorem: fixed
+raw-write M2RNN does not natively contain the delta correction, but an augmented
+read-then-delta M2RNN candidate embeds the E88/NDM update exactly. -/
+theorem m2rnn_read_then_delta_embeds_e88_delta_update
+    (lambda : Real) (H : MatState K V) (k : Vec K) (v : Vec V) :
+    m2rnnCandidate (lambda • (1 : Matrix (Fin V) (Fin V) Real))
+        H k (e88Delta H k v) =
+      e88DeltaUpdateExpanded lambda H k v := by
+  rw [m2rnnCandidate_with_delta_value_eq_e88_direct,
+    e88DeltaUpdateDirect_eq_expanded]
 
 end M2RNNComparison
