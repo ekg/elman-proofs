@@ -6,6 +6,8 @@ import ElmanProofs.Architectures.M2RNNComparison
 import ElmanProofs.Architectures.OnlineMemory
 import ElmanProofs.Architectures.RecurrentResourceFormalism
 import ElmanProofs.Expressivity.E88ExceedsE1HCapacity
+import ElmanProofs.Expressivity.S5NDMRealization
+import ElmanProofs.Expressivity.S5Tracker
 import ElmanProofs.Expressivity.S5Witness
 
 /-!
@@ -34,6 +36,11 @@ paper-space claims:
 * E88 has the checked matrix-state capacity separation over E1H.
 * The S5 witness surface is checked: fixed-precision online recognizers have
   finite state, S3 has six states, S5 has 120 states, and S5 is non-solvable.
+* The explicit S5 adjacent-transposition tracker is checked as a 120-state
+  recognizer, its word execution composes permutations, and its transition
+  matches the Python tuple-swap task semantics.
+* Every finite fixed-precision recognizer has an exact finite transition-table
+  realization; the S5 tracker instance uses 480 state/input keys.
 
 Use `scripts/check_paper_core.sh` to reject unfinished proof holes, explicit
 assumptions, opaque declarations, and kernel-bypassing computation in this
