@@ -19,6 +19,16 @@ import ElmanProofs.Expressivity.TC0Bounds
 /-!
 # TC0 vs Unbounded RNN Hierarchy: The Correct Ordering
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface. It preserves an older
+TC0/parity-centered framing from the theorem-discovery phase and should not be
+cited as a current formal result. The current paper-facing framing is in
+`ElmanProofs/PaperCore.lean`, `ElmanProofs/Expressivity/S5Witness.lean`, and
+`S5_NC1_WITNESS_PLAN.md`: fixed-width finite-precision recurrence is
+finite-state as a recognizer, parity/mod-counting are solvable controls, and
+S5 permutation composition is the non-solvable witness.
+
 This file formalizes the computational hierarchy between:
 - **TC0**: Constant-depth threshold circuits (upper bound for Transformers)
 - **Linear SSMs**: State space models with linear temporal dynamics (Mamba2, MinGRU)

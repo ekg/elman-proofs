@@ -17,6 +17,14 @@ import ElmanProofs.Expressivity.ComputationalClasses
 /-!
 # TC0 Bounds and E88 Expressivity
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface. It keeps an older
+TC0/parity-centered analysis that is useful as a research notebook but is not
+the current formal claim. The current paper-facing complexity boundary is the
+fixed-state/NC1/S5 witness framing checked through `PaperCore` and
+`S5Witness`.
+
 This file formalizes the relationship between:
 - TC0 (constant-depth threshold circuits) - the upper bound for Transformers
 - Linear SSMs (Mamba2) - cannot compute PARITY (below TC0 in some sense)

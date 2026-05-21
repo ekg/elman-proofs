@@ -14,6 +14,13 @@ import ElmanProofs.Expressivity.MultiLayerLimitations
 /-!
 # Running Parity Impossibility for Linear-Temporal Models
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface. Running parity remains a
+useful diagnostic, but it is a solvable-group control rather than the current
+paper-facing separation witness. Use S5 permutation composition for the
+non-solvable witness story.
+
 This file proves that running parity cannot be computed by linear-temporal models,
 regardless of depth. This extends the XOR impossibility proof to arbitrary-length
 sequences.

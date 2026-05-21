@@ -22,6 +22,9 @@ Current groups:
 * explicit-assumption sketches: `Information.LanguageComplexity`,
   `Information.CompositionDepth`, `Architectures.SparseAttention`;
 * learning-dynamics sketches: `Learning.*`;
+* historical TC0/parity-centered sketches: `TC0Bounds`,
+  `TC0VsUnboundedRNN`, `Section08_TC0CircuitComplexityBounds`,
+  `ComputationalClasses`, `ExactCounting`, and `RunningParity`;
 * expressivity sketches with placeholder proofs: `E88Definition`,
   `E88RankAccumulation`, `E88VariantClarification`, `MemoryCapacity`,
   `MultiPass`, and `StateAccessibility`.

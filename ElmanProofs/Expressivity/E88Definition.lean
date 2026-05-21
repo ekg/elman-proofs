@@ -17,6 +17,13 @@ import ElmanProofs.Activations.Lipschitz
 /-!
 # E88: Definitive Formalization
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface and contains unfinished
+proof scaffolding. It also predates the NDM naming and the corrected
+finite-state/NC1/S5 witness framing. Treat it as a historical design notebook,
+not as the current formal definition of the paper claims.
+
 This file provides the SINGLE SOURCE OF TRUTH for E88 architecture formalization,
 crystallizing all key predictions and properties.
 

@@ -22,6 +22,13 @@ import ElmanProofs.Activations.Lipschitz
 /-!
 # Exact Counting vs Magnitude Thresholding
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface and explicitly contains
+unfinished proof scaffolding. Exact counting and modular counting remain useful
+engineering probes, but they are solvable-control tasks in the current paper
+framing. The non-solvable witness is S5 permutation composition.
+
 This file proves the fundamental separation between **exact counting** and **magnitude
 thresholding** capabilities in RNN architectures.
 

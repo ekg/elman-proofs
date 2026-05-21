@@ -20,6 +20,14 @@ import ElmanProofs.Expressivity.TC0VsUnboundedRNN
 /-!
 # Section 08: TC0 Circuit Complexity Bounds
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface. It reflects an older
+TC0/parity-centered draft narrative and is superseded by the finite-state/NC1/S5
+witness framing in `PaperCore`, `S5Witness`, and `S5_NC1_WITNESS_PLAN.md`.
+Do not cite this file as current theorem evidence unless individual claims are
+moved into the trusted import chain and pass the paper-core checks.
+
 This file provides a unified treatment of the computational complexity hierarchy
 relating TC0 (constant-depth threshold circuits), Transformers, linear SSMs (Mamba2),
 and nonlinear RNNs (E88).

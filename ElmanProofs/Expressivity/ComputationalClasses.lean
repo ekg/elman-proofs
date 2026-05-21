@@ -18,6 +18,13 @@ import ElmanProofs.Expressivity.RunningParity
 /-!
 # Computational Classes and RNN Expressivity
 
+## Historical Sketch Status
+
+This module is not part of the trusted paper surface. It contains placeholder
+class definitions and older parity/counting-centered hierarchy language. Use it
+as research scaffolding only. Current paper-facing claims live in `PaperCore`
+and `S5Witness`.
+
 This file formalizes the relationships between classical computational complexity classes
 (Regular, Context-Free, RE) and the expressivity of different RNN architectures.
 
